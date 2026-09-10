@@ -51,6 +51,7 @@ https://www.sim.ai
 https://jean.build
 https://yggchat.com
 https://tryorca.com
+https://replicas.dev
 https://soloterm.com
 https://addy-ade.com
 https://superterm.dev
@@ -79,6 +80,7 @@ https://github.com/GoogleCloudPlatform/scion
 https://github.com/codejunkie99/agentic-stack
 https://github.com/JackChen-me/open-multi-agent
 https://x.com/juristr/status/2031820737745682520
+https://github.com/frozenpepper/deepseek-and-destroy
 https://github.com/andyrewlee/awesome-agent-orchestrators
 
 harness basics & advanced usage:

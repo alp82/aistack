@@ -1,0 +1,63 @@
+{
+  "clientVersion": "grok 1.0.13 (5e9a58528b76) [stable]",
+  "platform": "Linux",
+  "architecture": "x86_64",
+  "sourceBuildLookup": "Public GitHub commit lookup for 5e9a58528b76 returned HTTP 422; source equivalence not established.",
+  "capture": "Owner-authorized current session; file sizes and mtimes stable across capture; process was not stopped.",
+  "usageSidecarPresent": false,
+  "usageCommand": "grok help usage exits 2: unrecognized subcommand",
+  "rawRecordCounts": {
+    "events": 799,
+    "updates": 175
+  },
+  "rawEventKinds": {
+    "mcp_config_resolved": 1,
+    "mcp_server_starting": 7,
+    "mcp_server_failed": 2,
+    "mcp_server_connected": 5,
+    "mcp_init_completed": 1,
+    "turn_started": 1,
+    "loop_started": 15,
+    "phase_changed": 632,
+    "first_token": 14,
+    "tool_started": 30,
+    "permission_requested": 30,
+    "permission_resolved": 30,
+    "tool_completed": 30,
+    "turn_ended": 1
+  },
+  "rawUpdateKinds": {
+    "hook_execution": 63,
+    "user_message_chunk": 1,
+    "agent_thought_chunk": 14,
+    "agent_message_chunk": 4,
+    "tool_call": 30,
+    "tool_call_update": 60,
+    "retry_state": 2,
+    "turn_completed": 1
+  },
+  "retainedRecordCounts": {
+    "events": 723,
+    "updates": 155
+  },
+  "transformations": [
+    "Keep only selected measurement fields and event types.",
+    "Replace identifiers consistently across files.",
+    "Shift all retained timestamps by one common whole-day offset.",
+    "Replace workspace path and prompt text.",
+    "Omit transcript text, raw tool inputs/outputs, hook names/output, account data and reported dollar costs.",
+    "Omit MCP configuration records and private component names."
+  ],
+  "limits": [
+    "One terminal rate_limit turn only.",
+    "No resume, fork, restoration, subagent, model-switch, successful second turn, or custom-provider qualification.",
+    "No usage file/command equivalence is possible on this installation.",
+    "Tool argument-based phase derivation cannot be tested from the stripped arguments.",
+    "Hook events establish execution observations only; source ownership and launcher behavior are not qualified."
+  ],
+  "timestampUnits": {
+    "timestamp": "Unix seconds",
+    "agentTimestampMs": "Unix milliseconds"
+  },
+  "correction": "Fixed the retained projection to apply the date shift in seconds to timestamp and milliseconds to agentTimestampMs. Original source files unchanged."
+}

@@ -1,0 +1,121 @@
+{
+  "name": "late-update-moves-only-turn",
+  "provenance": "constructed from pinned source; not released-client output",
+  "records": {
+    "before/usage.json": {
+      "sessionId": "fixture-late",
+      "updatedAt": "2026-09-07T23:59:59Z",
+      "session": {
+        "inputTokens": 100,
+        "outputTokens": 20,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 120,
+        "modelCalls": 1,
+        "turnCount": 1,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 100,
+            "outputTokens": 20,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 120,
+            "modelCalls": 1
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    },
+    "after/usage.json": {
+      "sessionId": "fixture-late",
+      "updatedAt": "2026-09-08T00:00:01Z",
+      "session": {
+        "inputTokens": 140,
+        "outputTokens": 30,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 170,
+        "modelCalls": 1,
+        "turnCount": 1,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 140,
+            "outputTokens": 30,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 170,
+            "modelCalls": 1
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-08T00:00:01Z",
+          "inputTokens": 140,
+          "outputTokens": 30,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 170,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 140,
+              "outputTokens": 30,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 170,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "beforeByUtcDate": {
+      "2026-09-07": 120
+    },
+    "afterByUtcDate": {
+      "2026-09-07": 0,
+      "2026-09-08": 170
+    },
+    "note": "Recompute both days. Zero is this scenario contribution, not other harness totals. Dates are constructed."
+  },
+  "sourceTests": [
+    "duplicate_turn_number_folds_extra_live_usage"
+  ]
+}

@@ -1,5 +1,7 @@
-* stack usage: context breakdown
-* undo report when sync happens
+* cursor + grok
+* add project: derive fields from repo/url
+* discord bot, better commands
+* empty state for project: only keep add a project and remove new project
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed

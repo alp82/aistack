@@ -1,0 +1,99 @@
+{
+  "name": "model-switch",
+  "provenance": "constructed from pinned source; not released-client output",
+  "records": {
+    "usage.json": {
+      "sessionId": "fixture-switch",
+      "updatedAt": "2026-09-08T00:01:00Z",
+      "session": {
+        "inputTokens": 110,
+        "outputTokens": 22,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 132,
+        "modelCalls": 2,
+        "turnCount": 2,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 100,
+            "outputTokens": 20,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 120,
+            "modelCalls": 1
+          },
+          "fixture-custom-alias": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 12,
+            "modelCalls": 1
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        },
+        {
+          "turnNumber": 2,
+          "endedAt": "2026-09-08T00:01:00Z",
+          "inputTokens": 10,
+          "outputTokens": 2,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 12,
+          "modelCalls": 1,
+          "primaryModelId": "fixture-custom-alias",
+          "modelUsage": {
+            "fixture-custom-alias": {
+              "inputTokens": 10,
+              "outputTokens": 2,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 12,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "modelTokens": {
+      "grok-4": 120,
+      "fixture-custom-alias": 12
+    },
+    "note": "Alias is deliberately invented. No provider or price resolution is asserted."
+  },
+  "sourceTests": [
+    "session_primary_model_is_the_most_used_not_the_last_turn"
+  ]
+}

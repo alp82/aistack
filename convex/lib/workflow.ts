@@ -97,12 +97,15 @@ export function contextReadingsOf(
 	const readings: ContextReading[] = []
 	for (const harness of section.harnesses) {
 		const context = harness.context
-		if (!context) continue
+		if (!context || !context.calls.main.some((row) => row.calls > 0)) continue
 		let window: number | null = context.window ?? null
 		if (window === null) {
 			const model = topModelOf(harness, rows)
 			const known = model === null ? null : contextWindowOf(catalog, model)
-			window = inferContextWindow(known, context.maxContext)
+			// Claude tiers cannot establish the window of a Grok model.
+			window = harness.harness === 'grok-build'
+				? (known !== null && known >= context.maxContext ? known : null)
+				: inferContextWindow(known, context.maxContext)
 		}
 		readings.push(readContextReading(harness.harness, context, window))
 	}

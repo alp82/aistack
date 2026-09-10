@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GithubProjectImport } from "@/components/projects/GithubProjectImport";
 import { ProjectFormFields } from "@/components/projects/ProjectFormFields";
 import { useTagInput } from "@/components/projects/useTagInput";
 import { Button } from "@/components/ui/button";
@@ -51,8 +52,10 @@ export function ProjectDialog({
 		useTagInput([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const editedFields = useRef(new Set<keyof ProjectFormValues>());
 
 	useEffect(() => {
+		editedFields.current.clear();
 		if (initial) {
 			setName(initial.name);
 			setDescription(initial.description);
@@ -71,6 +74,7 @@ export function ProjectDialog({
 	}, [initial, setTags, setTagInput]);
 
 	const handleClose = () => {
+		editedFields.current.clear();
 		setName("");
 		setDescription("");
 		setUrl("");
@@ -120,20 +124,47 @@ export function ProjectDialog({
 			open={state !== null}
 			onClose={handleClose}
 			title={mode === "create" ? "New Project" : "Edit Project"}
+			scrollable
 		>
 			<div className="space-y-4">
+				{state?.mode === "create" && (
+					<GithubProjectImport
+						onImport={(values) => {
+							if (!editedFields.current.has("name")) setName(values.name);
+							if (!editedFields.current.has("description"))
+								setDescription(values.description);
+							if (!editedFields.current.has("url")) setUrl(values.url);
+							if (!editedFields.current.has("tags")) setTags(values.tags);
+						}}
+					/>
+				)}
 				<ProjectFormFields
 					name={name}
-					onNameChange={setName}
+					onNameChange={(value) => {
+						editedFields.current.add("name");
+						setName(value);
+					}}
 					description={description}
-					onDescriptionChange={setDescription}
+					onDescriptionChange={(value) => {
+						editedFields.current.add("description");
+						setDescription(value);
+					}}
 					url={url}
-					onUrlChange={setUrl}
+					onUrlChange={(value) => {
+						editedFields.current.add("url");
+						setUrl(value);
+					}}
 					tags={tags}
 					tagInput={tagInput}
 					onTagInputChange={setTagInput}
-					onAddTag={addTag}
-					onRemoveTag={removeTag}
+					onAddTag={() => {
+						if (tagInput.trim()) editedFields.current.add("tags");
+						addTag();
+					}}
+					onRemoveTag={(tag) => {
+						editedFields.current.add("tags");
+						removeTag(tag);
+					}}
 				/>
 				{error && (
 					<p role="alert" className="font-mono text-xs text-destructive">

@@ -1,0 +1,2413 @@
+{
+  "provenance": {
+    "reportedInstalledVersion": "grok 1.0.5 (5115b46bc909) [stable]",
+    "reportedOS": "macOS 26.5.1, Darwin 25.5.0 arm64",
+    "limits": "Installed version is donor-reported; per-record producing binary not independently established. Original-ID map deliberately excluded. Sanitized IDs contain non-hex placeholders and are correlation values, not UUID validation fixtures.",
+    "sourceFileHashes": {
+      "original/summary.json": "47ca0577b781d43900d2ee75bd4f021931feb65d4ee1218c4962ec002e4ef68b",
+      "original/updates.jsonl": "33f0d050398ef1607776a5ce742bb45d103e9847485663e464f3aaf9dbe1671c",
+      "original/events.jsonl": "0c2a02d146970fb8b57cea3689b85401377187e3d4f13514c2cfb81653f92c6f",
+      "forked_verbatim/summary.json": "07256b04ff21412b6f993013fafa1fa8989839dddae581d3f9136ee3d88823a5",
+      "forked_verbatim/updates.jsonl": "c43bd59e158ff3357fa207694a6c61be98a2274665e99fa8d971852ae71a5bbc",
+      "forked_verbatim/events.jsonl": "6d6a6e0abc9071a558184c4265bde41e9c704cd860cb29889e7ee342be41b214",
+      "subagent_parent/summary.json": "4a8b79e81057da31144ee77c34b16c64ac36287724079c1eba3f3e5e789465b5",
+      "subagent_parent/updates.jsonl": "7ff8d8fa45b03094c88f72baf510bd27095602a8d2c1e2ef7bdd4855f8208397",
+      "subagent_parent/events.jsonl": "dabad487c0fa1e494e9a4e00b73986b2751ab9dac22456051e1d7af377f11112",
+      "model_subagent_child/summary.json": "5955a02e6a79f006f80fe62f603fce91c0c04e27b8608d25b9bbb28d30a5c269",
+      "model_subagent_child/updates.jsonl": "e59565f84ebb12a62350ff7946aba96691acdad716f166c392f19d9d6ece9516",
+      "model_subagent_child/events.jsonl": "3b3ef9ec19deeb8cbd2181bf0cff1702fb7ad1b1e70867c2b85c7239259fcfb0"
+    },
+    "retainedFields": "Only sanitized linkage, model identifiers, numeric usage, timestamp/lifecycle fields and derived counts; no prompts, paths, raw tool IO, costs or original ID map."
+  },
+  "sessions": {
+    "original": {
+      "summary": {
+        "current_model_id": "grok-4.5",
+        "agent_name": "grok-build-plan",
+        "sessionId": "00000000-sess-4000-8000-000000000001"
+      },
+      "terminals": [
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000003",
+          "stop_reason": "end_turn",
+          "timestamp": 1786027569,
+          "agentTimestampMs": 1786027569415,
+          "usage": {
+            "inputTokens": 17319,
+            "outputTokens": 285,
+            "totalTokens": 17604,
+            "cachedReadTokens": 11264,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 82,
+            "modelCalls": 1,
+            "apiDurationMs": 6364,
+            "numTurns": 1,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 17319,
+                "outputTokens": 285,
+                "totalTokens": 17604,
+                "cachedReadTokens": 11264,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 82,
+                "modelCalls": 1,
+                "apiDurationMs": 6364
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000004",
+          "stop_reason": "end_turn",
+          "timestamp": 1786027574,
+          "agentTimestampMs": 1786027574047
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000001",
+          "stop_reason": "end_turn",
+          "timestamp": 1786030112,
+          "agentTimestampMs": 1786030112388,
+          "usage": {
+            "inputTokens": 1565226,
+            "outputTokens": 57144,
+            "totalTokens": 1622370,
+            "cachedReadTokens": 1431808,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 43923,
+            "modelCalls": 27,
+            "apiDurationMs": 724027,
+            "numTurns": 25,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 1565226,
+                "outputTokens": 57144,
+                "totalTokens": 1622370,
+                "cachedReadTokens": 1431808,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 43923,
+                "modelCalls": 27,
+                "apiDurationMs": 724027
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000005",
+          "stop_reason": "end_turn",
+          "timestamp": 1786030143,
+          "agentTimestampMs": 1786030143042,
+          "usage": {
+            "inputTokens": 177512,
+            "outputTokens": 263,
+            "totalTokens": 177775,
+            "cachedReadTokens": 176512,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 172,
+            "modelCalls": 2,
+            "apiDurationMs": 6247,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 177512,
+                "outputTokens": 263,
+                "totalTokens": 177775,
+                "cachedReadTokens": 176512,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 172,
+                "modelCalls": 2,
+                "apiDurationMs": 6247
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000006",
+          "stop_reason": "end_turn",
+          "timestamp": 1786030282,
+          "agentTimestampMs": 1786030282889,
+          "usage": {
+            "inputTokens": 372312,
+            "outputTokens": 4101,
+            "totalTokens": 376413,
+            "cachedReadTokens": 364416,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 860,
+            "modelCalls": 4,
+            "apiDurationMs": 55522,
+            "numTurns": 4,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 372312,
+                "outputTokens": 4101,
+                "totalTokens": 376413,
+                "cachedReadTokens": 364416,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 860,
+                "modelCalls": 4,
+                "apiDurationMs": 55522
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000007",
+          "stop_reason": "end_turn",
+          "timestamp": 1786030863,
+          "agentTimestampMs": 1786030863964,
+          "usage": {
+            "inputTokens": 882605,
+            "outputTokens": 11739,
+            "totalTokens": 894344,
+            "cachedReadTokens": 859520,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 8723,
+            "modelCalls": 8,
+            "apiDurationMs": 157973,
+            "numTurns": 8,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 882605,
+                "outputTokens": 11739,
+                "totalTokens": 894344,
+                "cachedReadTokens": 859520,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 8723,
+                "modelCalls": 8,
+                "apiDurationMs": 157973
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000008",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031094,
+          "agentTimestampMs": 1786031094305,
+          "usage": {
+            "inputTokens": 956217,
+            "outputTokens": 15310,
+            "totalTokens": 971527,
+            "cachedReadTokens": 931072,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1720,
+            "modelCalls": 7,
+            "apiDurationMs": 214565,
+            "numTurns": 7,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 956217,
+                "outputTokens": 15310,
+                "totalTokens": 971527,
+                "cachedReadTokens": 931072,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1720,
+                "modelCalls": 7,
+                "apiDurationMs": 214565
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000009",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031270,
+          "agentTimestampMs": 1786031270234,
+          "usage": {
+            "inputTokens": 1466962,
+            "outputTokens": 1506,
+            "totalTokens": 1468468,
+            "cachedReadTokens": 1461504,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1103,
+            "modelCalls": 10,
+            "apiDurationMs": 36233,
+            "numTurns": 10,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 1466962,
+                "outputTokens": 1506,
+                "totalTokens": 1468468,
+                "cachedReadTokens": 1461504,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1103,
+                "modelCalls": 10,
+                "apiDurationMs": 36233
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000010",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031437,
+          "agentTimestampMs": 1786031437421,
+          "usage": {
+            "inputTokens": 773144,
+            "outputTokens": 4917,
+            "totalTokens": 778061,
+            "cachedReadTokens": 763776,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1352,
+            "modelCalls": 5,
+            "apiDurationMs": 72253,
+            "numTurns": 5,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 773144,
+                "outputTokens": 4917,
+                "totalTokens": 778061,
+                "cachedReadTokens": 763776,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1352,
+                "modelCalls": 5,
+                "apiDurationMs": 72253
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000011",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031686,
+          "agentTimestampMs": 1786031686818,
+          "usage": {
+            "inputTokens": 1889420,
+            "outputTokens": 15519,
+            "totalTokens": 1904939,
+            "cachedReadTokens": 1864320,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 11554,
+            "modelCalls": 11,
+            "apiDurationMs": 225130,
+            "numTurns": 11,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 1889420,
+                "outputTokens": 15519,
+                "totalTokens": 1904939,
+                "cachedReadTokens": 1864320,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 11554,
+                "modelCalls": 11,
+                "apiDurationMs": 225130
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000012",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031693,
+          "agentTimestampMs": 1786031693095,
+          "usage": {
+            "inputTokens": 183181,
+            "outputTokens": 238,
+            "totalTokens": 183419,
+            "cachedReadTokens": 182400,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 141,
+            "modelCalls": 1,
+            "apiDurationMs": 5682,
+            "numTurns": 1,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 183181,
+                "outputTokens": 238,
+                "totalTokens": 183419,
+                "cachedReadTokens": 182400,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 141,
+                "modelCalls": 1,
+                "apiDurationMs": 5682
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000013",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031749,
+          "agentTimestampMs": 1786031749837,
+          "usage": {
+            "inputTokens": 183437,
+            "outputTokens": 264,
+            "totalTokens": 183701,
+            "cachedReadTokens": 183168,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 34,
+            "modelCalls": 1,
+            "apiDurationMs": 5594,
+            "numTurns": 1,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 183437,
+                "outputTokens": 264,
+                "totalTokens": 183701,
+                "cachedReadTokens": 183168,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 34,
+                "modelCalls": 1,
+                "apiDurationMs": 5594
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000014",
+          "stop_reason": "end_turn",
+          "timestamp": 1786031774,
+          "agentTimestampMs": 1786031774051,
+          "usage": {
+            "inputTokens": 368177,
+            "outputTokens": 880,
+            "totalTokens": 369057,
+            "cachedReadTokens": 367104,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 720,
+            "modelCalls": 2,
+            "apiDurationMs": 19246,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 368177,
+                "outputTokens": 880,
+                "totalTokens": 369057,
+                "cachedReadTokens": 367104,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 720,
+                "modelCalls": 2,
+                "apiDurationMs": 19246
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000005",
+          "stop_reason": "end_turn",
+          "timestamp": 1786032046,
+          "agentTimestampMs": 1786032046659,
+          "usage": {
+            "inputTokens": 370266,
+            "outputTokens": 240,
+            "totalTokens": 370506,
+            "cachedReadTokens": 369280,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 95,
+            "modelCalls": 2,
+            "apiDurationMs": 44612,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 370266,
+                "outputTokens": 240,
+                "totalTokens": 370506,
+                "cachedReadTokens": 369280,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 95,
+                "modelCalls": 2,
+                "apiDurationMs": 44612
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000006",
+          "stop_reason": "end_turn",
+          "timestamp": 1786032279,
+          "agentTimestampMs": 1786032279837,
+          "usage": {
+            "inputTokens": 372117,
+            "outputTokens": 222,
+            "totalTokens": 372339,
+            "cachedReadTokens": 371072,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 77,
+            "modelCalls": 2,
+            "apiDurationMs": 5969,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 372117,
+                "outputTokens": 222,
+                "totalTokens": 372339,
+                "cachedReadTokens": 371072,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 77,
+                "modelCalls": 2,
+                "apiDurationMs": 5969
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000007",
+          "stop_reason": "end_turn",
+          "timestamp": 1786032608,
+          "agentTimestampMs": 1786032608827,
+          "usage": {
+            "inputTokens": 373999,
+            "outputTokens": 201,
+            "totalTokens": 374200,
+            "cachedReadTokens": 372608,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 70,
+            "modelCalls": 2,
+            "apiDurationMs": 5403,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 373999,
+                "outputTokens": 201,
+                "totalTokens": 374200,
+                "cachedReadTokens": 372608,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 70,
+                "modelCalls": 2,
+                "apiDurationMs": 5403
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000015",
+          "stop_reason": "end_turn",
+          "timestamp": 1786033318,
+          "agentTimestampMs": 1786033318991,
+          "usage": {
+            "inputTokens": 187972,
+            "outputTokens": 115,
+            "totalTokens": 188087,
+            "cachedReadTokens": 187264,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 70,
+            "modelCalls": 1,
+            "apiDurationMs": 3362,
+            "numTurns": 1,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 187972,
+                "outputTokens": 115,
+                "totalTokens": 188087,
+                "cachedReadTokens": 187264,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 70,
+                "modelCalls": 1,
+                "apiDurationMs": 3362
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000016",
+          "stop_reason": "end_turn",
+          "timestamp": 1786033336,
+          "agentTimestampMs": 1786033336088,
+          "usage": {
+            "inputTokens": 376736,
+            "outputTokens": 636,
+            "totalTokens": 377372,
+            "cachedReadTokens": 375936,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 508,
+            "modelCalls": 2,
+            "apiDurationMs": 13838,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 376736,
+                "outputTokens": 636,
+                "totalTokens": 377372,
+                "cachedReadTokens": 375936,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 508,
+                "modelCalls": 2,
+                "apiDurationMs": 13838
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000008",
+          "stop_reason": "end_turn",
+          "timestamp": 1786037406,
+          "agentTimestampMs": 1786037406736,
+          "usage": {
+            "inputTokens": 378559,
+            "outputTokens": 185,
+            "totalTokens": 378744,
+            "cachedReadTokens": 194432,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 63,
+            "modelCalls": 2,
+            "apiDurationMs": 24370,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 378559,
+                "outputTokens": 185,
+                "totalTokens": 378744,
+                "cachedReadTokens": 194432,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 63,
+                "modelCalls": 2,
+                "apiDurationMs": 24370
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000009",
+          "stop_reason": "end_turn",
+          "timestamp": 1786037482,
+          "agentTimestampMs": 1786037482407,
+          "usage": {
+            "inputTokens": 380261,
+            "outputTokens": 179,
+            "totalTokens": 380440,
+            "cachedReadTokens": 379264,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 62,
+            "modelCalls": 2,
+            "apiDurationMs": 6108,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 380261,
+                "outputTokens": 179,
+                "totalTokens": 380440,
+                "cachedReadTokens": 379264,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 62,
+                "modelCalls": 2,
+                "apiDurationMs": 6108
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000010",
+          "stop_reason": "end_turn",
+          "timestamp": 1786037870,
+          "agentTimestampMs": 1786037870715,
+          "usage": {
+            "inputTokens": 381893,
+            "outputTokens": 173,
+            "totalTokens": 382066,
+            "cachedReadTokens": 380800,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 55,
+            "modelCalls": 2,
+            "apiDurationMs": 8876,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 381893,
+                "outputTokens": 173,
+                "totalTokens": 382066,
+                "cachedReadTokens": 380800,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 55,
+                "modelCalls": 2,
+                "apiDurationMs": 8876
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000011",
+          "stop_reason": "end_turn",
+          "timestamp": 1786038107,
+          "agentTimestampMs": 1786038107661,
+          "usage": {
+            "inputTokens": 383531,
+            "outputTokens": 181,
+            "totalTokens": 383712,
+            "cachedReadTokens": 382592,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 58,
+            "modelCalls": 2,
+            "apiDurationMs": 11846,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 383531,
+                "outputTokens": 181,
+                "totalTokens": 383712,
+                "cachedReadTokens": 382592,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 58,
+                "modelCalls": 2,
+                "apiDurationMs": 11846
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000012",
+          "stop_reason": "end_turn",
+          "timestamp": 1786038409,
+          "agentTimestampMs": 1786038409673,
+          "usage": {
+            "inputTokens": 385195,
+            "outputTokens": 181,
+            "totalTokens": 385376,
+            "cachedReadTokens": 384128,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 58,
+            "modelCalls": 2,
+            "apiDurationMs": 7317,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 385195,
+                "outputTokens": 181,
+                "totalTokens": 385376,
+                "cachedReadTokens": 384128,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 58,
+                "modelCalls": 2,
+                "apiDurationMs": 7317
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000013",
+          "stop_reason": "end_turn",
+          "timestamp": 1786038726,
+          "agentTimestampMs": 1786038726370,
+          "usage": {
+            "inputTokens": 386864,
+            "outputTokens": 180,
+            "totalTokens": 387044,
+            "cachedReadTokens": 385920,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 55,
+            "modelCalls": 2,
+            "apiDurationMs": 15604,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 386864,
+                "outputTokens": 180,
+                "totalTokens": 387044,
+                "cachedReadTokens": 385920,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 55,
+                "modelCalls": 2,
+                "apiDurationMs": 15604
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000014",
+          "stop_reason": "end_turn",
+          "timestamp": 1786039017,
+          "agentTimestampMs": 1786039017707,
+          "usage": {
+            "inputTokens": 388515,
+            "outputTokens": 178,
+            "totalTokens": 388693,
+            "cachedReadTokens": 387456,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 54,
+            "modelCalls": 2,
+            "apiDurationMs": 17777,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 388515,
+                "outputTokens": 178,
+                "totalTokens": 388693,
+                "cachedReadTokens": 387456,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 54,
+                "modelCalls": 2,
+                "apiDurationMs": 17777
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000015",
+          "stop_reason": "end_turn",
+          "timestamp": 1786039306,
+          "agentTimestampMs": 1786039306400,
+          "usage": {
+            "inputTokens": 390206,
+            "outputTokens": 207,
+            "totalTokens": 390413,
+            "cachedReadTokens": 389248,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 72,
+            "modelCalls": 2,
+            "apiDurationMs": 6951,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 390206,
+                "outputTokens": 207,
+                "totalTokens": 390413,
+                "cachedReadTokens": 389248,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 72,
+                "modelCalls": 2,
+                "apiDurationMs": 6951
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000016",
+          "stop_reason": "end_turn",
+          "timestamp": 1786039545,
+          "agentTimestampMs": 1786039545043,
+          "usage": {
+            "inputTokens": 392128,
+            "outputTokens": 307,
+            "totalTokens": 392435,
+            "cachedReadTokens": 391040,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 74,
+            "modelCalls": 2,
+            "apiDurationMs": 8216,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 392128,
+                "outputTokens": 307,
+                "totalTokens": 392435,
+                "cachedReadTokens": 391040,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 74,
+                "modelCalls": 2,
+                "apiDurationMs": 8216
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000017",
+          "stop_reason": "end_turn",
+          "timestamp": 1786041049,
+          "agentTimestampMs": 1786041049417,
+          "usage": {
+            "inputTokens": 394097,
+            "outputTokens": 900,
+            "totalTokens": 394997,
+            "cachedReadTokens": 207872,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 775,
+            "modelCalls": 2,
+            "apiDurationMs": 46313,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 394097,
+                "outputTokens": 900,
+                "totalTokens": 394997,
+                "cachedReadTokens": 207872,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 775,
+                "modelCalls": 2,
+                "apiDurationMs": 46313
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000017",
+          "stop_reason": "end_turn",
+          "timestamp": 1786041157,
+          "agentTimestampMs": 1786041157678,
+          "usage": {
+            "inputTokens": 396157,
+            "outputTokens": 183,
+            "totalTokens": 396340,
+            "cachedReadTokens": 395136,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 62,
+            "modelCalls": 2,
+            "apiDurationMs": 15774,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 396157,
+                "outputTokens": 183,
+                "totalTokens": 396340,
+                "cachedReadTokens": 395136,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 62,
+                "modelCalls": 2,
+                "apiDurationMs": 15774
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000018",
+          "stop_reason": "end_turn",
+          "timestamp": 1786041464,
+          "agentTimestampMs": 1786041464897,
+          "usage": {
+            "inputTokens": 397899,
+            "outputTokens": 167,
+            "totalTokens": 398066,
+            "cachedReadTokens": 396672,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 50,
+            "modelCalls": 2,
+            "apiDurationMs": 18760,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 397899,
+                "outputTokens": 167,
+                "totalTokens": 398066,
+                "cachedReadTokens": 396672,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 50,
+                "modelCalls": 2,
+                "apiDurationMs": 18760
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000019",
+          "stop_reason": "end_turn",
+          "timestamp": 1786041722,
+          "agentTimestampMs": 1786041722334,
+          "usage": {
+            "inputTokens": 399627,
+            "outputTokens": 164,
+            "totalTokens": 399791,
+            "cachedReadTokens": 398720,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 50,
+            "modelCalls": 2,
+            "apiDurationMs": 18631,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 399627,
+                "outputTokens": 164,
+                "totalTokens": 399791,
+                "cachedReadTokens": 398720,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 50,
+                "modelCalls": 2,
+                "apiDurationMs": 18631
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000020",
+          "stop_reason": "end_turn",
+          "timestamp": 1786042018,
+          "agentTimestampMs": 1786042018986,
+          "usage": {
+            "inputTokens": 401273,
+            "outputTokens": 183,
+            "totalTokens": 401456,
+            "cachedReadTokens": 206080,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 49,
+            "modelCalls": 2,
+            "apiDurationMs": 23999,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 401273,
+                "outputTokens": 183,
+                "totalTokens": 401456,
+                "cachedReadTokens": 206080,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 49,
+                "modelCalls": 2,
+                "apiDurationMs": 23999
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000021",
+          "stop_reason": "end_turn",
+          "timestamp": 1786042312,
+          "agentTimestampMs": 1786042312794,
+          "usage": {
+            "inputTokens": 402958,
+            "outputTokens": 179,
+            "totalTokens": 403137,
+            "cachedReadTokens": 402048,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 51,
+            "modelCalls": 2,
+            "apiDurationMs": 14241,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 402958,
+                "outputTokens": 179,
+                "totalTokens": 403137,
+                "cachedReadTokens": 402048,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 51,
+                "modelCalls": 2,
+                "apiDurationMs": 14241
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000022",
+          "stop_reason": "end_turn",
+          "timestamp": 1786042640,
+          "agentTimestampMs": 1786042640991,
+          "usage": {
+            "inputTokens": 404683,
+            "outputTokens": 187,
+            "totalTokens": 404870,
+            "cachedReadTokens": 403584,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 53,
+            "modelCalls": 2,
+            "apiDurationMs": 7544,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 404683,
+                "outputTokens": 187,
+                "totalTokens": 404870,
+                "cachedReadTokens": 403584,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 53,
+                "modelCalls": 2,
+                "apiDurationMs": 7544
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000023",
+          "stop_reason": "end_turn",
+          "timestamp": 1786042939,
+          "agentTimestampMs": 1786042939133,
+          "usage": {
+            "inputTokens": 406600,
+            "outputTokens": 291,
+            "totalTokens": 406891,
+            "cachedReadTokens": 405376,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 67,
+            "modelCalls": 2,
+            "apiDurationMs": 7421,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 406600,
+                "outputTokens": 291,
+                "totalTokens": 406891,
+                "cachedReadTokens": 405376,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 67,
+                "modelCalls": 2,
+                "apiDurationMs": 7421
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-reqx-4000-8000-000000000001",
+          "stop_reason": "end_turn",
+          "timestamp": 1786048849,
+          "agentTimestampMs": 1786048849324,
+          "usage": {
+            "inputTokens": 820010,
+            "outputTokens": 502,
+            "totalTokens": 820512,
+            "cachedReadTokens": 625408,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 226,
+            "modelCalls": 4,
+            "apiDurationMs": 33306,
+            "numTurns": 4,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 820010,
+                "outputTokens": 502,
+                "totalTokens": 820512,
+                "cachedReadTokens": 625408,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 226,
+                "modelCalls": 4,
+                "apiDurationMs": 33306
+              }
+            }
+          }
+        }
+      ],
+      "subagentLifecycle": [
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000002",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000002",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000002",
+          "child_session_id": "00000000-sess-4000-8000-000000000002",
+          "status": "cancelled",
+          "tool_calls": 3,
+          "turns": 5,
+          "duration_ms": 600001,
+          "tokens_used": 25482,
+          "will_wake": false
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000005",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000005",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000005",
+          "child_session_id": "00000000-sess-4000-8000-000000000005",
+          "status": "completed",
+          "tool_calls": 31,
+          "turns": 1,
+          "duration_ms": 231180,
+          "tokens_used": 44363,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000006",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000006",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000006",
+          "child_session_id": "00000000-sess-4000-8000-000000000006",
+          "status": "completed",
+          "tool_calls": 53,
+          "turns": 3,
+          "duration_ms": 203233,
+          "tokens_used": 68878,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000007",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000007",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000007",
+          "child_session_id": "00000000-sess-4000-8000-000000000007",
+          "status": "completed",
+          "tool_calls": 72,
+          "turns": 5,
+          "duration_ms": 232698,
+          "tokens_used": 97954,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000008",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000008",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000008",
+          "child_session_id": "00000000-sess-4000-8000-000000000008",
+          "status": "completed",
+          "tool_calls": 19,
+          "turns": 1,
+          "duration_ms": 234300,
+          "tokens_used": 51610,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000009",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000009",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000009",
+          "child_session_id": "00000000-sess-4000-8000-000000000009",
+          "status": "completed",
+          "tool_calls": 26,
+          "turns": 3,
+          "duration_ms": 69096,
+          "tokens_used": 61328,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000010",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000010",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000010",
+          "child_session_id": "00000000-sess-4000-8000-000000000010",
+          "status": "completed",
+          "tool_calls": 55,
+          "turns": 5,
+          "duration_ms": 154646,
+          "tokens_used": 81933,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000011",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000011",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000011",
+          "child_session_id": "00000000-sess-4000-8000-000000000011",
+          "status": "completed",
+          "tool_calls": 65,
+          "turns": 7,
+          "duration_ms": 88631,
+          "tokens_used": 93412,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000012",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000012",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000012",
+          "child_session_id": "00000000-sess-4000-8000-000000000012",
+          "status": "completed",
+          "tool_calls": 73,
+          "turns": 9,
+          "duration_ms": 95150,
+          "tokens_used": 104698,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000013",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000013",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000013",
+          "child_session_id": "00000000-sess-4000-8000-000000000013",
+          "status": "completed",
+          "tool_calls": 87,
+          "turns": 11,
+          "duration_ms": 103528,
+          "tokens_used": 116047,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000014",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000014",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000014",
+          "child_session_id": "00000000-sess-4000-8000-000000000014",
+          "status": "completed",
+          "tool_calls": 100,
+          "turns": 13,
+          "duration_ms": 92588,
+          "tokens_used": 127668,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000015",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000015",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000015",
+          "child_session_id": "00000000-sess-4000-8000-000000000015",
+          "status": "completed",
+          "tool_calls": 106,
+          "turns": 15,
+          "duration_ms": 92286,
+          "tokens_used": 138081,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000016",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000016",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000016",
+          "child_session_id": "00000000-sess-4000-8000-000000000016",
+          "status": "completed",
+          "tool_calls": 109,
+          "turns": 17,
+          "duration_ms": 29185,
+          "tokens_used": 142406,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000017",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000017",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000017",
+          "child_session_id": "00000000-sess-4000-8000-000000000017",
+          "status": "completed",
+          "tool_calls": 19,
+          "turns": 1,
+          "duration_ms": 99117,
+          "tokens_used": 31092,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000018",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000018",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000018",
+          "child_session_id": "00000000-sess-4000-8000-000000000018",
+          "status": "completed",
+          "tool_calls": 38,
+          "turns": 3,
+          "duration_ms": 103356,
+          "tokens_used": 50877,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000019",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000019",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000019",
+          "child_session_id": "00000000-sess-4000-8000-000000000019",
+          "status": "completed",
+          "tool_calls": 47,
+          "turns": 5,
+          "duration_ms": 60983,
+          "tokens_used": 60044,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000020",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000020",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000020",
+          "child_session_id": "00000000-sess-4000-8000-000000000020",
+          "status": "completed",
+          "tool_calls": 56,
+          "turns": 7,
+          "duration_ms": 52221,
+          "tokens_used": 70135,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000021",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000021",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000021",
+          "child_session_id": "00000000-sess-4000-8000-000000000021",
+          "status": "completed",
+          "tool_calls": 65,
+          "turns": 9,
+          "duration_ms": 55830,
+          "tokens_used": 77894,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000022",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000022",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000022",
+          "child_session_id": "00000000-sess-4000-8000-000000000022",
+          "status": "completed",
+          "tool_calls": 75,
+          "turns": 11,
+          "duration_ms": 90745,
+          "tokens_used": 89433,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000023",
+          "parent_session_id": "00000000-sess-4000-8000-000000000001",
+          "child_session_id": "00000000-sess-4000-8000-000000000023",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.5"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000023",
+          "child_session_id": "00000000-sess-4000-8000-000000000023",
+          "status": "completed",
+          "tool_calls": 80,
+          "turns": 13,
+          "duration_ms": 89053,
+          "tokens_used": 99671,
+          "will_wake": true
+        }
+      ],
+      "eventTurnWindows": [
+        {
+          "turnNumber": 0,
+          "start": "2026-08-06T14:46:02.525Z",
+          "loopStarts": 1,
+          "end": "2026-08-06T14:46:09.413Z"
+        },
+        {
+          "turnNumber": 1,
+          "start": "2026-08-06T14:57:34.731Z",
+          "loopStarts": 25,
+          "end": "2026-08-06T15:28:32.379Z"
+        },
+        {
+          "turnNumber": 2,
+          "start": "2026-08-06T15:28:55.628Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T15:29:03.041Z"
+        },
+        {
+          "turnNumber": 3,
+          "start": "2026-08-06T15:30:21.488Z",
+          "loopStarts": 4,
+          "end": "2026-08-06T15:31:22.888Z"
+        },
+        {
+          "turnNumber": 4,
+          "start": "2026-08-06T15:38:15.886Z",
+          "loopStarts": 8,
+          "end": "2026-08-06T15:41:03.961Z"
+        },
+        {
+          "turnNumber": 5,
+          "start": "2026-08-06T15:41:03.966Z",
+          "loopStarts": 7,
+          "end": "2026-08-06T15:44:54.304Z"
+        },
+        {
+          "turnNumber": 6,
+          "start": "2026-08-06T15:46:41.792Z",
+          "loopStarts": 10,
+          "end": "2026-08-06T15:47:50.233Z"
+        },
+        {
+          "turnNumber": 7,
+          "start": "2026-08-06T15:49:19.315Z",
+          "loopStarts": 5,
+          "end": "2026-08-06T15:50:37.419Z"
+        },
+        {
+          "turnNumber": 8,
+          "start": "2026-08-06T15:50:50.796Z",
+          "loopStarts": 11,
+          "end": "2026-08-06T15:54:46.817Z"
+        },
+        {
+          "turnNumber": 9,
+          "start": "2026-08-06T15:54:46.821Z",
+          "loopStarts": 1,
+          "end": "2026-08-06T15:54:53.094Z"
+        },
+        {
+          "turnNumber": 10,
+          "start": "2026-08-06T15:55:43.687Z",
+          "loopStarts": 1,
+          "end": "2026-08-06T15:55:49.836Z"
+        },
+        {
+          "turnNumber": 11,
+          "start": "2026-08-06T15:55:54.179Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T15:56:14.050Z"
+        },
+        {
+          "turnNumber": 12,
+          "start": "2026-08-06T16:00:01.215Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T16:00:46.658Z"
+        },
+        {
+          "turnNumber": 13,
+          "start": "2026-08-06T16:04:33.263Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T16:04:39.836Z"
+        },
+        {
+          "turnNumber": 14,
+          "start": "2026-08-06T16:10:02.731Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T16:10:08.826Z"
+        },
+        {
+          "turnNumber": 15,
+          "start": "2026-08-06T16:21:54.867Z",
+          "loopStarts": 1,
+          "end": "2026-08-06T16:21:58.990Z"
+        },
+        {
+          "turnNumber": 16,
+          "start": "2026-08-06T16:22:01.723Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T16:22:16.087Z"
+        },
+        {
+          "turnNumber": 17,
+          "start": "2026-08-06T17:29:41.424Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:30:06.735Z"
+        },
+        {
+          "turnNumber": 18,
+          "start": "2026-08-06T17:31:15.593Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:31:22.405Z"
+        },
+        {
+          "turnNumber": 19,
+          "start": "2026-08-06T17:37:41.157Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:37:50.714Z"
+        },
+        {
+          "turnNumber": 20,
+          "start": "2026-08-06T17:41:35.149Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:41:47.660Z"
+        },
+        {
+          "turnNumber": 21,
+          "start": "2026-08-06T17:46:41.673Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:46:49.672Z"
+        },
+        {
+          "turnNumber": 22,
+          "start": "2026-08-06T17:51:50.050Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:52:06.369Z"
+        },
+        {
+          "turnNumber": 23,
+          "start": "2026-08-06T17:56:39.111Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T17:56:57.706Z"
+        },
+        {
+          "turnNumber": 24,
+          "start": "2026-08-06T18:01:38.807Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:01:46.398Z"
+        },
+        {
+          "turnNumber": 25,
+          "start": "2026-08-06T18:05:35.741Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:05:45.042Z"
+        },
+        {
+          "turnNumber": 26,
+          "start": "2026-08-06T18:30:02.138Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:30:49.416Z"
+        },
+        {
+          "turnNumber": 27,
+          "start": "2026-08-06T18:32:21.195Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:32:37.676Z"
+        },
+        {
+          "turnNumber": 28,
+          "start": "2026-08-06T18:37:25.433Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:37:44.896Z"
+        },
+        {
+          "turnNumber": 29,
+          "start": "2026-08-06T18:41:43.062Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:42:02.333Z"
+        },
+        {
+          "turnNumber": 30,
+          "start": "2026-08-06T18:46:34.302Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:46:58.984Z"
+        },
+        {
+          "turnNumber": 31,
+          "start": "2026-08-06T18:51:37.914Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:51:52.793Z"
+        },
+        {
+          "turnNumber": 32,
+          "start": "2026-08-06T18:57:12.826Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T18:57:20.990Z"
+        },
+        {
+          "turnNumber": 33,
+          "start": "2026-08-06T19:02:11.141Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T19:02:19.132Z"
+        },
+        {
+          "turnNumber": 34,
+          "start": "2026-08-06T20:38:14.785Z",
+          "loopStarts": 4,
+          "end": "2026-08-06T20:40:49.320Z"
+        }
+      ],
+      "checks": {
+        "callIds": 197,
+        "completionIds": 196,
+        "joinedIds": 196,
+        "terminalCount": 36,
+        "terminalUsagePresent": 35,
+        "elapsedMsPresent": 0,
+        "reasoningExceedsOutput": 0
+      }
+    },
+    "forked_verbatim": {
+      "summary": {
+        "parent_session_id": "00000000-sess-4000-8000-000000000001",
+        "forked_at": "2026-08-06T14:47:34.734450Z",
+        "session_kind": "subagent_fork",
+        "fork_context_source": "forked_verbatim",
+        "fork_parent_prompt_id": "00000000-prmt-4000-8000-000000000001",
+        "inherited_prefix_len": 8,
+        "current_model_id": "grok-4.5",
+        "agent_name": "general-purpose",
+        "sessionId": "00000000-sess-4000-8000-000000000002"
+      },
+      "terminals": [
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000018",
+          "stop_reason": "cancelled",
+          "timestamp": 1786028254,
+          "agentTimestampMs": 1786028254732,
+          "usage": {
+            "inputTokens": 44773,
+            "outputTokens": 1763,
+            "totalTokens": 46536,
+            "cachedReadTokens": 32000,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1489,
+            "modelCalls": 2,
+            "apiDurationMs": 34174,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.5-build": {
+                "inputTokens": 44773,
+                "outputTokens": 1763,
+                "totalTokens": 46536,
+                "cachedReadTokens": 32000,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1489,
+                "modelCalls": 2,
+                "apiDurationMs": 34174
+              }
+            }
+          }
+        }
+      ],
+      "subagentLifecycle": [],
+      "eventTurnWindows": [
+        {
+          "turnNumber": 0,
+          "start": "2026-08-06T14:47:35.254Z",
+          "loopStarts": 2,
+          "end": "2026-08-06T14:57:34.730Z"
+        }
+      ],
+      "checks": {
+        "callIds": 4,
+        "completionIds": 2,
+        "joinedIds": 2,
+        "terminalCount": 1,
+        "terminalUsagePresent": 1,
+        "elapsedMsPresent": 0,
+        "reasoningExceedsOutput": 0
+      }
+    },
+    "subagent_parent": {
+      "summary": {
+        "current_model_id": "grok-4.6",
+        "agent_name": "grok-build-plan",
+        "sessionId": "00000000-sess-4000-8000-000000000003"
+      },
+      "terminals": [
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000019",
+          "stop_reason": "end_turn",
+          "timestamp": 1786550640,
+          "agentTimestampMs": 1786550640702,
+          "usage": {
+            "inputTokens": 48928,
+            "outputTokens": 728,
+            "totalTokens": 49656,
+            "cachedReadTokens": 16384,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1624,
+            "modelCalls": 3,
+            "apiDurationMs": 18623,
+            "numTurns": 3,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 48928,
+                "outputTokens": 728,
+                "totalTokens": 49656,
+                "cachedReadTokens": 16384,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1624,
+                "modelCalls": 3,
+                "apiDurationMs": 18623
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000004",
+          "stop_reason": "end_turn",
+          "timestamp": 1786550808,
+          "agentTimestampMs": 1786550808043,
+          "usage": {
+            "inputTokens": 34860,
+            "outputTokens": 260,
+            "totalTokens": 35120,
+            "cachedReadTokens": 33408,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 80,
+            "modelCalls": 2,
+            "apiDurationMs": 3850,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 34860,
+                "outputTokens": 260,
+                "totalTokens": 35120,
+                "cachedReadTokens": 33408,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 80,
+                "modelCalls": 2,
+                "apiDurationMs": 3850
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000020",
+          "stop_reason": "end_turn",
+          "timestamp": 1786554089,
+          "agentTimestampMs": 1786554089329,
+          "usage": {
+            "inputTokens": 1679324,
+            "outputTokens": 11080,
+            "totalTokens": 1690404,
+            "cachedReadTokens": 1617280,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 45184,
+            "modelCalls": 30,
+            "apiDurationMs": 693846,
+            "numTurns": 30,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 1679324,
+                "outputTokens": 11080,
+                "totalTokens": 1690404,
+                "cachedReadTokens": 1617280,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 45184,
+                "modelCalls": 30,
+                "apiDurationMs": 693846
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000021",
+          "stop_reason": "end_turn",
+          "timestamp": 1786555157,
+          "agentTimestampMs": 1786555157707,
+          "usage": {
+            "inputTokens": 161252,
+            "outputTokens": 881,
+            "totalTokens": 162133,
+            "cachedReadTokens": 158080,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1173,
+            "modelCalls": 2,
+            "apiDurationMs": 35989,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 161252,
+                "outputTokens": 881,
+                "totalTokens": 162133,
+                "cachedReadTokens": 158080,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1173,
+                "modelCalls": 2,
+                "apiDurationMs": 35989
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "subagent-completed-00000000-sess-4000-8000-000000000024",
+          "stop_reason": "end_turn",
+          "timestamp": 1786555976,
+          "agentTimestampMs": 1786555976268,
+          "usage": {
+            "inputTokens": 163445,
+            "outputTokens": 210,
+            "totalTokens": 163655,
+            "cachedReadTokens": 162560,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 110,
+            "modelCalls": 2,
+            "apiDurationMs": 8529,
+            "numTurns": 2,
+            "usageIsIncomplete": true,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 163445,
+                "outputTokens": 210,
+                "totalTokens": 163655,
+                "cachedReadTokens": 162560,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 110,
+                "modelCalls": 2,
+                "apiDurationMs": 8529
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000022",
+          "stop_reason": "end_turn",
+          "timestamp": 1786559029,
+          "agentTimestampMs": 1786559029977,
+          "usage": {
+            "inputTokens": 3583057,
+            "outputTokens": 9948,
+            "totalTokens": 3593005,
+            "cachedReadTokens": 3537536,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 25582,
+            "modelCalls": 33,
+            "apiDurationMs": 634991,
+            "numTurns": 33,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 3583057,
+                "outputTokens": 9948,
+                "totalTokens": 3593005,
+                "cachedReadTokens": 3537536,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 25582,
+                "modelCalls": 33,
+                "apiDurationMs": 634991
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000023",
+          "stop_reason": "end_turn",
+          "timestamp": 1786559771,
+          "agentTimestampMs": 1786559771235,
+          "usage": {
+            "inputTokens": 4319728,
+            "outputTokens": 12097,
+            "totalTokens": 4331825,
+            "cachedReadTokens": 4275968,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 15168,
+            "modelCalls": 29,
+            "apiDurationMs": 518445,
+            "numTurns": 29,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 4319728,
+                "outputTokens": 12097,
+                "totalTokens": 4331825,
+                "cachedReadTokens": 4275968,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 15168,
+                "modelCalls": 29,
+                "apiDurationMs": 518445
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000024",
+          "stop_reason": "end_turn",
+          "timestamp": 1786560601,
+          "agentTimestampMs": 1786560601754,
+          "usage": {
+            "inputTokens": 1608158,
+            "outputTokens": 4007,
+            "totalTokens": 1612165,
+            "cachedReadTokens": 1414016,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 8260,
+            "modelCalls": 9,
+            "apiDurationMs": 218749,
+            "numTurns": 9,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 1608158,
+                "outputTokens": 4007,
+                "totalTokens": 1612165,
+                "cachedReadTokens": 1414016,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 8260,
+                "modelCalls": 9,
+                "apiDurationMs": 218749
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000025",
+          "stop_reason": "end_turn",
+          "timestamp": 1786560734,
+          "agentTimestampMs": 1786560734629,
+          "usage": {
+            "inputTokens": 955949,
+            "outputTokens": 2724,
+            "totalTokens": 958673,
+            "cachedReadTokens": 945536,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 487,
+            "modelCalls": 5,
+            "apiDurationMs": 53094,
+            "numTurns": 5,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 955949,
+                "outputTokens": 2724,
+                "totalTokens": 958673,
+                "cachedReadTokens": 945536,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 487,
+                "modelCalls": 5,
+                "apiDurationMs": 53094
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000026",
+          "stop_reason": "end_turn",
+          "timestamp": 1786560982,
+          "agentTimestampMs": 1786560982676,
+          "usage": {
+            "inputTokens": 2009805,
+            "outputTokens": 3773,
+            "totalTokens": 2013578,
+            "cachedReadTokens": 1976064,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 5225,
+            "modelCalls": 10,
+            "apiDurationMs": 159472,
+            "numTurns": 10,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 2009805,
+                "outputTokens": 3773,
+                "totalTokens": 2013578,
+                "cachedReadTokens": 1976064,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 5225,
+                "modelCalls": 10,
+                "apiDurationMs": 159472
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000027",
+          "stop_reason": "end_turn",
+          "timestamp": 1786561700,
+          "agentTimestampMs": 1786561700077,
+          "usage": {
+            "inputTokens": 413340,
+            "outputTokens": 317,
+            "totalTokens": 413657,
+            "cachedReadTokens": 404992,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 58,
+            "modelCalls": 2,
+            "apiDurationMs": 11446,
+            "numTurns": 2,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 413340,
+                "outputTokens": 317,
+                "totalTokens": 413657,
+                "cachedReadTokens": 404992,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 58,
+                "modelCalls": 2,
+                "apiDurationMs": 11446
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000028",
+          "stop_reason": "end_turn",
+          "timestamp": 1786562965,
+          "agentTimestampMs": 1786562965880,
+          "usage": {
+            "inputTokens": 2734758,
+            "outputTokens": 19479,
+            "totalTokens": 2754237,
+            "cachedReadTokens": 2550784,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 46778,
+            "modelCalls": 37,
+            "apiDurationMs": 1153889,
+            "numTurns": 37,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 2734758,
+                "outputTokens": 19479,
+                "totalTokens": 2754237,
+                "cachedReadTokens": 2550784,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 46778,
+                "modelCalls": 37,
+                "apiDurationMs": 1153889
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "task-completed-call-tool-0614-109",
+          "stop_reason": "end_turn",
+          "timestamp": 1786562977,
+          "agentTimestampMs": 1786562977625,
+          "usage": {
+            "inputTokens": 88262,
+            "outputTokens": 41,
+            "totalTokens": 88303,
+            "cachedReadTokens": 87808,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 392,
+            "modelCalls": 1,
+            "apiDurationMs": 10695,
+            "numTurns": 1,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 88262,
+                "outputTokens": 41,
+                "totalTokens": 88303,
+                "cachedReadTokens": 87808,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 392,
+                "modelCalls": 1,
+                "apiDurationMs": 10695
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000002",
+          "stop_reason": "end_turn",
+          "timestamp": 1786563028,
+          "agentTimestampMs": 1786563028541,
+          "usage": {
+            "inputTokens": 734650,
+            "outputTokens": 1045,
+            "totalTokens": 735695,
+            "cachedReadTokens": 706048,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 1536,
+            "modelCalls": 7,
+            "apiDurationMs": 49359,
+            "numTurns": 7,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 734650,
+                "outputTokens": 1045,
+                "totalTokens": 735695,
+                "cachedReadTokens": 706048,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 1536,
+                "modelCalls": 7,
+                "apiDurationMs": 49359
+              }
+            }
+          }
+        },
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-reqx-4000-8000-000000000002",
+          "stop_reason": "error",
+          "timestamp": 1786563262,
+          "agentTimestampMs": 1786563262754
+        }
+      ],
+      "subagentLifecycle": [
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000004",
+          "parent_session_id": "00000000-sess-4000-8000-000000000003",
+          "child_session_id": "00000000-sess-4000-8000-000000000004",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.6"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000004",
+          "child_session_id": "00000000-sess-4000-8000-000000000004",
+          "status": "completed",
+          "tool_calls": 61,
+          "turns": 1,
+          "duration_ms": 165260,
+          "tokens_used": 56919,
+          "will_wake": true
+        },
+        {
+          "sessionUpdate": "subagent_spawned",
+          "subagent_id": "00000000-sess-4000-8000-000000000024",
+          "parent_session_id": "00000000-sess-4000-8000-000000000003",
+          "child_session_id": "00000000-sess-4000-8000-000000000024",
+          "subagent_type": "general-purpose",
+          "model": "grok-4.6"
+        },
+        {
+          "sessionUpdate": "subagent_finished",
+          "subagent_id": "00000000-sess-4000-8000-000000000024",
+          "child_session_id": "00000000-sess-4000-8000-000000000024",
+          "status": "completed",
+          "tool_calls": 88,
+          "turns": 1,
+          "duration_ms": 815207,
+          "tokens_used": 79334,
+          "will_wake": true
+        }
+      ],
+      "eventTurnWindows": [
+        {
+          "turnNumber": 0,
+          "start": "2026-08-12T15:46:55.893Z",
+          "loopStarts": 3,
+          "end": "2026-08-12T16:04:00.700Z"
+        },
+        {
+          "turnNumber": 1,
+          "start": "2026-08-12T16:06:43.687Z",
+          "loopStarts": 2,
+          "end": "2026-08-12T16:06:48.043Z"
+        },
+        {
+          "turnNumber": 2,
+          "start": "2026-08-12T16:48:41.159Z",
+          "loopStarts": 30,
+          "end": "2026-08-12T17:01:29.327Z"
+        },
+        {
+          "turnNumber": 3,
+          "start": "2026-08-12T17:18:41.027Z",
+          "loopStarts": 2,
+          "end": "2026-08-12T17:19:17.705Z"
+        },
+        {
+          "turnNumber": 4,
+          "start": "2026-08-12T17:32:47.334Z",
+          "loopStarts": 2,
+          "end": "2026-08-12T17:32:56.268Z"
+        },
+        {
+          "turnNumber": 5,
+          "start": "2026-08-12T18:12:03.201Z",
+          "loopStarts": 33,
+          "end": "2026-08-12T18:23:49.976Z"
+        },
+        {
+          "turnNumber": 6,
+          "start": "2026-08-12T18:23:49.985Z",
+          "loopStarts": 29,
+          "end": "2026-08-12T18:36:11.235Z"
+        },
+        {
+          "turnNumber": 7,
+          "start": "2026-08-12T18:46:03.394Z",
+          "loopStarts": 9,
+          "end": "2026-08-12T18:50:01.753Z"
+        },
+        {
+          "turnNumber": 8,
+          "start": "2026-08-12T18:51:14.336Z",
+          "loopStarts": 5,
+          "end": "2026-08-12T18:52:14.629Z"
+        },
+        {
+          "turnNumber": 9,
+          "start": "2026-08-12T18:53:33.150Z",
+          "loopStarts": 10,
+          "end": "2026-08-12T18:56:22.675Z"
+        },
+        {
+          "turnNumber": 10,
+          "start": "2026-08-12T19:08:08.139Z",
+          "loopStarts": 2,
+          "end": "2026-08-12T19:08:20.077Z"
+        },
+        {
+          "turnNumber": 11,
+          "start": "2026-08-12T19:08:44.672Z",
+          "loopStarts": 37,
+          "end": "2026-08-12T19:29:25.879Z"
+        },
+        {
+          "turnNumber": 12,
+          "start": "2026-08-12T19:29:25.882Z",
+          "loopStarts": 1,
+          "end": "2026-08-12T19:29:37.625Z"
+        },
+        {
+          "turnNumber": 13,
+          "start": "2026-08-12T19:29:37.628Z",
+          "loopStarts": 7,
+          "end": "2026-08-12T19:30:28.540Z"
+        },
+        {
+          "turnNumber": 14,
+          "start": "2026-08-12T19:34:21.765Z",
+          "loopStarts": 1,
+          "end": "2026-08-12T19:34:22.753Z"
+        }
+      ],
+      "checks": {
+        "callIds": 435,
+        "completionIds": 435,
+        "joinedIds": 435,
+        "terminalCount": 15,
+        "terminalUsagePresent": 14,
+        "elapsedMsPresent": 0,
+        "reasoningExceedsOutput": 10
+      }
+    },
+    "model_subagent_child": {
+      "summary": {
+        "session_kind": "subagent",
+        "current_model_id": "grok-4.6",
+        "agent_name": "general-purpose",
+        "sessionId": "00000000-sess-4000-8000-000000000004"
+      },
+      "terminals": [
+        {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "00000000-prmt-4000-8000-000000000029",
+          "stop_reason": "end_turn",
+          "timestamp": 1786550803,
+          "agentTimestampMs": 1786550803681,
+          "usage": {
+            "inputTokens": 747748,
+            "outputTokens": 6566,
+            "totalTokens": 754314,
+            "cachedReadTokens": 680704,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 10173,
+            "modelCalls": 18,
+            "apiDurationMs": 158649,
+            "numTurns": 18,
+            "modelUsage": {
+              "grok-4.6": {
+                "inputTokens": 747748,
+                "outputTokens": 6566,
+                "totalTokens": 754314,
+                "cachedReadTokens": 680704,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 10173,
+                "modelCalls": 18,
+                "apiDurationMs": 158649
+              }
+            }
+          }
+        }
+      ],
+      "subagentLifecycle": [],
+      "eventTurnWindows": [
+        {
+          "turnNumber": 0,
+          "start": "2026-08-12T16:03:58.891Z",
+          "loopStarts": 18,
+          "end": "2026-08-12T16:06:43.680Z"
+        }
+      ],
+      "checks": {
+        "callIds": 61,
+        "completionIds": 61,
+        "joinedIds": 61,
+        "terminalCount": 1,
+        "terminalUsagePresent": 1,
+        "elapsedMsPresent": 0,
+        "reasoningExceedsOutput": 1
+      }
+    }
+  }
+}

@@ -224,3 +224,26 @@ describe("the Context row", () => {
 		expect(topics()[0].textContent).toMatch(/^Time/);
 	});
 });
+
+it("renders Grok's retained-call map without claiming an unmeasured split", () => {
+	const h = {
+		...contextReading().harnesses[0],
+		harness: "grok-build",
+		window: 256000,
+		breakdownAvailable: false,
+		retainedCallsOnly: true,
+		harnessTokens: 0,
+		instructionsTokens: 0,
+	};
+	render(<ContextBody context={{ harnesses: [h] }} />);
+	expect(screen.getByTestId("context-waffle").children).toHaveLength(200);
+	expect(screen.getByText("Grok Build")).toBeTruthy();
+	expect(screen.getByText(/Some calls may be missing/)).toBeTruthy();
+	expect(
+		screen.getByText("Harness and instructions breakdown unavailable."),
+	).toBeTruthy();
+	const legend = within(screen.getByTestId("context-legend"));
+	expect(legend.queryByText("harness")).toBeNull();
+	expect(legend.queryByText("instructions")).toBeNull();
+	expect(legend.getByText("median call")).toBeTruthy();
+});
