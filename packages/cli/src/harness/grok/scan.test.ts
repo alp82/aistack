@@ -170,3 +170,92 @@ describe("Grok Build scanner", () => {
 		);
 	});
 });
+
+describe("Grok retained per-call context", () => {
+	test("reads individual inference calls, preserves them after log rotation, and leaves usage totals alone", async () => {
+		const home = await mkdtemp(path.join(tmpdir(), "grok-context-"));
+		const root = path.join(home, "sessions");
+		const session = path.join(root, "workspace", "s");
+		await mkdir(session, { recursive: true });
+		await mkdir(path.join(home, "logs"));
+		const ts = new Date().toISOString();
+		await writeFile(
+			path.join(session, "summary.json"),
+			JSON.stringify({ sessionId: "s", cwd: "/private/project" }),
+		);
+		await writeFile(
+			path.join(session, "usage.json"),
+			JSON.stringify({
+				sessionId: "s",
+				turns: [
+					{
+						endedAt: ts,
+						primaryModelId: "grok-4.6-build",
+						inputTokens: 120000,
+						outputTokens: 100,
+					},
+				],
+			}),
+		);
+		const log = (tokens: number, loop: number, sid = "s") =>
+			JSON.stringify({
+				ts,
+				src: "shell",
+				pid: 42,
+				sid,
+				msg: "shell.turn.inference_done",
+				ctx: {
+					loop_index: loop,
+					prompt_tokens: tokens,
+					cached_prompt_tokens: 10000,
+					completion_tokens: 50,
+					private_extra: "never retain me",
+				},
+			});
+		await writeFile(
+			path.join(home, "logs", "unified.jsonl"),
+			[log(40000, 0), log(80000, 1), log(999999, 2, "unknown")].join("\n") +
+				"\n",
+		);
+		const first = createAggregate();
+		expect(
+			(
+				await scan(first, {
+					roots: [root],
+					contextCacheDir: path.join(home, "cache"),
+				})
+			).complete,
+		).toBe(true);
+		const context = first.workflow.finish().days[0]?.context;
+		expect(context?.calls.main.reduce((sum, row) => sum + row.calls, 0)).toBe(
+			2,
+		);
+		expect(context?.maxContext).toBe(80000);
+		expect(context?.firstCallCount).toBe(0);
+		expect(first.byModel.get("grok-4.6-build")?.input).toBe(120000);
+		await writeFile(
+			path.join(home, "logs", "unified.jsonl"),
+			`${log(80000, 1)}\n`,
+		);
+		const second = createAggregate();
+		expect(
+			(
+				await scan(second, {
+					roots: [root],
+					contextCacheDir: path.join(home, "cache"),
+				})
+			).complete,
+		).toBe(true);
+		expect(second.workflow.finish().days[0]?.context).toEqual(context);
+		await writeFile(
+			path.join(home, "cache", `${ts.slice(0, 10)}.jsonl`),
+			'{"partial":',
+		);
+		const damaged = await scan(createAggregate(), {
+			roots: [root],
+			contextCacheDir: path.join(home, "cache"),
+		});
+		expect(damaged.complete).toBe(false);
+		expect(damaged.stats.filesUnreadable).toBeGreaterThan(0);
+	});
+});

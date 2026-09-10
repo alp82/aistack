@@ -65,6 +65,10 @@ export type ContextReading = {
 	/** `max(0, p90Call - harnessTokens - instructionsTokens)`. */
 	longChat: number;
 	compactions: number;
+	/** False when no first-call split was measured. */
+	breakdownAvailable?: boolean;
+	/** Grok diagnostic logs retain only a subset of calls. */
+	retainedCallsOnly?: boolean;
 };
 
 const asCounts = (
@@ -97,6 +101,8 @@ export function readContextReading(
 	const fixed = harnessTokens + instructionsTokens;
 	return {
 		harness,
+		...(context.firstCallCount === 0 ? { breakdownAvailable: false } : {}),
+		...(harness === "grok-build" ? { retainedCallsOnly: true } : {}),
 		window: context.window ?? window,
 		calls,
 		medianCall,

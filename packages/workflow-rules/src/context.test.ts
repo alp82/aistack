@@ -94,3 +94,17 @@ describe("readContextReading", () => {
 		});
 	});
 });
+
+test("Grok calls disclose partial log coverage and an unavailable first-call split", () => {
+	const reading = readContextReading(
+		"grok-build",
+		contextDay({
+			firstCallCount: 0,
+			firstCallHarnessTokens: 0,
+			firstCallInstructionsTokens: 0,
+		}),
+		256000,
+	);
+	expect(reading.retainedCallsOnly).toBe(true);
+	expect(reading.breakdownAvailable).toBe(false);
+});

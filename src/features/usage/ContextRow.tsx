@@ -40,7 +40,7 @@ export function ContextSummary({
 				<b className="font-mono text-accent-lime">
 					{fmtTokens(first.medianCall)}
 				</b>{" "}
-				median call
+				{first.retainedCallsOnly ? "median retained call" : "median call"}
 			</span>
 			{context.harnesses.map((h) =>
 				h.window === null ? null : (
@@ -89,9 +89,20 @@ function HarnessBlock({ h }: { h: ContextHarness }) {
 							{fmtWholeShare(h.medianCall / h.window)} full ·{" "}
 						</>
 					)}
-					{h.calls.toLocaleString("en-US")} calls
+					{h.calls.toLocaleString("en-US")}{" "}
+					{h.retainedCallsOnly ? "retained calls" : "calls"}
 				</span>
 			</p>
+			{h.retainedCallsOnly && (
+				<p className="mb-3 text-xs text-fg-muted">
+					Based on retained local logs. Some calls may be missing.
+				</p>
+			)}
+			{h.breakdownAvailable === false && (
+				<p className="mb-3 text-xs text-fg-muted">
+					Harness and instructions breakdown unavailable.
+				</p>
+			)}
 			{h.window === null ? (
 				<Legend h={h} window={null} />
 			) : (
@@ -138,7 +149,11 @@ function Waffle({
 					key={i}
 					data-cell={cell}
 					className="block aspect-square w-full"
-					style={CELL_STYLE[cell]}
+					style={
+						cell === "usualChat" && h.breakdownAvailable === false
+							? { background: "var(--accent-lime)" }
+							: CELL_STYLE[cell]
+					}
 				/>
 			))}
 		</div>
@@ -150,32 +165,48 @@ function Legend({ h, window }: { h: ContextHarness; window: number | null }) {
 		window === null ? null : fmtShare(tokens / window);
 	return (
 		<div data-testid="context-legend">
+			{h.breakdownAvailable !== false && (
+				<>
+					<LegendRow
+						label="harness"
+						tokens={h.harnessTokens}
+						share={share(h.harnessTokens)}
+						title={CONTEXT_HINT.harness}
+						swatch={CELL_STYLE.harness}
+					/>
+					<LegendRow
+						label="instructions"
+						tokens={h.instructionsTokens}
+						share={share(h.instructionsTokens)}
+						title={CONTEXT_HINT.instructions}
+						swatch={CELL_STYLE.instructions}
+					/>
+				</>
+			)}
 			<LegendRow
-				label="harness"
-				tokens={h.harnessTokens}
-				share={share(h.harnessTokens)}
-				title={CONTEXT_HINT.harness}
-				swatch={CELL_STYLE.harness}
-			/>
-			<LegendRow
-				label="instructions"
-				tokens={h.instructionsTokens}
-				share={share(h.instructionsTokens)}
-				title={CONTEXT_HINT.instructions}
-				swatch={CELL_STYLE.instructions}
-			/>
-			<LegendRow
-				label="usual chat"
+				label={h.breakdownAvailable === false ? "median call" : "usual chat"}
 				tokens={h.usualChat}
 				share={share(h.usualChat)}
-				title={CONTEXT_HINT.usualChat}
-				swatch={CELL_STYLE.usualChat}
+				title={
+					h.breakdownAvailable === false
+						? "the median recorded call"
+						: CONTEXT_HINT.usualChat
+				}
+				swatch={
+					h.breakdownAvailable === false
+						? { background: "var(--accent-lime)" }
+						: CELL_STYLE.usualChat
+				}
 			/>
 			<LegendRow
-				label="long chat"
+				label={h.breakdownAvailable === false ? "p90 call" : "long chat"}
 				tokens={h.longChat}
 				share={share(h.longChat)}
-				title={CONTEXT_HINT.longChat}
+				title={
+					h.breakdownAvailable === false
+						? "1 in 10 recorded calls exceed this size"
+						: CONTEXT_HINT.longChat
+				}
 				swatch={CELL_STYLE.longChat}
 				className="mt-1.5"
 			/>

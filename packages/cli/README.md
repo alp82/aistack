@@ -103,3 +103,5 @@ node packages/cli/dist/index.js sync
 ```
 
 Set `AISTACK_URL=http://localhost:3019` to test against local dev server.
+
+Grok Build's context map uses per-call measurements retained from its local diagnostic log. Some calls may be missing because Grok rotates that log. AI Stack preserves the numeric measurements it has captured for 400 days. The map shows total call sizes; Grok's harness/instructions breakdown is unavailable. An ordinary sync collects these measurements when the log contains them.

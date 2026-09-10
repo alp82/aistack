@@ -16,6 +16,7 @@ import {
 	terminalContribution,
 	type UsageContribution,
 } from "./analyzer.js";
+import { retainedContextCalls } from "./context.js";
 
 export function sessionRoots(): string[] {
 	return [
@@ -122,6 +123,7 @@ export async function scan(
 		sinceMs?: number;
 		roots?: string[];
 		onProgress?: (files: number) => void;
+		contextCacheDir?: string;
 	} = {},
 ): Promise<{
 	stats: ScanStats;
@@ -137,6 +139,10 @@ export async function scan(
 	let complete = true;
 	for (const root of opts.roots ?? sessionRoots()) {
 		const aliases = await modelAliasesForRoot(root);
+		const contextSessions = new Map<
+			string,
+			{ projectDir: string; parentSession?: string }
+		>();
 		const dirs = await directories(root);
 		if (dirs === null) {
 			complete = false;
@@ -183,6 +189,7 @@ export async function scan(
 					undefined;
 				child = parentSession !== undefined;
 			}
+			contextSessions.set(sessionFallback, { projectDir, parentSession });
 			let rows = [] as ReturnType<typeof sidecarContributions>;
 			let precedence = 0;
 			const usage = files.get("usage.json");
@@ -196,7 +203,11 @@ export async function scan(
 				}
 				stats.filesRead++;
 				rows = sidecarContributions(read.json, projectDir);
-				if (rows.length > 0) precedence = 2;
+				if (rows.length > 0) {
+					precedence = 2;
+					for (const row of rows)
+						contextSessions.set(row.sessionId, { projectDir, parentSession });
+				}
 			}
 			if (child) {
 				rows = [];
@@ -275,6 +286,32 @@ export async function scan(
 					candidates.set(sessionId, { precedence, rows });
 			}
 			opts.onProgress?.(stats.filesFound);
+		}
+		try {
+			const calls = await retainedContextCalls(
+				root,
+				new Set(contextSessions.keys()),
+				opts.contextCacheDir,
+			);
+			for (const call of calls) {
+				if (opts.sinceMs !== undefined && call.tsMs < opts.sinceMs) continue;
+				const source = contextSessions.get(call.session);
+				agg.workflow.ingest({
+					type: "response",
+					session: call.session,
+					projectWorkspace: source?.projectDir,
+					parentSession: source?.parentSession,
+					tsMs: call.tsMs,
+					responseId: `context:${call.id}`,
+					contextTokens: call.tokens,
+				});
+				const dates = sessionDates.get(call.session) ?? new Set<string>();
+				dates.add(new Date(call.tsMs).toISOString().slice(0, 10));
+				sessionDates.set(call.session, dates);
+			}
+		} catch {
+			complete = false;
+			stats.filesUnreadable++;
 		}
 	}
 	for (const { rows } of candidates.values()) {
