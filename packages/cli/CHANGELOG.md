@@ -10,6 +10,8 @@
 * **cli:** integrate Grok Build pricing and catalog ([75366dc](https://github.com/alp82/aistack/commit/75366dcecef10279c8d3edb06cdcf885d650f41d))
 * **cli:** measure Grok Build workflow and inventory ([5fb8378](https://github.com/alp82/aistack/commit/5fb8378446b126f37c560f764a66590a9d93026c))
 
+Grok Build support was validated with automated and synthetic coverage before release. Paid end-to-end sync and native SessionStart checks on Linux, macOS, and Windows remain unrun because the maintainer does not have a subscription. Subscribed users are invited to report their sync and SessionStart results.
+
 ## [0.13.0](https://github.com/alp82/aistack/compare/cli-v0.12.4...cli-v0.13.0) (2026-09-07)
 
 
