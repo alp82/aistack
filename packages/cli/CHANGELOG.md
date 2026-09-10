@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/alp82/aistack/compare/cli-v0.15.0...cli-v0.16.0) (2026-09-10)
+
+
+### Features
+
+* **cli:** collect Grok context maps from retained inference logs ([#397](https://github.com/alp82/aistack/issues/397)) ([982c2ae](https://github.com/alp82/aistack/commit/982c2aeb79ac3e917d6b7e00eeafc483d5759b3c))
+
 ## [0.15.0](https://github.com/alp82/aistack/compare/cli-v0.14.0...cli-v0.15.0) (2026-09-10)
 
 
