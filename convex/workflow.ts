@@ -190,6 +190,8 @@ const ContextHarness = v.object({
 	/** `max(0, p90Call - harnessTokens - instructionsTokens)`. */
 	longChat: v.number(),
 	compactions: v.number(),
+	breakdownAvailable: v.optional(v.boolean()),
+	retainedCallsOnly: v.optional(v.boolean()),
 })
 
 const WorkflowView = v.object({

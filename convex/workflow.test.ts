@@ -705,6 +705,48 @@ describe('the Context reading (#358)', () => {
     expect(over?.context?.harnesses[0]?.window).toBe(1_000_000)
   })
 
+  test('Grok uses its catalog window without inventing Claude tiers and discloses retained coverage', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const harness: Harness = {
+      ...(day().harnesses[0] as Harness),
+      harness: 'grok-build',
+      routing: { main: [{ model: 'grok-4.6-build', tokens: 100 }], subagents: [] },
+      context: context({ firstCallCount: 0, firstCallHarnessTokens: 0, firstCallInstructionsTokens: 0 }),
+    }
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ harnesses: [harness] })], { aggregateVersion: 'workflow-aggregates/v3' }),
+    })
+    const read = () => t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect((await read())?.context?.harnesses[0]).toMatchObject({
+      harness: 'grok-build', window: null, retainedCallsOnly: true, breakdownAvailable: false,
+    })
+    await seedModel(t, 'grok-4.6-build', 256_000)
+    expect((await read())?.context?.harnesses[0]?.window).toBe(256_000)
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ harnesses: [{ ...harness, context: context({ maxContext: 300_000 }) }] })], { aggregateVersion: 'workflow-aggregates/v3' }),
+    })
+    expect((await read())?.context?.harnesses[0]?.window).toBeNull()
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await read()).toBeNull()
+  })
+
+  test('compaction-only Grok evidence cannot fabricate a zero-call map', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const harness: Harness = {
+      ...(day().harnesses[0] as Harness), harness: 'grok-build',
+      context: context({ calls: { main: [], subagents: [] } }),
+    }
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ harnesses: [harness] })], { aggregateVersion: 'workflow-aggregates/v3' }),
+    })
+    expect((await t.query(api.workflow.getWorkflowByStackSlug, { slug }))?.context).toBeNull()
+  })
+
   test('the workflow switch off hides the reading with the rest', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
