@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getSettings, saveSettings } from "../config.js";
-import { claudeAdapter, codexAdapter, grokAdapter } from "../harness/index.js";
+import {
+	claudeAdapter,
+	codexAdapter,
+	cursorAdapter,
+	grokAdapter,
+} from "../harness/index.js";
 import {
 	disableAutoSync,
 	type EnableDeps,
@@ -24,6 +29,15 @@ import {
  * gate, the hooks are just the triggers). Every dep is injected - a test that
  * touches the REAL ~/.claude/settings.json or ~/.codex/hooks.json is a bug.
  */
+
+vi.mock("./cursorHook.js", () => ({
+	cursorAutoSyncHookInstalled: () => false,
+	installCursorAutoSyncHook: () => ({ ok: true, message: "written" }),
+	removeCursorAutoSyncHook: () => ({
+		ok: true,
+		message: "no Cursor hook to remove",
+	}),
+}));
 
 const selectMock = vi.hoisted(() => vi.fn());
 vi.mock("@clack/prompts", () => ({
@@ -774,4 +788,62 @@ describe("offerAutoSyncOptIn", () => {
 		expect(installCodexHook).toHaveBeenCalledOnce();
 		expect(getSettings(settingsFile).autoSync?.enabled).toBe(true);
 	});
+});
+
+test("Cursor activity installs its stop trigger and reconciles a missing hook without asking", async () => {
+	const installCursorHook = vi.fn(() => ({ ok: true, message: "written" }));
+	const options = {
+		settingsFile,
+		...linked,
+		detectedImpl: async () => [cursorAdapter],
+		installCursorHook,
+		cursorHookInstalledImpl: () => false,
+	};
+	expect((await enableAutoSync(6, options)).message).toContain(
+		"Cursor session is active",
+	);
+	expect(getSettings(settingsFile).autoSync?.enabled).toBe(true);
+	expect(
+		(await reconcileAutoSync({ enabled: true, frequencyHours: 6 }, options))
+			?.ok,
+	).toBe(true);
+	expect(installCursorHook).toHaveBeenCalledTimes(2);
+	expect(
+		await reconcileAutoSync(
+			{ enabled: true, frequencyHours: 6 },
+			{ ...options, cursorHookInstalledImpl: () => true },
+		),
+	).toBeNull();
+	expect(selectMock).not.toHaveBeenCalled();
+});
+test("Cursor trigger failures do not claim installation; disable gates first even if removal fails", async () => {
+	expect(
+		(
+			await enableAutoSync(6, {
+				settingsFile,
+				...linked,
+				detectedImpl: async () => [cursorAdapter],
+				installCursorHook: () => ({ ok: false, message: "read only" }),
+			})
+		).ok,
+	).toBe(false);
+	expect(getSettings(settingsFile).autoSync).toBeUndefined();
+	saveSettings(
+		{ autoSync: { enabled: true, frequencyHours: 6 } },
+		settingsFile,
+	);
+	const remove = () => ({ ok: true, message: "no hook to remove" });
+	const result = await disableAutoSync({
+		settingsFile,
+		...linked,
+		removeHook: remove,
+		removeCodexHook: remove,
+		removeGrokHook: remove,
+		removeCursorHook: () => {
+			expect(getSettings(settingsFile).autoSync?.enabled).toBe(false);
+			return { ok: false, message: "read only" };
+		},
+	});
+	expect(result.ok).toBe(false);
+	expect(result.message).toContain("nothing will publish");
 });

@@ -1,6 +1,6 @@
 # @use-aistack/cli
 
-Measure and share your AI stack. The CLI scans local history from Claude Code, Codex, Grok Build, opencode and Pi, shows you exactly what would go up, and publishes only after you approve in your terminal.
+Measure and share your AI stack. The CLI scans local history from Claude Code, Codex, Cursor, Grok Build, opencode and Pi, shows you exactly what would go up, and publishes only after you approve in your terminal.
 
 Run on-demand with `npx` - no install required:
 
@@ -24,7 +24,7 @@ After a manual sync, the CLI offers auto-sync with three choices: Enable, Maybe 
 
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
-Optional: keep your stack fresh without manual syncs. `on` asks your stack for permission, then writes a `SessionStart` hook for the harnesses you actually use: `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex, and `$GROK_HOME/hooks/aistack.json` (default `~/.grok/hooks/aistack.json`) for Grok Build. The hook runs a silent sync at most once every 6 hours when a session starts. Grok Build needs a new session or hook reload after installation. `off` disables local publication first, removes the owned hooks, then takes the remote permission back. If removal fails, the disabled local gate still prevents publication and the next interactive sync can retry reconciliation.
+Optional: keep your stack fresh without manual syncs. `on` asks your stack for permission, then writes hooks for the harnesses you actually use. The `SessionStart` paths are: `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex, and `$GROK_HOME/hooks/aistack.json` (default `~/.grok/hooks/aistack.json`) for Grok Build. Cursor uses a user-level `stop` hook in `~/.cursor/hooks.json` and reloads that configuration automatically. Its trigger runs when the agent finishes a turn. The other hooks run when a session starts. All triggers share one silent sync throttle, at most once every 6 hours. Existing user hooks are preserved. Grok Build needs a new session or hook reload after installation. `off` disables local publication first, removes the owned hooks, then takes the remote permission back. If removal fails, the disabled local gate still prevents publication and the next interactive sync can retry reconciliation.
 
 ```sh
 npx @use-aistack/cli sync --auto on            # enable, default every 6h

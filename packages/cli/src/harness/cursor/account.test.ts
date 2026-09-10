@@ -98,6 +98,16 @@ it("reuses only a synthetic existing SQLite login, identifies account changes an
 		`synthetic-one%3A%3A${token("auth0|synthetic-one")}`,
 	);
 	expect(first?.scope).not.toContain("synthetic");
+	// Cursor renews its own login; the next read uses the replacement token
+	// without changing this account's cache scope or asking for authentication.
+	const renewed = `${token("auth0|synthetic-one")}-renewed`;
+	db.prepare("INSERT OR REPLACE INTO ItemTable VALUES (?, ?)").run(
+		"cursorAuth/accessToken",
+		renewed,
+	);
+	const refreshed = await existingAccount(root);
+	expect(refreshed?.scope).toBe(first?.scope);
+	expect(refreshed?.cookie).toBe(`synthetic-one%3A%3A${renewed}`);
 	put("auth0|synthetic-two");
 	expect((await existingAccount(root))?.scope).not.toBe(first?.scope);
 	db.close();
