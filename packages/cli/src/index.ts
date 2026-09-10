@@ -52,7 +52,7 @@ program
 	.description("Scan, preview, and publish measured usage (rolling 30 days)")
 	.option(
 		"--auto [state]",
-		"silent background sync; 'on' asks your stack for the permission and installs the SessionStart hooks, 'off' revokes both",
+		"silent background sync; 'on' asks your stack for the permission and installs harness hooks, 'off' revokes both",
 	)
 	.option(
 		"--every <hours>",
