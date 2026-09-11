@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/alp82/aistack/compare/cli-v0.16.0...cli-v0.16.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **cli:** bound sync startup requests and clarify progress ([#406](https://github.com/alp82/aistack/issues/406)) ([82bb957](https://github.com/alp82/aistack/commit/82bb957980cb31df10c7448e5d032d282fc1449f))
+
 ## [0.16.0](https://github.com/alp82/aistack/compare/cli-v0.15.0...cli-v0.16.0) (2026-09-10)
 
 
