@@ -188,7 +188,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		id: BUNDLED_PRICE_TABLE_ID,
 		origin: "bundled",
 	};
-	progress("Checking prices and stack settings");
+	progress("Checking prices");
 	try {
 		const table = await fetchPrices(deps.baseUrl);
 		if (table) {
@@ -201,6 +201,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		setActivePricer(null);
 	}
 
+	progress("Checking stack settings");
 	const { config, source } = await loadConfig({
 		baseUrl: deps.baseUrl,
 		...(token ? { token } : {}),
@@ -213,6 +214,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// far back the day scan reaches.
 	let manifest: DayManifest | null = null;
 	if (token) {
+		progress("Checking previously synced days");
 		try {
 			manifest = await fetchManifest(deps.baseUrl, token);
 		} catch {
@@ -240,6 +242,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// date the server would keep. Two scans over the same files; the second is
 	// the one the days and the workflow blocks come from.
 	const daysSinceMs = windowStartMs(now, retentionDays);
+	progress("Detecting local harnesses");
 	const active = await adapters(sinceMs);
 	const historical = await adapters(daysSinceMs);
 	let dayScansComplete = true;
