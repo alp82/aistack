@@ -3,6 +3,10 @@ import { CLI_VERSION } from "./version.js";
 
 export const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
 
+// Optional startup reads must reach their fallback even if the server stalls.
+// Keep the deadline active while consuming the response body too.
+const STARTUP_READ_TIMEOUT_MS = 5_000;
+
 async function request(
 	path: string,
 	options: RequestInit = {},
@@ -210,6 +214,7 @@ export async function fetchDayManifest(
 	days: { date: string; fingerprint: string }[];
 } | null> {
 	const res = await fetch(`${baseUrl}/api/cli/sync-manifest`, {
+		signal: AbortSignal.timeout(STARTUP_READ_TIMEOUT_MS),
 		headers: { "Content-Type": "application/json", ...authHeaders(token) },
 	});
 	if (res.status === 404) return null;
@@ -257,6 +262,7 @@ export async function fetchPriceTable(
 	baseUrl: string,
 ): Promise<PriceTable | null> {
 	const res = await fetch(`${baseUrl}/api/prices`, {
+		signal: AbortSignal.timeout(STARTUP_READ_TIMEOUT_MS),
 		headers: { Accept: "application/json" },
 	});
 	if (res.status === 404) return null;
