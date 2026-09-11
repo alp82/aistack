@@ -1,0 +1,79 @@
+# Discord username lookup and visual reply constraints
+
+Research date: 2026-09-11. Resolves [Establish Discord username lookup and visual reply limits](https://github.com/alp82/aistack/issues/404), following [Brainstorm the questions Discord stats should answer](https://github.com/alp82/aistack/issues/400#issuecomment-5630795498). This establishes feasibility for the entry and reply prototypes. It does not select their layouts, ambiguous-match recovery, or rendering stack.
+
+## Username input
+
+Discord supports dynamic autocomplete on `STRING` options (`type: 3`, `autocomplete: true`), also integers and numbers. Static `choices` cannot coexist with autocomplete. An autocomplete interaction contains the partial string in the option's `value`, with `focused: true`; previously filled options can accompany it, while required unfinished options can be absent. Choice `name` is the displayed label (1-100 characters); string `value` is independent (maximum 100 characters). Users can submit arbitrary text without selecting a suggestion. Configurable string lengths reach 6000 characters. [Application commands](https://docs.discord.com/developers/interactions/application-commands#autocomplete)
+
+Inference for this app: username-only labels are feasible, with a canonical handle or creator identifier as the value. The app must implement contains matching and revalidate submitted values. Suggestion selection is not an authorization boundary. Ambiguity and normalization remain design decisions. `USER` options select Discord users; custom creator search belongs in a string option. [Option types and choice structure](https://docs.discord.com/developers/interactions/application-commands#application-command-object)
+
+Discord's Get User endpoint takes a Discord user ID. It is not a search endpoint for AI Stack creators. [User resource](https://docs.discord.com/developers/resources/user#get-user)
+
+## Response lifecycle
+
+An autocomplete request is interaction type 4; answer with callback type 8 and at most 25 choices. Initial responses have a three-second deadline. Command deferral uses callback type 5; interaction tokens last 15 minutes. A deferred original can be completed using `PATCH /webhooks/{application_id}/{interaction_token}/messages/@original`, whose semantics match Edit Webhook Message. Components support immediate update type 7 or deferred update type 6. Choose ephemeral visibility when deferring; an existing message's visibility cannot change. HTTP endpoints can return JSON directly with status 200. [Receiving and responding](https://docs.discord.com/developers/interactions/receiving-and-responding)
+
+Autocomplete must finish within its deadline, without deferral. Documentation caveat: Discord's current callback table identifies type 8 but does not explicitly spell out the no-defer restriction. The discord.js maintainers' own guide states it explicitly. This is supplementary SDK documentation, not Discord's platform specification. [discord.js autocomplete notes](https://discordjs.guide/legacy/slash-commands/autocomplete#notes)
+
+HTTP transport needs no gateway connection. Every request must pass Ed25519 signature verification over the timestamp and raw body, and invalid signatures require 401. PING receives type 1. [Interactions overview](https://docs.discord.com/developers/interactions/overview)
+
+## Text and embed presentation
+
+Discord documents emphasis, headings, subtext, lists, masked links, block quotes, inline code, and multiline fenced code blocks. It does not document pipe-table syntax. Treat native Markdown tables as unsupported for planning; aligned text inside a code block is a feasible approximation, with width and mobile readability left for the prototype. The absence of tables in the guide is evidence of no documented guarantee, not a live rendering test. [Discord Markdown guide](https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline)
+
+Webhook content permits 2000 characters, with up to 10 rich embeds. [Webhook parameters](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+
+| Embed part | Limit |
+| --- | --- |
+| Title | 256 characters |
+| Description | 4096 characters |
+| Fields | 25 |
+| Field name / value | 256 / 1024 characters |
+| Footer / author name | 2048 / 256 characters |
+| Combined textual parts across all embeds | 6000 characters |
+
+These limits are inclusive. Embed fields can request inline display; the API does not promise a fixed column layout. Image URLs support HTTP(S) and attachment references. Uploaded attachment descriptions support 1024 characters of alt text. [Message embed and attachment structures](https://docs.discord.com/developers/resources/message#embed-object)
+
+Inference: reserve text for subject, period, units, coverage, and provenance even when a chart carries the main visual. No layout or charting package is approved by these capabilities.
+
+## Generated images and size boundaries
+
+Upload generated bytes using `multipart/form-data`, `files[n]`, and JSON metadata in `payload_json`. Attachment metadata uses placeholder IDs matching `n`; embed images can use `attachment://chart.png`. Supported embedded attachment extensions are JPG, JPEG, PNG, WebP, and GIF. SVG is not listed. Alternatively, supply an externally hosted HTTP(S) image URL. [File uploading](https://docs.discord.com/developers/reference#uploading-files), [embed image structure](https://docs.discord.com/developers/resources/message#embed-object)
+
+The live API reference currently states a default of **20 MiB per file**, with higher limits possible. Use the interaction's `attachment_size_limit` byte value rather than a hardcoded default. Signed Discord attachment URLs expire; Discord refreshes them in-client. [API reference](https://docs.discord.com/developers/reference#uploading-files)
+
+Older indexed documentation still says 10 MiB. Discord's support FAQ dates the free-limit increase to August 2026, using the label 20 MB. The interaction's byte value avoids both stale defaults and unit ambiguity. [File attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)
+
+A message permits 10 attachments (API error 30015). [Status codes](https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes)
+
+Create Message separately documents a 25 MiB request maximum. Its placement does not establish the same total-request cap for every interaction webhook route. [Create Message limitations](https://docs.discord.com/developers/resources/message#create-message)
+
+No universal uploaded-chart pixel cap was found in the reviewed official pages. The reference's powers-of-two range of 16-4096 describes CDN image size requests, not a universal upload resolution limit. [Image formatting](https://docs.discord.com/developers/reference#image-formatting)
+
+## Refining an existing reply
+
+Webhook edits append newly provided files unless `attachments` specifies the desired final set. On API v10 that array must include retained and new attachments. To replace a chart, send new bytes and metadata, omit the old attachment from that set, and update the embed reference. An empty array clears attachments. Supply `allowed_mentions` again on edits because original mention restrictions are not inherited. [Edit Webhook Message](https://docs.discord.com/developers/resources/webhook#edit-webhook-message)
+
+Illustrative replacement metadata, alongside multipart `files[0]` containing the new PNG:
+
+```json
+{
+  "attachments": [{ "id": 0, "filename": "chart-v2.png" }],
+  "embeds": [{ "image": { "url": "attachment://chart-v2.png" } }],
+  "allowed_mentions": { "parse": [] }
+}
+```
+
+This shows transport feasibility. Controls, who may refine a public reply, concurrency, and behavior after token expiry remain implementation-design work.
+
+## Current repository seams
+
+Inspected revision: `3ca9ebcf77b8730e1c6d58fee2cb524e3486c232`.
+
+- The HTTP endpoint already verifies signatures, returns empty type-8 choices, schedules command work, and patches the deferred original. Autocomplete exits before command validation and rate limiting. Its raw option shape omits `focused` and nested options, and parsing keeps flat scalar options. Components receive the slash-only reply. `patchOriginal` sends JSON only, so binary upload support needs a transport change. [discordInteractions.ts](https://github.com/alp82/aistack/blob/3ca9ebcf77b8730e1c6d58fee2cb524e3486c232/convex/discordInteractions.ts)
+- Command registration types need an autocomplete field before a string picker can be registered. [discordCommandDefinitions.ts](https://github.com/alp82/aistack/blob/3ca9ebcf77b8730e1c6d58fee2cb524e3486c232/scripts/lib/discordCommandDefinitions.ts)
+- App handles are stored as `creators.slug`, with exact lookup through `by_slug`; creator search needs its own contains-matching query. [creators.ts](https://github.com/alp82/aistack/blob/3ca9ebcf77b8730e1c6d58fee2cb524e3486c232/convex/creators.ts)
+- Current stack resolution accepts an explicit stack slug or chooses the linked creator's stack with greatest `updatedAt`. That is existing behavior, not the agreed deterministic definition of first stack, which remains open. [discordStack.ts](https://github.com/alp82/aistack/blob/3ca9ebcf77b8730e1c6d58fee2cb524e3486c232/convex/discordStack.ts), [brainstorm resolution](https://github.com/alp82/aistack/issues/400#issuecomment-5630795498)
+
+No command registration, Discord messages, production operations, or client rendering tests were performed.
