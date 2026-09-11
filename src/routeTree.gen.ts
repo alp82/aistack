@@ -32,6 +32,7 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as PrototypeDiscordRepliesRouteImport } from './routes/prototype.discord-replies'
 import { Route as NewsSlugRouteImport } from './routes/news.$slug'
 import { Route as LinkDiscordRouteImport } from './routes/link.discord'
 import { Route as EmailPreferencesRouteImport } from './routes/email.preferences'
@@ -169,6 +170,11 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeDiscordRepliesRoute = PrototypeDiscordRepliesRouteImport.update({
+  id: '/prototype/discord-replies',
+  path: '/prototype/discord-replies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewsSlugRoute = NewsSlugRouteImport.update({
   id: '/news/$slug',
   path: '/news/$slug',
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
+  '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -344,6 +351,7 @@ export interface FileRoutesByTo {
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
+  '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -391,6 +399,7 @@ export interface FileRoutesById {
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
+  '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -439,6 +448,7 @@ export interface FileRouteTypes {
     | '/email/preferences'
     | '/link/discord'
     | '/news/$slug'
+    | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -485,6 +495,7 @@ export interface FileRouteTypes {
     | '/email/preferences'
     | '/link/discord'
     | '/news/$slug'
+    | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/email/preferences'
     | '/link/discord'
     | '/news/$slug'
+    | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -578,6 +590,7 @@ export interface RootRouteChildren {
   EmailPreferencesRoute: typeof EmailPreferencesRoute
   LinkDiscordRoute: typeof LinkDiscordRoute
   NewsSlugRoute: typeof NewsSlugRoute
+  PrototypeDiscordRepliesRoute: typeof PrototypeDiscordRepliesRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -762,6 +775,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/analytics'
       fullPath: '/settings/analytics'
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/discord-replies': {
+      id: '/prototype/discord-replies'
+      path: '/prototype/discord-replies'
+      fullPath: '/prototype/discord-replies'
+      preLoaderRoute: typeof PrototypeDiscordRepliesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news/$slug': {
@@ -949,6 +969,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailPreferencesRoute: EmailPreferencesRoute,
   LinkDiscordRoute: LinkDiscordRoute,
   NewsSlugRoute: NewsSlugRoute,
+  PrototypeDiscordRepliesRoute: PrototypeDiscordRepliesRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
