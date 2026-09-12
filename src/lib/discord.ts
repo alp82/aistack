@@ -5,3 +5,7 @@
  */
 export const DISCORD_INSTALL_URL =
 	"https://discord.com/oauth2/authorize?client_id=1540381573243736116";
+
+/** Explicit personal-install authorization, also available for existing installs. */
+export const DISCORD_USER_REAUTHORIZE_URL =
+	"https://discord.com/oauth2/authorize?client_id=1540381573243736116&integration_type=1&scope=applications.commands&prompt=consent";

@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DISCORD_USER_REAUTHORIZE_URL } from "@/lib/discord";
 import { api } from "../../../convex/_generated/api";
 
 interface DiscordLinkPageProps {
@@ -152,6 +153,27 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 					</p>
 				</div>
 			) : null}
+
+			<section
+				className="mt-8 border-2 border-stroke-strong bg-bg-panel p-6"
+				aria-label="Discord app authorization"
+			>
+				<h2 className="font-mono text-sm font-bold text-fg-primary">
+					Missing commands in Discord?
+				</h2>
+				<p className="mt-2 text-sm leading-relaxed text-fg-secondary">
+					You can authorize AI Stack for your personal Discord account again.
+					Review the permissions in Discord, then check your command list.
+				</p>
+				<a
+					href={DISCORD_USER_REAUTHORIZE_URL}
+					target="_blank"
+					rel="noreferrer"
+					className="mt-5 inline-flex border-2 border-accent-lime bg-accent-lime px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-lime"
+				>
+					Reauthorize in Discord
+				</a>
+			</section>
 
 			<ConfirmDialog
 				open={removeOpen}
