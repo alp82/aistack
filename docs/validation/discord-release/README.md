@@ -61,26 +61,16 @@ Deploy renderer before calling handlers where the hosting mechanism allows it.
 
 ## Registration and readback
 
-Use the production bot credential through an ignored local environment file or
-secret manager. The existing `.env.discord-prototype.local` belongs to the test
-app and cannot activate the production application. The bot token is never a
-Convex or web deployment variable.
+Production registration is now automatic in the deployment workflow. See
+[release operations](../../discord-release.md) for the one-time GitHub Actions
+secret setup, retries and recovery artifacts. No owner-run registration command
+is required for production.
 
-Before mutation, authenticated GET
-`https://discord.com/api/v10/applications/1540381573243736116/commands` and save
-the complete response locally as the rollback snapshot. Confirm the credential
-belongs to the production application. Register with the existing script:
-
-```sh
-DISCORD_APP_ID=1540381573243736116 pnpm tsx scripts/discord-register-commands.ts
-```
-
-Supply `DISCORD_BOT_TOKEN` through the authorized environment, never inline in a
-recorded command. Omit `DISCORD_GUILD_ID` for global registration. Fetch globals
-again and compare command names, descriptions, options, contexts and installation
-types to `commands-approved.json`. Record the response IDs and a sanitized
-payload. Inspect any known production test guild for stale local definitions
-that shadow globals; remove only this application's obsolete definitions.
+The workflow deploys its pinned backend revision, waits for the matching Coolify
+renderer revision, snapshots the previous global command set, updates the
+canonical nine-command set when needed, and verifies readback. A superseded run
+skips deployment or registration. The production bot token belongs in the
+repository Actions secret `DISCORD_BOT_TOKEN`.
 
 No unsolicited Discord message is part of deployment. Owner desktop/mobile and
 consenting-tester interactions remain waived, not passed.
@@ -122,10 +112,21 @@ with readable text, confirmed by image inspection. The final PNGs were
 
 ## Outstanding activation evidence
 
-- Authorized production bot credential location.
+- One-time repository Actions secret `DISCORD_BOT_TOKEN` setup.
 - Actual prior global registration snapshot.
 - Nine-command registration and readback results.
 
 Code deployment and shared configuration are complete. Global command
 registration is still pending. Homepage publication remains pending so its
 instructions do not advertise unregistered commands.
+
+## Automated registration rollout
+
+Commit `b544c8a3` adds automatic registration to the production workflow and is
+live on both Convex and Coolify (`fdlrrp23x7llapl1fss7onex`).
+[The first automated run](https://github.com/alp82/aistack/actions/runs/34687338845)
+successfully deployed the pinned backend and waited for the matching web
+revision. Registration then failed explicitly because the repository Actions
+secret `DISCORD_BOT_TOKEN` has not been provisioned. No Discord registration
+mutation occurred. Once this one-time secret is added, dispatch the workflow
+on `main`; all subsequent releases perform registration automatically.
