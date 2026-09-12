@@ -24,6 +24,7 @@ import {
 import { runAutoSync } from "../autosync/run.js";
 import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
 import { loadSyncConfig } from "../harness/shared/allowlist.js";
+import { createBoard } from "../sync/board.js";
 import { stageSync } from "../sync/stage.js";
 import { fmtReceivedAt } from "../sync/summary.js";
 import {
@@ -38,6 +39,7 @@ import {
 } from "../theme.js";
 import {
 	enableTrace,
+	traceEnabled,
 	traceEnvironment,
 	traceRequestedByEnv,
 } from "../trace.js";
@@ -53,16 +55,6 @@ export interface SyncOptions {
 	/** `--verbose`: print every phase with its duration to stderr. */
 	verbose?: boolean;
 }
-
-/**
- * The clack spinner repaints on an interval of this length. A phase message
- * set right before work that blocks the event loop is never drawn unless the
- * caller waits one frame first, and the stale text then names the wrong step
- * for as long as the block lasts (minutes on a large Cursor database).
- */
-const SPINNER_FRAME_MS = 90;
-const paintFrame = () =>
-	new Promise<void>((resolve) => setTimeout(resolve, SPINNER_FRAME_MS));
 
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	if (options.verbose || traceRequestedByEnv()) {
@@ -198,26 +190,31 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	const destinationToken = token;
 	const destinationConfig = loaded;
 
-	const s = p.spinner();
-	s.start("Scanning local agent transcripts");
+	// The scan board (#420): every step runs at once and gets its own row, so
+	// a slow harness shows as one slow row instead of a frozen spinner. With
+	// tracing on the rows are not animated: the trace lines on stderr would
+	// interleave with the redraws.
+	p.log.step("Scanning local history");
+	const board = createBoard({
+		write: (text) => process.stdout.write(text),
+		interactive: !traceEnabled(),
+	});
 	let staged: Awaited<ReturnType<typeof stageSync>>;
 	try {
 		staged = await stageSync({
 			baseUrl: BASE_URL,
 			getTokenImpl: () => destinationToken,
 			loadConfigImpl: async () => destinationConfig,
-			onProgress: async (message) => {
-				s.message(message);
-				await paintFrame();
-			},
+			onEvent: board.handle,
 		});
 	} catch (e) {
-		s.stop("Scan failed");
+		board.stop();
 		outroError(e instanceof Error ? e.message : String(e));
 		process.exitCode = 1;
 		return;
 	}
-	s.stop("Scan complete");
+	board.stop();
+	const s = p.spinner();
 
 	// Beat one - the same full summary the MCP preview returns, verbatim,
 	// printed behind the clack bar so it reads as one flow. The text is the

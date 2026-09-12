@@ -136,7 +136,7 @@ export async function scan(
 
 			agg.files++;
 			stats.filesRead++;
-			if (opts.onProgress && agg.files % 200 === 0) opts.onProgress(agg.files);
+			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
 			const outcome = ingestWithRetry(agg, file, opts);
 			if (!outcome.ok) {
 				// Never rethrown: the error object carries the absolute path. The

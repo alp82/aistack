@@ -66,13 +66,13 @@ it("resolves the qualified Composer fixture with the packaged node:sqlite reader
 	);
 });
 // A sync asks the adapter four times (detect twice, scan twice). Each read
-// walks the whole global database on the main thread, so the second, third
-// and fourth must be the first one's result, until the source changes.
-it("reads a root once per process while its source is unchanged", async () => {
+// walks the whole global database, so the later three must be the first one's
+// result, even after the source moved: an open Cursor appends to its
+// write-ahead log the whole time, and a stamp check would defeat the memo.
+it("reads a root once per process, even when the source moves", async () => {
 	await createSource();
 	const first = await readLocal(root);
 	expect(first.sessions).toHaveLength(1);
-	expect(await readLocal(root)).toBe(first);
 	const global = new DatabaseSync(
 		path.join(dir, "User", "globalStorage", "state.vscdb"),
 	);
@@ -80,9 +80,9 @@ it("reads a root once per process while its source is unchanged", async () => {
 		.prepare("INSERT INTO cursorDiskKV VALUES (?, ?)")
 		.run("aistack:changed", JSON.stringify({ padding: "x".repeat(8192) }));
 	global.close();
-	const again = await readLocal(root);
-	expect(again).not.toBe(first);
-	expect(again.sessions).toHaveLength(1);
+	expect(await readLocal(root)).toBe(first);
+	forgetLocalReads();
+	expect(await readLocal(root)).not.toBe(first);
 });
 
 it("reconciles a transcript copy once and retains explicit-zero raw token evidence", async () => {

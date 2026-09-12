@@ -32,7 +32,8 @@ export type HarnessScanOptions = {
 	publishWorkflow?: boolean;
 	/** Only count records with a timestamp at or after this epoch ms. */
 	sinceMs: number;
-	onProgress?: (files: number) => void;
+	/** Files (or sessions) read so far, and the total when the scan knows it. */
+	onProgress?: (files: number, total?: number) => void;
 };
 
 export type HarnessDetectOptions = {

@@ -24,7 +24,7 @@ After a manual sync, the CLI offers auto-sync with three choices: Enable, Maybe 
 
 #### A sync that looks stuck
 
-The scan runs on this machine and can take a few minutes when a harness keeps a large history. Cursor is the usual case: its global `state.vscdb` grows past a gigabyte, and the session listing walks all of it before the first result. The spinner text can lag behind the running step while that happens. To see each phase as it starts, with its duration, run with `--verbose`:
+The scan runs on this machine and can take a few minutes when a harness keeps a large history. Cursor is the usual case: its global `state.vscdb` grows past a gigabyte, and the session listing walks all of it before the first result. Every harness is checked at the same time and gets its own row with a progress bar, so one slow harness shows as one slow row while the others finish. To see each step as it starts, with its duration, run with `--verbose`:
 
 ```sh
 npx @use-aistack/cli sync --verbose

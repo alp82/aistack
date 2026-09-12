@@ -2,7 +2,10 @@ import { defineConfig } from 'tsup'
 import pkg from './package.json' with { type: 'json' }
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // The Cursor read runs in a worker thread (#420); it is its own entry so
+  // `new Worker(new URL('./cursor-worker.js', import.meta.url))` finds it
+  // beside index.js.
+  entry: { index: 'src/index.ts', 'cursor-worker': 'src/harness/cursor/worker.ts' },
   format: ['esm'],
   target: 'node22',
   clean: true,
