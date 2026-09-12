@@ -1,0 +1,83 @@
+{
+  "creator": "alperortac",
+  "endDate": "2026-09-12",
+  "days": 7,
+  "results": [
+    {
+      "check": "unsigned",
+      "status": 401,
+      "contentType": "text/plain;charset=UTF-8",
+      "cacheControl": "no-store",
+      "bytes": 27,
+      "ms": 111
+    },
+    {
+      "check": "invalid-schema",
+      "status": 400,
+      "contentType": "text/plain;charset=UTF-8",
+      "cacheControl": "no-store",
+      "bytes": 27,
+      "ms": 119
+    },
+    {
+      "check": "tokens",
+      "status": 200,
+      "contentType": "image/png",
+      "cacheControl": "no-store",
+      "bytes": 57127,
+      "ms": 460,
+      "dimensions": [
+        960,
+        715
+      ]
+    },
+    {
+      "check": "cost",
+      "status": 200,
+      "contentType": "image/png",
+      "cacheControl": "no-store",
+      "bytes": 103787,
+      "ms": 415,
+      "dimensions": [
+        960,
+        957
+      ]
+    },
+    {
+      "check": "context",
+      "status": 200,
+      "contentType": "image/png",
+      "cacheControl": "no-store",
+      "bytes": 71236,
+      "ms": 360,
+      "dimensions": [
+        960,
+        834
+      ]
+    },
+    {
+      "check": "harness",
+      "status": 200,
+      "contentType": "image/png",
+      "cacheControl": "no-store",
+      "bytes": 56052,
+      "ms": 349,
+      "dimensions": [
+        960,
+        681
+      ]
+    },
+    {
+      "check": "compare",
+      "status": 200,
+      "contentType": "image/png",
+      "cacheControl": "no-store",
+      "bytes": 141914,
+      "ms": 466,
+      "dimensions": [
+        960,
+        1267
+      ]
+    }
+  ]
+}

@@ -32,9 +32,12 @@ and native PNG rendering. No new human test round was requested.
 
 ## Configuration and deployment
 
-1. Identify the existing web deployment service and its authorized configuration
-   mechanism. The Convex server at `root@10.0.0.20` does not host the web process;
-   the existing GitHub workflow deploys Convex only.
+1. Coolify automatically deploys `main` for application
+   `k8g00cc0cgwosgscko0g8g44` (`alp82/aistack:main`, internal application ID 3).
+   Its authorized control plane is available over SSH at `root@10.0.0.10`;
+   the application runs on its configured server `159.69.247.66`. The Convex
+   server at `root@10.0.0.20` hosts the backend only. Coolify uses Nixpacks with
+   `pnpm install`, `pnpm build`, and `pnpm start`.
 2. Set one dedicated random `DISCORD_RENDER_SECRET` of at least 32 characters in
    both the web service and Convex. Keep the value out of issues and logs. Set
    Convex `DISCORD_RENDER_ORIGIN=https://aistack.to`.
@@ -91,12 +94,38 @@ payload is available above but does not replace a live pre-release snapshot.
 Keep additive schema and data intact; never force an empty Convex function push.
 Record the rollback workflow run and registration readback.
 
-## Outstanding deployment evidence
+## Production deployment evidence
 
-- Existing web hosting/deployment mechanism and configuration access.
+On 2026-09-12, bot implementation commit `8833cc25` deployed successfully through
+[GitHub Actions](https://github.com/alp82/aistack/actions/runs/34686428911) and
+Coolify deployment `bqdrhhlmvzkzske54yof5elr`. Both services hold the same dedicated
+renderer secret. Coolify holds it runtime-only; Convex points at
+`https://aistack.to`. The web icon allowlist is
+`https://convex.aistack.to,https://models.dev`.
+
+The deployed query read alperortac's real seven-day public statistics. Signed
+requests rasterized all five cards, and rejected unsigned requests with 401 and
+invalid payloads with 400. All responses used no-store. Requests from inside the
+actual web container reached both approved icon origins with HTTP 200.
+
+Image inspection then found missing text in the Nixpacks runtime, which lacked
+fonts. Commit `1531f91d` adds `fontconfig` and `fonts-dejavu-core` using the official
+[Nixpacks package configuration](https://nixpacks.com/docs/configuration/file).
+This makes the renderer's DejaVu Sans Mono font available in the deployed image.
+The fix deployed successfully through
+[GitHub Actions](https://github.com/alp82/aistack/actions/runs/34686632260) and
+Coolify deployment `tcfacxwar1u78bep5q0cmiw9`. All five signed cards then rendered
+with readable text, confirmed by image inspection. The final PNGs were
+56,052 to 141,914 bytes, 960 pixels wide, and returned in 349 to 466 ms.
+[Sanitized runtime results](production-runtime.json) record each response;
+[the production token card](production-tokens.png) records the corrected output.
+
+## Outstanding activation evidence
+
 - Authorized production bot credential location.
 - Actual prior global registration snapshot.
-- Production configuration, deployment run, renderer runtime and registration
-  readback results.
+- Nine-command registration and readback results.
 
-The code and payloads are ready. Production activation has not been performed.
+Code deployment and shared configuration are complete. Global command
+registration is still pending. Homepage publication remains pending so its
+instructions do not advertise unregistered commands.
