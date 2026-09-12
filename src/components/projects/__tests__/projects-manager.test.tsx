@@ -151,10 +151,10 @@ describe("ProjectsManager – accordion expand/collapse", () => {
 
 describe("ProjectsManager – callbacks", () => {
 	// TC-PM-CB-01
-	it("TC-PM-CB-01: New Project → dialog → type name → Create → onCreate called once with objectContaining({name}); no stackId", async () => {
+	it("TC-PM-CB-01: Add a project → dialog → type name → Create → onCreate called once with objectContaining({name}); no stackId", async () => {
 		const onCreate = vi.fn().mockResolvedValue(undefined);
 		render(<ProjectsManager {...defaultProps({ onCreate })} />);
-		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		fireEvent.click(screen.getByRole("button", { name: /add a project/i }));
 		const nameInput = await screen.findByLabelText(/name/i);
 		fireEvent.change(nameInput, { target: { value: "My New Project" } });
 		fireEvent.click(screen.getByRole("button", { name: /^create$/i }));

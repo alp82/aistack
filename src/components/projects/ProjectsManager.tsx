@@ -199,7 +199,7 @@ export function ProjectsManager({
 			}
 		>
 			<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-				{isOwner && (
+				{isOwner && !isEmpty && (
 					<NewProjectButton
 						label="New Project"
 						onClick={() => setDialog({ mode: "create" })}
