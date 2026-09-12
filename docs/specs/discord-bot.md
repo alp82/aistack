@@ -148,5 +148,11 @@ creator browsing and a create-stack link where applicable.
 The [renderer and transport contract](../discord-renderer.md) records deployment
 configuration, durable lifecycle, response-token multipart delivery, consent
 rechecks, failure behavior and automated validation. Implementation readiness
-precedes live desktop/mobile acceptance and command registration. No activation
+precedes automated command registration. The owner waived another live
+desktop/mobile acceptance round for this release. No activation
 switch or old token-option compatibility is part of this release.
+
+Production registration runs in the deployment workflow after the backend and
+matching Coolify web revision are ready. The canonical definitions remain in
+`scripts/lib/discordCommandDefinitions.ts`. See [release operations](../discord-release.md)
+for the one-time Actions credential setup, retry and recovery artifacts.

@@ -1,12 +1,22 @@
 name: Deploy Convex to Production
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy-convex:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     
     steps:
       - name: Checkout code
@@ -49,4 +59,47 @@ jobs:
       # is safe.
       - name: Deploy to production
         run: |
-          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git fetch origin main && git reset --hard origin/main && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
+            echo "Skipping superseded backend deployment. Dispatch main to retry the current release."
+            exit 0
+          fi
+          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git fetch origin main && git reset --hard ${{ github.sha }} && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"
+
+      - name: Check whether this release is still current
+        id: current
+        run: |
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GITHUB_SHA" ]; then
+            echo "register=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "A newer main revision will register its commands after deployment."
+          fi
+
+      - name: Wait for the matching Coolify renderer
+        if: steps.current.outputs.register == 'true'
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          DISCORD_RENDER_ORIGIN: https://aistack.to
+        run: node scripts/wait-for-discord-renderer.ts
+
+      - name: Register and verify global Discord commands
+        if: steps.current.outputs.register == 'true'
+        env:
+          DISCORD_APP_ID: '1540381573243736116'
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+          DISCORD_RENDER_ORIGIN: https://aistack.to
+        run: |
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
+            echo "Skipping superseded registration."
+            exit 0
+          fi
+          node scripts/discord-register-commands.ts --output-dir discord-registration
+
+      - name: Preserve Discord registration and recovery payloads
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discord-registration-${{ github.sha }}
+          path: discord-registration/*.json
+          if-no-files-found: ignore
+          retention-days: 90
