@@ -116,6 +116,24 @@ The shareable image for one stack, with the stack name, the creator, and the too
 **Linked account**:
 A Discord user tied to a creator through the /link flow.
 
+**Discord stats range**:
+A requested number of consecutive UTC dates ending on the UTC date when a Discord answer
+is created, with both endpoints included. Refining the answer keeps that end date. The
+last date can hold a partial day's measurements.
+
+**Discord context reading**:
+The context measurements of one harness across all contributing machines of a stack
+within a Discord stats range. It describes calls across those machines and includes
+a median, p90 and context breakdown.
+
+**Subscription cost**:
+The current monthly price of the tools and bundles selected for a stack. It describes
+the stack's subscriptions independently of the date range of its measured activity.
+
+**Measured usage cost**:
+The price assigned to recorded model usage within a selected range. It is separate from
+subscription cost, since a subscription can include some of that usage.
+
 ### Email
 
 **Transactional mail**:

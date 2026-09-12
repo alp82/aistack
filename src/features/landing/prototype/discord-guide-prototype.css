@@ -1,0 +1,310 @@
+/* Throwaway homepage Discord guide. All layouts use the site's sharp corners. */
+.dg-section {
+	scroll-margin-top: 88px;
+	position: relative;
+	max-width: 1280px;
+	margin: 72px auto;
+	padding: 48px 32px;
+	color: var(--text-primary, #eef0ee);
+	border-top: 1px solid #30362d;
+	border-bottom: 1px solid #30362d;
+	background: #111510;
+}
+.dg-section h2 {
+	font-size: clamp(32px, 4vw, 58px);
+	line-height: 1.08;
+	letter-spacing: -0.045em;
+	font-weight: 600;
+	margin: 16px 0 24px;
+}
+.dg-kicker {
+	font: 12px monospace;
+	letter-spacing: 0.16em;
+	color: var(--accent-lime, #c5f74f);
+}
+.dg-intro {
+	font-size: 17px;
+	line-height: 1.65;
+	color: #b6bdb1;
+	max-width: 440px;
+	margin-bottom: 24px;
+}
+.dg-install {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 32px;
+	background: var(--accent-lime, #c5f74f);
+	color: #11160b;
+	padding: 14px 20px;
+	font: 700 14px monospace;
+	text-decoration: none;
+}
+.dg-install:hover {
+	filter: brightness(1.1);
+}
+.dg-walkthrough {
+	display: grid;
+	grid-template-columns: 0.85fr 1.15fr;
+	gap: 52px;
+	align-items: center;
+}
+.dg-steps {
+	margin: 32px 0 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 24px;
+}
+.dg-steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+.dg-steps li > span {
+	font: 13px monospace;
+	color: #8b997f;
+	padding-top: 4px;
+}
+.dg-steps h3 {
+	font-size: 15px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+.dg-steps p {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #a3af9d;
+}
+.dg-section code {
+	font-family: monospace;
+	color: #d1efb6;
+}
+.dg-example {
+	margin: 0;
+	background: #22232a;
+	border: 1px solid #3a3d43;
+	padding: 16px;
+}
+.dg-chat-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	padding-bottom: 16px;
+}
+.dg-chat-head code {
+	margin-left: auto;
+	font-size: 12px;
+}
+.dg-avatar {
+	background: #c5f74f;
+	color: #18210d;
+	font: 700 12px monospace;
+	padding: 8px;
+}
+.dg-app-label {
+	font: 9px monospace;
+	padding: 2px 4px;
+	background: #5266b9;
+	color: white;
+}
+.dg-example img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+.dg-example figcaption {
+	color: #a7abb6;
+	font: 10px monospace;
+	margin-top: 12px;
+}
+.dg-commands {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+	margin: 0 0 12px;
+}
+.dg-commands button {
+	padding: 9px 10px;
+	font: 12px monospace;
+	background: #1b2117;
+	color: #a7b09f;
+	border: 1px solid #35402c;
+	cursor: pointer;
+}
+.dg-commands button[aria-pressed="true"] {
+	color: #d3fca0;
+	border-color: #a3cf65;
+	background: #29351f;
+}
+.dg-description {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #a3af9d;
+	margin-top: 16px;
+}
+.dg-explorer-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 24px;
+	margin-bottom: 24px;
+}
+.dg-explorer-heading h2 {
+	font-size: clamp(30px, 4vw, 46px);
+	margin-bottom: 0;
+}
+.dg-explorer-heading .dg-install {
+	flex-shrink: 0;
+}
+.dg-explorer-body {
+	display: grid;
+	grid-template-columns: 300px 1fr;
+	gap: 32px;
+}
+.dg-explorer-body nav {
+	display: flex;
+	flex-direction: column;
+}
+.dg-explorer-body nav button {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 8px;
+	text-align: left;
+	padding: 20px;
+	background: #171d13;
+	color: #9da994;
+	border-bottom: 1px solid #303b27;
+	cursor: pointer;
+}
+.dg-explorer-body nav button code {
+	font-size: 18px;
+}
+.dg-explorer-body nav button span:first-of-type {
+	grid-row: 2;
+	font-size: 13px;
+}
+.dg-explorer-body nav button span:last-of-type {
+	grid-column: 2;
+	grid-row: 1;
+}
+.dg-explorer-body nav button[aria-pressed="true"] {
+	background: #2d3e1c;
+	box-shadow: inset 3px 0 #c5f74f;
+	color: #e6f6d7;
+}
+.dg-explorer > .dg-steps {
+	grid-template-columns: repeat(3, 1fr);
+	padding-top: 32px;
+	border-top: 1px solid #303b27;
+}
+.dg-invitation {
+	display: grid;
+	grid-template-columns: 0.8fr 1.2fr;
+	gap: 48px;
+	align-items: center;
+}
+.dg-invitation h2 {
+	font-size: clamp(36px, 5vw, 72px);
+}
+.dg-invitation-example .dg-commands {
+	margin: 16px 0 0;
+}
+.dg-invitation-actions {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.dg-how {
+	color: #cfddc2;
+	padding: 12px 0;
+	border-bottom: 1px solid #6b7a5c;
+	font: 13px monospace;
+	cursor: pointer;
+}
+.dg-switcher {
+	position: fixed;
+	z-index: 100;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	max-width: calc(100vw - 24px);
+	width: max-content;
+	padding: 8px;
+	background: #e0f4c9;
+	color: #192211;
+	border: 1px solid #5f7847;
+	box-shadow: 0 8px 32px #0008;
+}
+.dg-switcher button {
+	padding: 10px 14px;
+	background: #1b2811;
+	color: #def4ca;
+	font-size: 18px;
+	cursor: pointer;
+}
+.dg-switcher strong,
+.dg-switcher-state {
+	display: block;
+	font: 11px monospace;
+}
+.dg-switcher-state {
+	font-size: 10px;
+	opacity: 0.7;
+	margin-top: 4px;
+}
+.dg-section button:focus-visible,
+.dg-section a:focus-visible,
+.dg-switcher button:focus-visible {
+	outline: 2px solid #c5f74f;
+	outline-offset: 4px;
+}
+@media (max-width: 800px) {
+	.dg-switcher {
+		bottom: 88px;
+	}
+	.dg-section {
+		margin: 40px 16px;
+		padding: 32px 16px;
+	}
+	.dg-walkthrough,
+	.dg-invitation,
+	.dg-explorer-body {
+		grid-template-columns: 1fr;
+		gap: 32px;
+	}
+	.dg-explorer-heading {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.dg-explorer-body nav {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+	}
+	.dg-explorer-body nav button {
+		padding: 12px;
+	}
+	.dg-explorer > .dg-steps {
+		grid-template-columns: 1fr;
+	}
+	.dg-example {
+		padding: 10px;
+	}
+	.dg-switcher {
+		gap: 8px;
+	}
+	.dg-switcher strong {
+		font-size: 9px;
+	}
+	.dg-switcher-state {
+		font-size: 8px;
+	}
+	.dg-switcher button {
+		padding: 8px;
+	}
+}

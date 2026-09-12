@@ -8,14 +8,26 @@ import {
 } from "@/features/landing/sections/FeaturedStacksSection";
 import { HeroSection } from "@/features/landing/sections/HeroSection";
 import { PublishCTASection } from "@/features/landing/sections/PublishCTASection";
+import {
+	DiscordGuidePrototype,
+	type DiscordGuideVariant,
+} from "./prototype/DiscordGuidePrototype";
 
 type LandingPageShellProps = {
 	stacks: LandingStackPreview[];
 	me?: { handle: string; hasStack: boolean } | null;
 	band?: Band | null;
+	discordVariant?: DiscordGuideVariant;
+	onDiscordVariant?: (variant: DiscordGuideVariant) => void;
 };
 
-function LandingPageShell({ stacks, me, band }: LandingPageShellProps) {
+function LandingPageShell({
+	stacks,
+	me,
+	band,
+	discordVariant,
+	onDiscordVariant,
+}: LandingPageShellProps) {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<GridBackground />
@@ -29,6 +41,12 @@ function LandingPageShell({ stacks, me, band }: LandingPageShellProps) {
 			    (#147's winner) and keeps the dev-only ?variant= switcher alive. */}
 			{band && band.rows.length > 0 ? <PulsePrototype band={band} /> : null}
 			<FeaturedStacksSection stacks={stacks} />
+			{import.meta.env.DEV && discordVariant && onDiscordVariant ? (
+				<DiscordGuidePrototype
+					variant={discordVariant}
+					onVariant={onDiscordVariant}
+				/>
+			) : null}
 			<ExplainerSection />
 			<PublishCTASection me={me} />
 		</div>

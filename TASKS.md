@@ -1,5 +1,4 @@
 * discord bot, better commands
-* empty state for project: only keep add a project and remove new project
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed

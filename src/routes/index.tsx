@@ -3,6 +3,7 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
+import type { DiscordGuideVariant } from "@/features/landing/prototype/DiscordGuidePrototype";
 import type {
 	LandingStackPreview,
 	SortOption,
@@ -21,7 +22,17 @@ export const Route = createFileRoute("/")({
 	component: IndexRoute,
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { filter?: string; sort?: SortOption; page?: number } => ({
+	): {
+		filter?: string;
+		sort?: SortOption;
+		page?: number;
+		variant?: string;
+	} => ({
+		...(import.meta.env.DEV &&
+		typeof search.variant === "string" &&
+		/^discord-[ABC]$/.test(search.variant)
+			? { variant: search.variant }
+			: {}),
 		filter: coerceString(search.filter, "all"),
 		sort: coerceEnum(
 			search.sort,
@@ -58,6 +69,12 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexRoute() {
+	const { variant } = Route.useSearch();
+	const navigate = Route.useNavigate();
+	const discordVariant =
+		import.meta.env.DEV && variant?.startsWith("discord-")
+			? (variant.slice(-1) as DiscordGuideVariant)
+			: undefined;
 	// Both reads fall back to the loader snapshot, so the server and the
 	// hydrating client render the SAME page. Reading the live query alone left
 	// the SSR HTML without the featured stacks - a hydration mismatch that made
@@ -78,7 +95,20 @@ function IndexRoute() {
 						"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows.",
 				}}
 			/>
-			<LandingPageShell stacks={stacks} me={me} band={band} />
+			<LandingPageShell
+				stacks={stacks}
+				me={me}
+				band={band}
+				discordVariant={discordVariant}
+				onDiscordVariant={(next) =>
+					navigate({
+						search: (previous) => ({ ...previous, variant: `discord-${next}` }),
+						hash: "discord-guide",
+						replace: true,
+						resetScroll: false,
+					})
+				}
+			/>
 		</>
 	);
 }

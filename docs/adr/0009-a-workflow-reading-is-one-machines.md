@@ -55,3 +55,11 @@ to per-day rows in [alp82/aistack#285](https://github.com/alp82/aistack/issues/2
 part of [map #200](https://github.com/alp82/aistack/issues/200). Spec:
 [docs/specs/workflow-surface.md](../specs/workflow-surface.md). See also ADR-0006, which
 settles the same question for the measured headline and answers it the other way.
+
+## Discord context exception
+
+The [Discord production data decision](https://github.com/alp82/aistack/issues/409#issuecomment-5643497282)
+authorizes a context-only reading across machines, grouped by harness, with statistics
+derived after combining the context atoms. Its resolution holds the detailed contract
+and accepted window edge case. The general workflow reading and Git boundary above
+remain in place.
