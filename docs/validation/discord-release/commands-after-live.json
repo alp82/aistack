@@ -1,0 +1,278 @@
+[
+  {
+    "id": "1543236190679859290",
+    "application_id": "1540381573243736116",
+    "version": "1543236190679859295",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "stack",
+    "description": "Post a stack card",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "stack",
+        "description": "Stack slug, like alpers-agent-stack-unw0sl. Empty: your own stack."
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1543236190679859291",
+    "application_id": "1540381573243736116",
+    "version": "1548274799514488846",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "tokens",
+    "description": "Token totals and model usage",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "creator",
+        "description": "AI Stack creator handle. Empty: your linked profile.",
+        "autocomplete": true
+      },
+      {
+        "type": 4,
+        "name": "days",
+        "description": "Whole UTC days, default 7",
+        "min_value": 1,
+        "max_value": 180
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1543236190679859292",
+    "application_id": "1540381573243736116",
+    "version": "1543236190679859297",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "leaderboard",
+    "description": "Top builders by 30-day token volume",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1543236190679859293",
+    "application_id": "1540381573243736116",
+    "version": "1543236190679859298",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "model",
+    "description": "Adoption and token share for a model",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "model",
+        "description": "Model name, like gpt-5.6-sol",
+        "required": true
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1543236190679859294",
+    "application_id": "1540381573243736116",
+    "version": "1543236190679859299",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "link",
+    "description": "Link your aistack account",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1548274799514488842",
+    "application_id": "1540381573243736116",
+    "version": "1548274799514488847",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "cost",
+    "description": "Subscriptions and measured usage cost",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "creator",
+        "description": "AI Stack creator handle. Empty: your linked profile.",
+        "autocomplete": true
+      },
+      {
+        "type": 4,
+        "name": "days",
+        "description": "Whole UTC days, default 7",
+        "min_value": 1,
+        "max_value": 180
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1548274799514488843",
+    "application_id": "1540381573243736116",
+    "version": "1548274799514488848",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "context",
+    "description": "Measured context usage",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "creator",
+        "description": "AI Stack creator handle. Empty: your linked profile.",
+        "autocomplete": true
+      },
+      {
+        "type": 4,
+        "name": "days",
+        "description": "Whole UTC days, default 7",
+        "min_value": 1,
+        "max_value": 180
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1548274799514488844",
+    "application_id": "1540381573243736116",
+    "version": "1548274799514488849",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "harness",
+    "description": "Token usage by harness",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "creator",
+        "description": "AI Stack creator handle. Empty: your linked profile.",
+        "autocomplete": true
+      },
+      {
+        "type": 4,
+        "name": "days",
+        "description": "Whole UTC days, default 7",
+        "min_value": 1,
+        "max_value": 180
+      }
+    ],
+    "nsfw": false
+  },
+  {
+    "id": "1548274799514488845",
+    "application_id": "1540381573243736116",
+    "version": "1548274799514488850",
+    "default_member_permissions": null,
+    "type": 1,
+    "name": "compare",
+    "description": "Compare two AI Stack creators",
+    "dm_permission": true,
+    "contexts": [
+      0,
+      1,
+      2
+    ],
+    "integration_types": [
+      0,
+      1
+    ],
+    "options": [
+      {
+        "type": 3,
+        "name": "creator",
+        "description": "AI Stack creator handle. Empty: your linked profile.",
+        "autocomplete": true
+      },
+      {
+        "type": 3,
+        "name": "person",
+        "description": "AI Stack creator to compare with",
+        "autocomplete": true
+      },
+      {
+        "type": 4,
+        "name": "days",
+        "description": "Whole UTC days, default 7",
+        "min_value": 1,
+        "max_value": 180
+      }
+    ],
+    "nsfw": false
+  }
+]

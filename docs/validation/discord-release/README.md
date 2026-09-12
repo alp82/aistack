@@ -110,15 +110,24 @@ with readable text, confirmed by image inspection. The final PNGs were
 [Sanitized runtime results](production-runtime.json) record each response;
 [the production token card](production-tokens.png) records the corrected output.
 
-## Outstanding activation evidence
+## Completed activation
 
-- One-time repository Actions secret `DISCORD_BOT_TOKEN` setup.
-- Actual prior global registration snapshot.
-- Nine-command registration and readback results.
+The owner provisioned the one-time GitHub Actions secret. The
+[successful automated release](https://github.com/alp82/aistack/actions/runs/34687736326)
+deployed `b544c8a3`, passed matching-renderer readiness, registered all nine global
+commands and verified the complete readback. Every command enables installation
+types `[0, 1]` and contexts `[0, 1, 2]`.
 
-Code deployment and shared configuration are complete. Global command
-registration is still pending. Homepage publication remains pending so its
-instructions do not advertise unregistered commands.
+- [Prior live registrations](commands-before-live.json): stack, tokens,
+  leaderboard, model and link.
+- [Verified live registrations](commands-after-live.json): those five entries
+  plus cost, context, harness and compare, with the updated tokens options.
+- [Workflow recovery artifact](https://github.com/alp82/aistack/actions/runs/34687736326/artifacts/10295689210):
+  complete prior, approved and resulting payloads.
+
+The bot release is complete. No Discord messages were sent for these checks;
+owner desktop/mobile and consenting-tester checks remain waived. The separate
+homepage ticket can now publish its prepared installation guide.
 
 ## Automated registration rollout
 
@@ -130,3 +139,6 @@ revision. Registration then failed explicitly because the repository Actions
 secret `DISCORD_BOT_TOKEN` has not been provisioned. No Discord registration
 mutation occurred. Once this one-time secret is added, dispatch the workflow
 on `main`; all subsequent releases perform registration automatically.
+
+The credential was subsequently added and the retry above succeeded. All future
+main pushes perform this registration automatically.
