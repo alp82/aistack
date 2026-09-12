@@ -70,8 +70,8 @@ interactions from other apps or guilds.
   shows tokens, measured usage cost, and model mix.
 - Compare on an existing answer opens person selection directly and preserves its
   subject. Search people opens a modal, then filters the select on the same message.
-- Range offers 1, 7, 30 and custom days. The prototype caps custom ranges at 400;
-  the production query limit remains undecided.
+- Range offers 1, 7, 30 and custom days. Custom ranges accept 1 to 180 whole
+  UTC days, inclusive, as specified by the owner before merging.
 - Another account clicking controls receives a private rejection; the public
   answer stays unchanged. Sessions expire after one hour or a server restart.
 - Profile link buttons open `/@handle` on aistack.to, with one link per compared

@@ -138,12 +138,12 @@ async function serve() {
         if (state.owner !== user.id) return privateReply(`Only the person who ran this command can change this answer. Run /${state.command} to explore your own.`);
         if (state.busy) return privateReply('This answer is updating. Try again in a moment.');
         if (!interaction.message) return privateReply('This control needs its original answer. Run the command again.');
-        if (interaction.type === 3 && action === 'custom-days') return json(200, modal(state, 'submit-days', 'Custom range', 'Number of UTC days (1 to 400)', String(state.days)));
+        if (interaction.type === 3 && action === 'custom-days') return json(200, modal(state, 'submit-days', 'Custom range', 'Number of UTC days (1 to 180)', String(state.days)));
         if (interaction.type === 3 && action === 'search-person') return json(200, modal(state, 'submit-search', 'Find a person', 'Creator username contains'));
         if (interaction.type === 5) {
           const value = new Map(fieldValues(interaction.data?.components)).get('value')?.trim() || '';
           if (action === 'submit-days') {
-            if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 400) return privateReply('Enter a whole number from 1 to 400.');
+            if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 180) return privateReply('Enter a whole number from 1 to 180.');
             state.days = Number(value); state.panel = '';
           } else if (action === 'submit-search') { state.search = value; state.panel = 'people'; }
           else return privateReply('Unknown prototype form. Run the command again.');
