@@ -18,6 +18,7 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DiscordRouteImport } from './routes/discord'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ActivityRouteImport } from './routes/activity'
@@ -98,6 +99,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscordRoute = DiscordRouteImport.update({
+  id: '/discord',
+  path: '/discord',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/discord': typeof DiscordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/discord': typeof DiscordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -383,6 +391,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/discord': typeof DiscordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/admin'
     | '/auth-callback'
+    | '/discord'
     | '/forgot-password'
     | '/leaderboard'
     | '/reset-password'
@@ -479,6 +489,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/admin'
     | '/auth-callback'
+    | '/discord'
     | '/forgot-password'
     | '/leaderboard'
     | '/reset-password'
@@ -526,6 +537,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/admin'
     | '/auth-callback'
+    | '/discord'
     | '/forgot-password'
     | '/leaderboard'
     | '/reset-password'
@@ -574,6 +586,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  DiscordRoute: typeof DiscordRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LeaderboardRoute: typeof LeaderboardRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -677,6 +690,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discord': {
+      id: '/discord'
+      path: '/discord'
+      fullPath: '/discord'
+      preLoaderRoute: typeof DiscordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth-callback': {
@@ -953,6 +973,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   AdminRoute: AdminRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  DiscordRoute: DiscordRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LeaderboardRoute: LeaderboardRoute,
   ResetPasswordRoute: ResetPasswordRoute,

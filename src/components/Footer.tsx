@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { DISCORD_INSTALL_URL } from "@/lib/discord";
 import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
 
 const socialLinks = [
@@ -20,7 +19,7 @@ const socialLinks = [
 		),
 	},
 	{
-		name: "Join Discord",
+		name: "Join our community",
 		href: "https://discord.gg/5y4fpyahaF",
 		bgColor: "bg-[#5865F2]/40",
 		hoverBg: "hover:bg-[#5865F2]/60",
@@ -37,7 +36,7 @@ const socialLinks = [
 	},
 	{
 		name: "Discord bot",
-		href: DISCORD_INSTALL_URL,
+		href: "/discord",
 		bgColor: "bg-[#5865F2]/40",
 		hoverBg: "hover:bg-[#5865F2]/60",
 		icon: (
@@ -146,8 +145,10 @@ function Footer() {
 						<a
 							key={link.href}
 							href={link.href}
-							target="_blank"
-							rel="noopener noreferrer"
+							target={link.href.startsWith("/") ? undefined : "_blank"}
+							rel={
+								link.href.startsWith("/") ? undefined : "noopener noreferrer"
+							}
 							className={`flex items-center gap-2.5 px-3 py-2 ${link.bgColor} ${link.hoverBg} text-fg-muted hover:text-fg-primary transition-colors`}
 							aria-label={link.name}
 						>

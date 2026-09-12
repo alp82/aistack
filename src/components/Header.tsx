@@ -250,7 +250,7 @@ export default function Header() {
 								target="_blank"
 								rel="noopener noreferrer"
 								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-								aria-label="Join Discord"
+								aria-label="Join our community"
 							>
 								<DiscordIcon />
 							</a>
@@ -360,7 +360,7 @@ export default function Header() {
 												className="flex w-full items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
 											>
 												<DiscordIcon />
-												Discord
+												Discord account
 											</Link>
 											<button
 												type="button"
@@ -539,7 +539,7 @@ export default function Header() {
 										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 									>
 										<DiscordIcon />
-										Discord
+										Discord account
 									</Link>
 									<button
 										type="button"
@@ -590,7 +590,7 @@ export default function Header() {
 								target="_blank"
 								rel="noopener noreferrer"
 								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-								aria-label="Join Discord"
+								aria-label="Join our community"
 							>
 								<DiscordIcon />
 							</a>

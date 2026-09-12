@@ -191,7 +191,7 @@ const subject = answer("you", 12_400_000, 42, 0.7, 64000);
 const comparison = answer("alice", 9_100_000, 34, 0.55, 48000);
 // The comparison fixtures only need tokens, usage cost and model mix.
 const output = new URL(
-	"../src/features/landing/sections/discord-guide-images/",
+	"../src/features/discord/discord-guide-images/",
 	import.meta.url,
 );
 await mkdir(output, { recursive: true });

@@ -2,7 +2,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import { Footer } from "@/components/Footer";
-import { DISCORD_INSTALL_URL } from "@/lib/discord";
 
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({ children }: { children: React.ReactNode }) => (
@@ -12,10 +11,12 @@ vi.mock("@tanstack/react-router", () => ({
 
 afterEach(cleanup);
 
-test("the footer links to the Discord bot install page in a new tab", () => {
+test("the footer distinguishes the public bot guide from the community invite", () => {
 	render(<Footer />);
 	const link = screen.getByRole("link", { name: "Discord bot" });
-	expect(link).toHaveAttribute("href", DISCORD_INSTALL_URL);
-	expect(link).toHaveAttribute("target", "_blank");
-	expect(link.getAttribute("rel")).toContain("noopener");
+	expect(link).toHaveAttribute("href", "/discord");
+	expect(link).not.toHaveAttribute("target");
+	const community = screen.getByRole("link", { name: "Join our community" });
+	expect(community).toHaveAttribute("href", "https://discord.gg/5y4fpyahaF");
+	expect(community).toHaveAttribute("target", "_blank");
 });
