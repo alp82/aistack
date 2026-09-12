@@ -36,6 +36,12 @@ import {
 	outroError,
 	yellow,
 } from "../theme.js";
+import {
+	enableTrace,
+	traceEnvironment,
+	traceRequestedByEnv,
+} from "../trace.js";
+import { CLI_VERSION } from "../version.js";
 import { offerConnectUpsell } from "./connect.js";
 import { performLogin } from "./login.js";
 
@@ -44,9 +50,29 @@ export interface SyncOptions {
 	auto?: boolean | string;
 	/** `--every <hours>`, applied with `--auto on`. */
 	every?: string;
+	/** `--verbose`: print every phase with its duration to stderr. */
+	verbose?: boolean;
 }
 
+/**
+ * The clack spinner repaints on an interval of this length. A phase message
+ * set right before work that blocks the event loop is never drawn unless the
+ * caller waits one frame first, and the stale text then names the wrong step
+ * for as long as the block lasts (minutes on a large Cursor database).
+ */
+const SPINNER_FRAME_MS = 90;
+const paintFrame = () =>
+	new Promise<void>((resolve) => setTimeout(resolve, SPINNER_FRAME_MS));
+
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
+	if (options.verbose || traceRequestedByEnv()) {
+		enableTrace();
+		traceEnvironment({
+			cliVersion: CLI_VERSION,
+			baseUrl: BASE_URL,
+			trigger: options.auto === true ? "auto" : "manual",
+		});
+	}
 	// The silent path (#62): no TTY, no prompts, no upsells. Publishes only
 	// under the standing opt-in and always exits 0 - the hook command's `||`
 	// offline fallback must never fire on a mere sync failure.
@@ -180,7 +206,10 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 			baseUrl: BASE_URL,
 			getTokenImpl: () => destinationToken,
 			loadConfigImpl: async () => destinationConfig,
-			onProgress: (message) => s.message(message),
+			onProgress: async (message) => {
+				s.message(message);
+				await paintFrame();
+			},
 		});
 	} catch (e) {
 		s.stop("Scan failed");

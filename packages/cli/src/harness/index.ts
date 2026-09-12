@@ -21,6 +21,7 @@
 //     });
 //   }
 
+import { traceTimer } from "../trace.js";
 import { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
 import { CURSOR_HARNESS_NAME, cursorAdapter } from "./cursor/adapter.js";
@@ -182,10 +183,23 @@ export function detectionSinceMs(now: number = Date.now()): number {
  */
 export async function detectedAdapters(
 	sinceMs: number = detectionSinceMs(),
+	hooks: {
+		/**
+		 * Called before each adapter's detect and awaited, so a caller with a
+		 * spinner can name the harness about to be checked. A detect can block
+		 * the event loop for a while (Cursor reads its SQLite history here), and
+		 * the name on screen must be the one doing the work.
+		 */
+		onAdapter?: (adapter: HarnessAdapter) => void | Promise<void>;
+	} = {},
 ): Promise<HarnessAdapter[]> {
 	const out: HarnessAdapter[] = [];
 	for (const adapter of HARNESS_ADAPTERS) {
-		if (await adapter.detect({ sinceMs })) out.push(adapter);
+		await hooks.onAdapter?.(adapter);
+		const done = traceTimer(`detect ${adapter.name}`);
+		const present = await adapter.detect({ sinceMs });
+		done(present ? "found" : "nothing in window");
+		if (present) out.push(adapter);
 	}
 	return out;
 }
