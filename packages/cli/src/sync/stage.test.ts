@@ -113,6 +113,41 @@ describe("stageSync", () => {
 		expect(staged.bodyJson).not.toContain("-home-u-p");
 	});
 
+	// A phase message is the only thing a user sees while a step blocks the
+	// event loop, so the stage names the step first and waits for the terminal
+	// to show it. Detection names each harness through the adapters hook.
+	test("names each phase before its work and waits for the terminal to show it", async () => {
+		const seen: string[] = [];
+		let pending = 0;
+		const staged = await stageSync(
+			deps({
+				adaptersImpl: async (_sinceMs, hooks) => {
+					await hooks?.onAdapter?.(FAKE_CLAUDE_ADAPTER);
+					return [FAKE_CLAUDE_ADAPTER];
+				},
+				onProgress: async (message) => {
+					// Every earlier phase's promise settled before the next one started.
+					expect(pending).toBe(0);
+					pending++;
+					seen.push(message);
+					await new Promise((resolve) => setTimeout(resolve, 1));
+					pending--;
+				},
+			}),
+		);
+		expect(staged.blockedReason).toBeNull();
+		expect(seen).toEqual([
+			"Checking prices",
+			"Checking stack settings",
+			"Checking previously synced days",
+			"Checking for Claude Code history",
+			"Scanning recent Claude Code usage",
+			"Reading historical Claude Code days",
+			"Reading Git history",
+			"Preparing review",
+		]);
+	});
+
 	test("bodyJson is the exact serialization and the id derives from it", async () => {
 		const staged = await stageSync(deps({}));
 		expect(staged.bodyJson).toBe(JSON.stringify(staged.body));

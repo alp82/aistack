@@ -58,6 +58,10 @@ program
 		"--every <hours>",
 		"with --auto on: hours between auto-syncs (default 6)",
 	)
+	.option(
+		"--verbose",
+		"print every phase with its duration to stderr, for a sync that looks stuck (same as AISTACK_DEBUG=1)",
+	)
 	.action((options) => syncCommand(options));
 
 program

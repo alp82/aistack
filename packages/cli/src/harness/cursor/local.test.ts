@@ -4,7 +4,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import rows from "./fixtures/composer-rows.json";
-import { dataPath, readLocal } from "./local.js";
+import { dataPath, forgetLocalReads, readLocal } from "./local.js";
 
 let dir: string;
 let root: string;
@@ -13,6 +13,7 @@ beforeEach(async () => {
 	root = path.join(dir, "User", "workspaceStorage");
 	vi.stubEnv("CURSOR_DATA_PATH", root);
 	vi.stubEnv("CURSOR_STORE_ROOT", path.join(dir, "store"));
+	forgetLocalReads();
 });
 afterEach(async () => {
 	vi.unstubAllEnvs();
@@ -64,6 +65,26 @@ it("resolves the qualified Composer fixture with the packaged node:sqlite reader
 		"read_file",
 	);
 });
+// A sync asks the adapter four times (detect twice, scan twice). Each read
+// walks the whole global database on the main thread, so the second, third
+// and fourth must be the first one's result, until the source changes.
+it("reads a root once per process while its source is unchanged", async () => {
+	await createSource();
+	const first = await readLocal(root);
+	expect(first.sessions).toHaveLength(1);
+	expect(await readLocal(root)).toBe(first);
+	const global = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	global
+		.prepare("INSERT INTO cursorDiskKV VALUES (?, ?)")
+		.run("aistack:changed", JSON.stringify({ padding: "x".repeat(8192) }));
+	global.close();
+	const again = await readLocal(root);
+	expect(again).not.toBe(first);
+	expect(again.sessions).toHaveLength(1);
+});
+
 it("reconciles a transcript copy once and retains explicit-zero raw token evidence", async () => {
 	await createSource();
 	const id = "11111111-1111-4111-8111-111111111111";

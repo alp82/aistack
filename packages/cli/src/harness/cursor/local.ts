@@ -2,6 +2,7 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { Session, SessionReadContext } from "cursor-history";
+import { trace, traceTimer } from "../../trace.js";
 import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
@@ -125,15 +126,56 @@ export type LocalRead = {
 	complete: boolean;
 	stats: ScanStats;
 };
+/**
+ * One read per root per process while the source is unchanged.
+ *
+ * A sync asks this adapter four times (detect twice, scan twice), and every
+ * read walks the whole global database on the main thread: on a 1.6 GB
+ * `state.vscdb` the session listing alone costs tens of seconds of CPU, during
+ * which the spinner cannot repaint. Four walks read as a hang; one is a wait.
+ * The memo is keyed by the source stamp, so a database that changes between
+ * two calls in the same run is read again, and the stamp check that marks a
+ * read incomplete when the source moved under it still applies to each read.
+ */
+const localReads = new Map<
+	string,
+	{ stamp: string; read: Promise<LocalRead> }
+>();
+
+/** Tests only: forget the reads this process made. */
+export function forgetLocalReads(): void {
+	localReads.clear();
+}
+
 /** Errors never escape with paths, prompts or database values. */
 export async function readLocal(
 	root = dataPath(),
 	onProgress?: (files: number) => void,
 ): Promise<LocalRead> {
+	const stamp = await sourceStamp(root);
+	const held = localReads.get(root);
+	if (held && held.stamp === stamp) {
+		trace("cursor · reusing this run's history read");
+		return held.read;
+	}
+	const read = readLocalOnce(root, stamp, onProgress);
+	localReads.set(root, { stamp, read });
+	return read;
+}
+
+async function readLocalOnce(
+	root: string,
+	before: string,
+	onProgress?: (files: number) => void,
+): Promise<LocalRead> {
 	const stats = emptyScanStats();
 	const out: LocalRead = { sessions: [], complete: true, stats };
-	if (!(await hasLocalSource(root))) return out;
-	const before = await sourceStamp(root);
+	if (!(await hasLocalSource(root))) {
+		trace("cursor · no local source");
+		return out;
+	}
+	trace(`cursor · global database ${await globalDbSize(root)}`);
+	const readDone = traceTimer("cursor history read");
 	let context: SessionReadContext | undefined;
 	try {
 		const reader = await import("cursor-history");
@@ -149,11 +191,17 @@ export async function readLocal(
 		const config = { ...options, readContext: context };
 		let offset = 0;
 		while (true) {
+			// The first page carries the whole workspace discovery, which walks
+			// every bubble key in the global database before it returns.
+			const pageDone = traceTimer(
+				offset === 0 ? "cursor session listing" : "cursor session page",
+			);
 			const page = await reader.listSessionSummaries({
 				...config,
 				offset,
 				limit: 100,
 			});
+			pageDone(`${page.data.length} sessions`);
 			for (const summary of page.data) {
 				stats.filesFound++;
 				if (summary.resolutionState === "ambiguous") {
@@ -195,5 +243,17 @@ export async function readLocal(
 		}
 	}
 	if (before !== (await sourceStamp(root))) out.complete = false;
+	readDone(
+		`${stats.filesRead}/${stats.filesFound} sessions read, ${stats.filesUnreadable} unreadable${out.complete ? "" : ", incomplete"}`,
+	);
 	return out;
+}
+
+async function globalDbSize(root: string): Promise<string> {
+	try {
+		const info = await stat(globalDb(root));
+		return `${(info.size / 1_048_576).toFixed(0)} MB`;
+	} catch {
+		return "absent";
+	}
 }
