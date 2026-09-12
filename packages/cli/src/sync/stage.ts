@@ -33,7 +33,7 @@ import {
 	getToken,
 	type Settings,
 } from "../config.js";
-import { detectedAdapters } from "../harness/index.js";
+import { detectedAdapters, harnessLabel } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
 	type LoadedSyncConfig,
@@ -56,6 +56,7 @@ import {
 	windowStartMs,
 } from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
+import { trace, traceTimer } from "../trace.js";
 import {
 	buildMeasuredDays,
 	buildUsageDays,
@@ -136,7 +137,12 @@ export type StageDeps = {
 		token?: string;
 	}) => Promise<LoadedSyncConfig>;
 	/** Override the adapter set. Tests only. */
-	adaptersImpl?: (sinceMs: number) => Promise<HarnessAdapter[]>;
+	adaptersImpl?: (
+		sinceMs: number,
+		hooks?: {
+			onAdapter?: (adapter: HarnessAdapter) => void | Promise<void>;
+		},
+	) => Promise<HarnessAdapter[]>;
 	/** Override the Git reader the workflow extraction shells out to. Tests only. */
 	gitRunnerImpl?: GitWorkflowRunner;
 	/**
@@ -159,8 +165,15 @@ export type StageDeps = {
 	 * the background run has a human at the keyboard.
 	 */
 	trigger?: SyncTrigger;
-	/** Human-facing phase updates for the interactive terminal. */
-	onProgress?: (message: string) => void;
+	/**
+	 * Human-facing phase updates for the interactive terminal. A phase change
+	 * is AWAITED before the work it names starts: the spinner repaints on a
+	 * timer, and a phase that blocks the event loop (Cursor's SQLite walk) would
+	 * otherwise leave the previous phase's text on screen for minutes and read
+	 * as a hang at the wrong step. File-count updates inside a scan are not
+	 * awaited; they are frequent and the scan yields on its own.
+	 */
+	onProgress?: (message: string) => void | Promise<void>;
 };
 
 export function stageId(bodyJson: string): string {
@@ -177,7 +190,15 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
 	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
 	const fetchPrices = deps.fetchPricesImpl ?? fetchPriceTable;
-	const progress = deps.onProgress ?? (() => {});
+	// `phase` names the step that is about to run and waits for the terminal to
+	// show it; `note` refreshes a count inside a running step and returns at once.
+	const phase = async (message: string) => {
+		trace(message);
+		await deps.onProgress?.(message);
+	};
+	const note = (message: string) => {
+		void deps.onProgress?.(message);
+	};
 
 	// The price table comes from the server BEFORE any adapter prices a
 	// response (#336): the adapters call the module-level pricing functions,
@@ -188,24 +209,32 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		id: BUNDLED_PRICE_TABLE_ID,
 		origin: "bundled",
 	};
-	progress("Checking prices");
+	await phase("Checking prices");
+	const pricesDone = traceTimer("prices");
 	try {
 		const table = await fetchPrices(deps.baseUrl);
 		if (table) {
 			setActivePricer(layeredPricer(table));
 			prices = { id: table.id, origin: "served" };
+			pricesDone(`served ${table.id}`);
 		} else {
 			setActivePricer(null);
+			pricesDone("server has no price route, bundled table");
 		}
-	} catch {
+	} catch (error) {
 		setActivePricer(null);
+		pricesDone(`fetch failed (${describeError(error)}), bundled table`);
 	}
 
-	progress("Checking stack settings");
+	await phase("Checking stack settings");
+	const settingsDone = traceTimer("stack settings");
 	const { config, source } = await loadConfig({
 		baseUrl: deps.baseUrl,
 		...(token ? { token } : {}),
 	});
+	settingsDone(
+		`${source}${config.stack ? ", stack resolved" : ", no stack"}, publishWorkflow ${config.publishWorkflow}, publishCost ${config.publishCost}`,
+	);
 
 	// The server's day manifest (#307, ADR-0010): which dates it holds and with
 	// what fingerprint. Missing (an old server) or failing (network) reads as
@@ -214,12 +243,21 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// far back the day scan reaches.
 	let manifest: DayManifest | null = null;
 	if (token) {
-		progress("Checking previously synced days");
+		await phase("Checking previously synced days");
+		const manifestDone = traceTimer("day manifest");
 		try {
 			manifest = await fetchManifest(deps.baseUrl, token);
-		} catch {
+			manifestDone(
+				manifest
+					? `${manifest.days.length} days held, retention ${manifest.retentionDays}`
+					: "server has no manifest route, whole window goes",
+			);
+		} catch (error) {
 			manifest = null;
+			manifestDone(`fetch failed (${describeError(error)}), whole window goes`);
 		}
+	} else {
+		trace("day manifest · skipped, this machine holds no token");
 	}
 	const retentionDays = Math.max(
 		1,
@@ -242,19 +280,34 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// date the server would keep. Two scans over the same files; the second is
 	// the one the days and the workflow blocks come from.
 	const daysSinceMs = windowStartMs(now, retentionDays);
-	progress("Detecting local harnesses");
-	const active = await adapters(sinceMs);
+	// One phase per harness, so a detect that blocks the event loop (Cursor's
+	// history read) shows its own name on the spinner instead of the previous
+	// phase's. The historical pass repeats the same checks over a longer window
+	// and reuses the reads the first pass made where an adapter memoizes them.
+	const active = await adapters(sinceMs, {
+		onAdapter: (adapter) =>
+			phase(`Checking for ${harnessLabel(adapter.name)} history`),
+	});
+	trace(
+		`active harnesses (${windowDays} days): ${active.map((a) => a.name).join(", ") || "none"}`,
+	);
 	const historical = await adapters(daysSinceMs);
+	trace(
+		`historical harnesses (${retentionDays} days): ${historical.map((a) => a.name).join(", ") || "none"}`,
+	);
 	let dayScansComplete = true;
 	const sessionDatesByHarness = new Map<string, Map<string, Set<string>>>();
 	for (const adapter of active) {
-		progress(`Scanning recent ${adapter.name} usage`);
+		const label = harnessLabel(adapter.name);
+		await phase(`Scanning recent ${label} usage`);
+		const scanDone = traceTimer(`scan ${adapter.name} (recent)`);
 		const { aggregate, stats } = await adapter.scan({
 			sinceMs,
 			publishWorkflow: false,
 			onProgress: (files) =>
-				progress(`Scanning recent ${adapter.name} usage · ${files} files`),
+				note(`Scanning recent ${label} usage · ${files} files`),
 		});
+		scanDone(describeScan(stats));
 		scanStats[adapter.name] = stats;
 		built.push(
 			buildPayload({
@@ -270,14 +323,25 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		);
 	}
 	for (const adapter of historical) {
-		progress(`Reading historical ${adapter.name} days`);
-		const { aggregate, workflow, workflowLocal, scanComplete, sessionDates } =
-			await adapter.scan({
-				sinceMs: daysSinceMs,
-				publishWorkflow: config.publishWorkflow,
-				onProgress: (files) =>
-					progress(`Reading historical ${adapter.name} days · ${files} files`),
-			});
+		const label = harnessLabel(adapter.name);
+		await phase(`Reading historical ${label} days`);
+		const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
+		const {
+			aggregate,
+			stats,
+			workflow,
+			workflowLocal,
+			scanComplete,
+			sessionDates,
+		} = await adapter.scan({
+			sinceMs: daysSinceMs,
+			publishWorkflow: config.publishWorkflow,
+			onProgress: (files) =>
+				note(`Reading historical ${label} days · ${files} files`),
+		});
+		scanDone(
+			`${describeScan(stats)}${scanComplete === false ? ", incomplete" : ""}`,
+		);
 		if (scanComplete === false) dayScansComplete = false;
 		if (adapter.name === "grok-build" || adapter.name === "cursor")
 			sessionDatesByHarness.set(adapter.name, sessionDates ?? new Map());
@@ -307,7 +371,8 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// would be the one visible cost of a preference that is supposed to be free.
 	let workflow: WorkflowExtraction | undefined;
 	if (workflowScans.length > 0 && config.publishWorkflow) {
-		progress("Reading Git history");
+		await phase("Reading Git history");
+		const gitDone = traceTimer("git history");
 		workflow = deps.gitRunnerImpl
 			? extractLocalWorkflow({
 					harnesses: workflowScans,
@@ -320,6 +385,11 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 					fromMs: daysSinceMs,
 					toMs: now,
 				});
+		gitDone(`${workflow.days.length} days`);
+	} else {
+		trace(
+			`git history · skipped (${config.publishWorkflow ? "no harness scanned" : "publishWorkflow off"})`,
+		);
 	}
 
 	// The day rows (#307): usage and workflow joined by date, consent applied
@@ -381,8 +451,12 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			: undefined,
 		CLI_VERSION,
 	);
-	progress("Preparing review");
+	await phase("Preparing review");
 	const bodyJson = JSON.stringify(body);
+	trace(
+		`days · ${days.mode}, ${days.send.length} to send${dayScansComplete ? "" : " (a scan was incomplete, no day rows go)"}`,
+	);
+	trace(`body · ${bodyJson.length} bytes, ${built.length} harness payloads`);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 
 	const ctx = {
@@ -427,4 +501,15 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		prices,
 		...(acknowledgePublish ? { acknowledgePublish } : {}),
 	};
+}
+
+function describeError(error: unknown): string {
+	if (error instanceof Error) {
+		return error.name === "TimeoutError" ? "timed out" : error.message;
+	}
+	return String(error);
+}
+
+function describeScan(stats: ScanStats): string {
+	return `${stats.filesRead}/${stats.filesFound} files read, ${stats.filesUnreadable} unreadable`;
 }
