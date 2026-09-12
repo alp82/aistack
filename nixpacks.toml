@@ -1,0 +1,3 @@
+# Sharp renders SVG text with fonts available in the production container.
+[phases.setup]
+aptPkgs = ['...', 'fontconfig', 'fonts-dejavu-core']
