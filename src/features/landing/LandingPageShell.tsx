@@ -1,6 +1,7 @@
 import { GridBackground } from "@/components/GridBackground";
 import type { Band } from "@/features/activity/feed";
 import { PulsePrototype } from "@/features/activity/prototype/PulsePrototype";
+import { DiscordGuideSection } from "@/features/landing/sections/DiscordGuideSection";
 import { ExplainerSection } from "@/features/landing/sections/ExplainerSection";
 import {
 	FeaturedStacksSection,
@@ -29,6 +30,7 @@ function LandingPageShell({ stacks, me, band }: LandingPageShellProps) {
 			    (#147's winner) and keeps the dev-only ?variant= switcher alive. */}
 			{band && band.rows.length > 0 ? <PulsePrototype band={band} /> : null}
 			<FeaturedStacksSection stacks={stacks} />
+			<DiscordGuideSection />
 			<ExplainerSection />
 			<PublishCTASection me={me} />
 		</div>

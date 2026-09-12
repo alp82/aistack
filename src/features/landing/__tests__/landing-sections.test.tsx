@@ -39,6 +39,7 @@ describe("landing sections", () => {
 			level: 2,
 			name: /featured stacks/i,
 		});
+		const discord = screen.getByRole("region", { name: "AI Stack on Discord" });
 		const explainer = screen.getByRole("heading", {
 			level: 2,
 			name: /why it works/i,
@@ -51,7 +52,10 @@ describe("landing sections", () => {
 		expect(hero.compareDocumentPosition(featured)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);
-		expect(featured.compareDocumentPosition(explainer)).toBe(
+		expect(featured.compareDocumentPosition(discord)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(discord.compareDocumentPosition(explainer)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);
 		expect(explainer.compareDocumentPosition(cta)).toBe(

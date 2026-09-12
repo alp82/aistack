@@ -1,0 +1,166 @@
+.dg-section {
+	scroll-margin-top: 88px;
+	position: relative;
+	max-width: 1280px;
+	margin: 72px auto;
+	padding: 48px 32px;
+	color: var(--text-primary, #eef0ee);
+	border-top: 1px solid #30362d;
+	border-bottom: 1px solid #30362d;
+	background: #111510;
+}
+.dg-section h2 {
+	font-size: clamp(32px, 4vw, 58px);
+	line-height: 1.08;
+	letter-spacing: -0.045em;
+	font-weight: 600;
+	margin: 16px 0 24px;
+}
+.dg-kicker {
+	font: 12px monospace;
+	letter-spacing: 0.16em;
+	color: var(--accent-lime, #c5f74f);
+}
+.dg-intro {
+	font-size: 17px;
+	line-height: 1.65;
+	color: #b6bdb1;
+	max-width: 440px;
+	margin-bottom: 24px;
+}
+.dg-install {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 32px;
+	background: var(--accent-lime, #c5f74f);
+	color: #11160b;
+	padding: 14px 20px;
+	font: 700 14px monospace;
+	text-decoration: none;
+}
+.dg-install:hover {
+	filter: brightness(1.1);
+}
+.dg-walkthrough {
+	display: grid;
+	grid-template-columns: 0.85fr 1.15fr;
+	gap: 52px;
+	align-items: center;
+}
+.dg-steps {
+	margin: 32px 0 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 24px;
+}
+.dg-steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+.dg-steps li > span {
+	font: 13px monospace;
+	color: #8b997f;
+	padding-top: 4px;
+}
+.dg-steps h3 {
+	font-size: 15px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+.dg-steps p {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #a3af9d;
+}
+.dg-section code {
+	font-family: monospace;
+	color: #d1efb6;
+}
+.dg-example {
+	margin: 0;
+	background: #22232a;
+	border: 1px solid #3a3d43;
+	padding: 16px;
+}
+.dg-chat-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	padding-bottom: 16px;
+}
+.dg-chat-head code {
+	margin-left: auto;
+	font-size: 12px;
+}
+.dg-avatar {
+	background: #c5f74f;
+	color: #18210d;
+	font: 700 12px monospace;
+	padding: 8px;
+}
+.dg-app-label {
+	font: 9px monospace;
+	padding: 2px 4px;
+	background: #5266b9;
+	color: white;
+}
+.dg-example img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+.dg-example figcaption {
+	color: #a7abb6;
+	font: 10px monospace;
+	margin-top: 12px;
+}
+.dg-commands {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+	margin: 0 0 12px;
+}
+.dg-commands button {
+	padding: 9px 10px;
+	font: 12px monospace;
+	background: #1b2117;
+	color: #a7b09f;
+	border: 1px solid #35402c;
+	cursor: pointer;
+}
+.dg-commands button[aria-pressed="true"] {
+	color: #d3fca0;
+	border-color: #a3cf65;
+	background: #29351f;
+}
+.dg-description {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #a3af9d;
+	margin-top: 16px;
+}
+.dg-walkthrough > div {
+	min-width: 0;
+}
+.dg-section button:focus-visible,
+.dg-section a:focus-visible {
+	outline: 2px solid #c5f74f;
+	outline-offset: 4px;
+}
+@media (max-width: 800px) {
+	.dg-section {
+		margin: 40px 16px;
+		padding: 32px 16px;
+	}
+	.dg-walkthrough {
+		grid-template-columns: 1fr;
+		gap: 32px;
+	}
+	.dg-example {
+		padding: 10px;
+	}
+}
