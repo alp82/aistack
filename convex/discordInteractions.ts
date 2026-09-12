@@ -1,4 +1,9 @@
 import { v } from 'convex/values'
+import {
+  statsInteraction,
+  STATS_COMMANDS,
+  type StatsInteraction,
+} from './discordStatsInteractions'
 import { internal } from './_generated/api'
 import { httpAction, internalAction } from './_generated/server'
 import type { ActionCtx } from './_generated/server'
@@ -8,28 +13,10 @@ import {
   leaderboardCommand,
   modelCommand,
   stackCommand,
-  tokensCommand,
 } from './discordCommands'
 
-/**
- * The Discord interactions endpoint (wayfinder #229, map #199).
- *
- * Discord POSTs every slash command here. The handler runs in three steps,
- * each bounded by a Discord rule:
- *
- * 1. Verify the Ed25519 signature over `timestamp + raw body` BEFORE parsing.
- *    Discord probes the endpoint with bad signatures and removes one that
- *    answers anything but 401.
- * 2. Answer inside the 3-second window: PONG for the registration ping, and a
- *    deferred response (type 5) for a command. The deferral is the only place
- *    the ephemeral flag can be set, so a command declares it up front.
- * 3. A scheduled action computes the reply and PATCHes `@original` through the
- *    webhook, well inside the 15-minute token life.
- *
- * Commands plug in through `COMMANDS`. `/stack` and `/tokens` live in
- * `discordCommands.ts` (#226), and so do `/leaderboard` and `/model` (#223).
- * `/link` is here because its reply already exists.
- */
+/** Signed Discord entry: prompt acknowledgements and scheduled webhook delivery.
+ * Creator statistics use durable sessions; retained entries use small embeds. */
 
 export const INTERACTIONS_PATH = '/api/discord/interactions'
 
@@ -42,7 +29,6 @@ const EPHEMERAL = 64
 const InteractionType = {
   PING: 1,
   APPLICATION_COMMAND: 2,
-  MESSAGE_COMPONENT: 3,
   APPLICATION_COMMAND_AUTOCOMPLETE: 4,
 } as const
 
@@ -50,7 +36,6 @@ const CallbackType = {
   PONG: 1,
   CHANNEL_MESSAGE_WITH_SOURCE: 4,
   DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
-  AUTOCOMPLETE_RESULT: 8,
 } as const
 
 const OptionValue = v.union(v.string(), v.number(), v.boolean())
@@ -79,7 +64,7 @@ interface CommandSpec {
   reply: (ctx: ActionCtx, call: CommandCall) => Promise<ReplyData>
 }
 
-/** The command registry. Later tickets add their entries here. */
+/** The complete registered release command set. */
 export const COMMANDS: Record<string, CommandSpec> = {
   link: {
     ephemeral: true,
@@ -89,7 +74,17 @@ export const COMMANDS: Record<string, CommandSpec> = {
       }),
   },
   stack: stackCommand,
-  tokens: tokensCommand,
+  ...Object.fromEntries(
+    STATS_COMMANDS.map((name) => [
+      name,
+      {
+        ephemeral: false,
+        reply: async () => {
+          throw new Error('Stats use durable sessions')
+        },
+      },
+    ]),
+  ),
   leaderboard: leaderboardCommand,
   model: modelCommand,
 }
@@ -149,21 +144,11 @@ function json(status: number, body: unknown): Response {
 function message(content: string): Response {
   return json(200, {
     type: CallbackType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: { flags: EPHEMERAL, content },
+    data: { flags: EPHEMERAL, content, allowed_mentions: { parse: [] } },
   })
 }
 
-interface RawInteraction {
-  type?: number
-  application_id?: string
-  token?: string
-  data?: {
-    name?: string
-    options?: Array<{ name?: string; value?: unknown }>
-  }
-  member?: { user?: { id?: string } }
-  user?: { id?: string }
-}
+type RawInteraction = StatsInteraction
 
 function parseOptions(raw: RawInteraction['data']): CommandOption[] {
   const options: CommandOption[] = []
@@ -188,13 +173,29 @@ export const interactions = httpAction(async (ctx, request) => {
   const rawBody = await request.text()
   const signature = request.headers.get('x-signature-ed25519') ?? ''
   const timestamp = request.headers.get('x-signature-timestamp') ?? ''
-  if (!(await verifyDiscordSignature(publicKey, signature, timestamp, rawBody))) {
+  if (
+    !(await verifyDiscordSignature(publicKey, signature, timestamp, rawBody))
+  ) {
     return json(401, { error: 'invalid request signature' })
   }
+
+  if (
+    !/^\d+$/.test(timestamp) ||
+    Math.abs(Date.now() - Number(timestamp) * 1000) > 300000
+  )
+    return json(401, { error: 'expired request signature' })
+  if (rawBody.length > 65536)
+    return json(413, { error: 'interaction too large' })
 
   let interaction: RawInteraction
   try {
     interaction = JSON.parse(rawBody) as RawInteraction
+    if (
+      !interaction ||
+      typeof interaction !== 'object' ||
+      Array.isArray(interaction)
+    )
+      return json(400, { error: 'invalid interaction' })
   } catch {
     return json(400, { error: 'invalid JSON' })
   }
@@ -203,8 +204,41 @@ export const interactions = httpAction(async (ctx, request) => {
     return json(200, { type: CallbackType.PONG })
   }
 
+  const actor = interaction.member?.user?.id ?? interaction.user?.id
+  if (actor) {
+    // Abuse limits. One bucket per Discord user, and one app-wide bucket that
+    // bounds a flood from many users. Interaction responses are exempt from
+    // Discord's global rate limit, so the reply is a message, not a 429.
+    const perUser = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
+      key: `discord-user:${actor}`,
+      limit: DISCORD_USER_MAX_REQUESTS,
+    })
+    if (!perUser.allowed) {
+      if (interaction.type === 4)
+        return json(200, { type: 8, data: { choices: [] } })
+      return message(
+        `Too many commands. Try again in ${perUser.retryAfterSeconds} seconds.`,
+      )
+    }
+    const shared = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
+      key: 'discord-app:all',
+      limit: SHARED_BUCKET_MAX_REQUESTS,
+    })
+    if (!shared.allowed) {
+      if (interaction.type === 4)
+        return json(200, { type: 8, data: { choices: [] } })
+      return message(
+        `The bot is busy. Try again in ${shared.retryAfterSeconds} seconds.`,
+      )
+    }
+  }
+
   if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
-    return json(200, { type: CallbackType.AUTOCOMPLETE_RESULT, data: { choices: [] } })
+    return json(200, await statsInteraction(ctx, interaction))
+  }
+
+  if (interaction.type === 3 || interaction.type === 5) {
+    return json(200, await statsInteraction(ctx, interaction))
   }
 
   if (interaction.type !== InteractionType.APPLICATION_COMMAND) {
@@ -219,27 +253,8 @@ export const interactions = httpAction(async (ctx, request) => {
     return json(400, { error: 'incomplete interaction' })
   }
 
-  // Abuse limits. One bucket per Discord user, and one app-wide bucket that
-  // bounds a flood from many users. Interaction responses are exempt from
-  // Discord's global rate limit, so the reply is a message, not a 429.
-  const perUser = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
-    key: `discord-user:${discordUserId}`,
-    limit: DISCORD_USER_MAX_REQUESTS,
-  })
-  if (!perUser.allowed) {
-    return message(
-      `Too many commands. Try again in ${perUser.retryAfterSeconds} seconds.`,
-    )
-  }
-  const shared = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
-    key: 'discord-app:all',
-    limit: SHARED_BUCKET_MAX_REQUESTS,
-  })
-  if (!shared.allowed) {
-    return message(
-      `The bot is busy. Try again in ${shared.retryAfterSeconds} seconds.`,
-    )
-  }
+  if (STATS_COMMANDS.includes(command))
+    return json(200, await statsInteraction(ctx, interaction))
 
   const spec = COMMANDS[command]
   const options = parseOptions(interaction.data)
@@ -315,9 +330,9 @@ export async function patchOriginal(
   const res = await fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, allowed_mentions: { parse: [] } }),
   })
   if (!res.ok) {
-    console.error(`discord patch failed: ${res.status} ${await res.text()}`)
+    console.error(`discord patch failed: ${res.status}`)
   }
 }

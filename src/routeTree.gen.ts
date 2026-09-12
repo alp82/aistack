@@ -44,6 +44,7 @@ import { Route as StacksSlugChangesRouteImport } from './routes/stacks.$slug_.ch
 import { Route as NewsTopicsSlugRouteImport } from './routes/news.topics.$slug'
 import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
+import { Route as ApiDiscordRenderRouteImport } from './routes/api.discord.render'
 import { Route as ApiCliSyncManifestRouteImport } from './routes/api.cli.sync-manifest'
 import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
 import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
@@ -229,6 +230,11 @@ const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
   path: '/api/icons/from-url',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDiscordRenderRoute = ApiDiscordRenderRouteImport.update({
+  id: '/api/discord/render',
+  path: '/api/discord/render',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCliSyncManifestRoute = ApiCliSyncManifestRouteImport.update({
   id: '/api/cli/sync-manifest',
   path: '/api/cli/sync-manifest',
@@ -311,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
+  '/api/discord/render': typeof ApiDiscordRenderRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
+  '/api/discord/render': typeof ApiDiscordRenderRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -404,6 +412,7 @@ export interface FileRoutesById {
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
+  '/api/discord/render': typeof ApiDiscordRenderRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/cli/sync-manifest'
+    | '/api/discord/render'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -498,6 +508,7 @@ export interface FileRouteTypes {
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/cli/sync-manifest'
+    | '/api/discord/render'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/cli/sync-manifest'
+    | '/api/discord/render'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -591,6 +603,7 @@ export interface RootRouteChildren {
   ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
   ApiCliSyncRoute: typeof ApiCliSyncRoute
   ApiCliSyncManifestRoute: typeof ApiCliSyncManifestRoute
+  ApiDiscordRenderRoute: typeof ApiDiscordRenderRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   ApiStacksSlugRoute: typeof ApiStacksSlugRoute
   NewsTopicsSlugRoute: typeof NewsTopicsSlugRoute
@@ -848,6 +861,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIconsFromUrlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/discord/render': {
+      id: '/api/discord/render'
+      path: '/api/discord/render'
+      fullPath: '/api/discord/render'
+      preLoaderRoute: typeof ApiDiscordRenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli/sync-manifest': {
       id: '/api/cli/sync-manifest'
       path: '/api/cli/sync-manifest'
@@ -962,6 +982,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
   ApiCliSyncRoute: ApiCliSyncRoute,
   ApiCliSyncManifestRoute: ApiCliSyncManifestRoute,
+  ApiDiscordRenderRoute: ApiDiscordRenderRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   ApiStacksSlugRoute: ApiStacksSlugRoute,
   NewsTopicsSlugRoute: NewsTopicsSlugRoute,

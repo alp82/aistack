@@ -2096,7 +2096,7 @@ const UsageTokensOut = v.object({
   ),
 })
 
-const UsageReading = v.object({
+export const UsageReading = v.object({
   dates: v.array(v.string()),
   activeDays: v.number(),
   sessions: v.number(),

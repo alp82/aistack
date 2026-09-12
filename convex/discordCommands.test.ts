@@ -32,7 +32,7 @@ const savedEnv = {
 let keyPair: CryptoKeyPair
 
 async function post(t: Ctx, body: string) {
-  const timestamp = '1700000000'
+  const timestamp = String(Math.floor(Date.now() / 1000))
   const signature = bytesToHex(
     await crypto.subtle.sign('Ed25519', keyPair.privateKey, encodeUtf8(`${timestamp}${body}`)),
   )
@@ -249,6 +249,7 @@ describe('/stack', () => {
     )
     expect(deferral).toEqual({ type: 5, data: {} })
     expect(patched).toEqual({
+      allowed_mentions: { parse: [] },
       embeds: [
         {
           title: "Alper's Agent Stack",
@@ -303,68 +304,6 @@ describe('/stack', () => {
     expect(body.type).toBe(4)
     expect(body.data.flags).toBe(64)
     expect(body.data.content).toContain(`No stack matches "${slug}"`)
-  })
-})
-
-describe('/tokens', () => {
-  test('posts the measured numbers with spend where the stack consented', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seed(t)
-    await seedDays(t, stackId)
-    const { deferral, patched } = await patchedReply(
-      t,
-      command('tokens', STRANGER, 'alpers-agent-stack-unw0sl'),
-    )
-    expect(deferral).toEqual({ type: 5, data: {} })
-    const embed = patched.embeds[0]
-    expect(embed.title).toBe("Alper's Agent Stack · measured, last 30 days")
-    expect(embed.url).toBe('https://aistack.test/stacks/alpers-agent-stack-unw0sl')
-    expect(embed.fields).toEqual([
-      { name: 'Tokens', value: '`4.50B` on `2` active days', inline: true },
-      { name: 'Synced', value: 'yesterday', inline: true },
-      {
-        name: 'Models',
-        value: 'Claude Opus 5 `89%` of tokens. 1 more model shares the rest.',
-      },
-      { name: 'Harnesses', value: 'Claude Code + Codex' },
-      { name: 'Spend', value: '`$4,380` · `100%` of tokens priced' },
-    ])
-    expect(embed.footer.text).toBe(
-      "Counted on the builder's machine, published by them. Prices: anthropic-list-2026-07-25.",
-    )
-    expect(patched.components[0].components[0].label).toBe('View stack')
-  })
-
-  test('prints no dollar figure when publishCost is off', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seed(t, { publishCost: false })
-    await seedDays(t, stackId)
-    const { patched } = await patchedReply(t, command('tokens', LINKED_USER))
-    const names = patched.embeds[0].fields.map((f: { name: string }) => f.name)
-    expect(names).toEqual(['Tokens', 'Synced', 'Models', 'Harnesses'])
-    expect(JSON.stringify(patched)).not.toContain('$')
-    expect(patched.embeds[0].footer.text).toBe(
-      "Counted on the builder's machine, published by them.",
-    )
-  })
-
-  test('a stack with no measured history answers the no-data error, ephemeral', async () => {
-    const t = convexTest(schema, modules)
-    await seed(t)
-    const res = await post(t, command('tokens', STRANGER, 'alpers-agent-stack-unw0sl'))
-    const body = await res.json()
-    expect(body.type).toBe(4)
-    expect(body.data.flags).toBe(64)
-    expect(body.data.content).toContain('no measured history')
-  })
-
-  test('with no argument and no linked account answers the unlinked prompt', async () => {
-    const t = convexTest(schema, modules)
-    await seed(t)
-    const res = await post(t, command('tokens', STRANGER))
-    const body = await res.json()
-    expect(body.data.flags).toBe(64)
-    expect(body.data.content).toMatch(/Run `\/link`/)
   })
 })
 

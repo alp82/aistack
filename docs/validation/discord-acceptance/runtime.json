@@ -1,0 +1,43 @@
+{
+  "date": "2026-09-12",
+  "baseCommit": "98b3cac6b0224deedf783d62090c0ee1814d7d36",
+  "workingTree": "includes uncommitted data, renderer and interaction implementation",
+  "source": "local mirrored alperortac, 2026-09-06 through 2026-09-12",
+  "comparison": "same subject smoke only",
+  "results": [
+    {
+      "command": "tokens",
+      "status": 200,
+      "bytes": 55551,
+      "cacheControl": "no-store"
+    },
+    {
+      "command": "cost",
+      "status": 200,
+      "bytes": 103787,
+      "cacheControl": "no-store"
+    },
+    {
+      "command": "context",
+      "status": 200,
+      "bytes": 71236,
+      "cacheControl": "no-store"
+    },
+    {
+      "command": "harness",
+      "status": 200,
+      "bytes": 56052,
+      "cacheControl": "no-store"
+    },
+    {
+      "command": "compare",
+      "status": 200,
+      "bytes": 140352,
+      "cacheControl": "no-store"
+    },
+    {
+      "probe": "unsigned Discord request",
+      "status": 401
+    }
+  ]
+}

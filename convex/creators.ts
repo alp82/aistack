@@ -1,3 +1,4 @@
+import { orderCreatorStacks } from './lib/creatorOrder'
 import { v } from 'convex/values'
 import { validateHandle } from '../src/lib/handle'
 import type { QueryCtx } from './_generated/server'
@@ -260,7 +261,7 @@ export const getByHandle = query({
       .query('stacks')
       .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
       .collect()
-    const ordered = allStacks.sort((a, b) => b.updatedAt - a.updatedAt)
+    const ordered = orderCreatorStacks(allStacks)
     const stacks = await Promise.all(ordered.map((s) => toStackCard(ctx, s)))
 
     return {

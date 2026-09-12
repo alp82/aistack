@@ -23,6 +23,9 @@ export interface CommandOptionDefinition {
   name: string
   description: string
   required: boolean
+  autocomplete?: boolean
+  min_value?: number
+  max_value?: number
 }
 
 export interface CommandDefinition {
@@ -36,7 +39,8 @@ export interface CommandDefinition {
 const stackOption: CommandOptionDefinition = {
   type: STRING_OPTION,
   name: 'stack',
-  description: 'Stack slug, like alpers-agent-stack-unw0sl. Empty: your own stack.',
+  description:
+    'Stack slug, like alpers-agent-stack-unw0sl. Empty: your own stack.',
   required: false,
 }
 
@@ -46,14 +50,58 @@ const everywhere = {
 }
 
 export const DISCORD_COMMAND_DEFINITIONS: CommandDefinition[] = [
-  { name: 'stack', description: 'Post a stack card', options: [stackOption], ...everywhere },
   {
-    name: 'tokens',
-    description: 'Post the measured numbers for a stack',
+    name: 'stack',
+    description: 'Post a stack card',
     options: [stackOption],
     ...everywhere,
   },
-  { name: 'leaderboard', description: 'Top builders by 30-day token volume', ...everywhere },
+  ...['tokens', 'cost', 'context', 'harness', 'compare'].map((name) => ({
+    name,
+    description: (
+      {
+        tokens: 'Token totals and model usage',
+        cost: 'Subscriptions and measured usage cost',
+        context: 'Measured context usage',
+        harness: 'Token usage by harness',
+        compare: 'Compare two AI Stack creators',
+      } as Record<string, string>
+    )[name],
+    options: [
+      {
+        type: STRING_OPTION,
+        name: 'creator',
+        description: 'AI Stack creator handle. Empty: your linked profile.',
+        required: false,
+        autocomplete: true,
+      },
+      ...(name === 'compare'
+        ? [
+            {
+              type: STRING_OPTION,
+              name: 'person',
+              description: 'AI Stack creator to compare with',
+              required: false,
+              autocomplete: true,
+            },
+          ]
+        : []),
+      {
+        type: 4,
+        name: 'days',
+        description: 'Whole UTC days, default 7',
+        required: false,
+        min_value: 1,
+        max_value: 180,
+      },
+    ],
+    ...everywhere,
+  })),
+  {
+    name: 'leaderboard',
+    description: 'Top builders by 30-day token volume',
+    ...everywhere,
+  },
   {
     name: 'model',
     description: 'Adoption and token share for a model',

@@ -10,9 +10,13 @@ describe('the registered command set matches the COMMANDS registry', () => {
 
   test('the option names are the ones the handlers read', () => {
     const optionNames = (name: string) =>
-      DISCORD_COMMAND_DEFINITIONS.find((c) => c.name === name)?.options?.map((o) => o.name)
+      DISCORD_COMMAND_DEFINITIONS.find((c) => c.name === name)?.options?.map(
+        (o) => o.name,
+      )
     expect(optionNames('stack')).toEqual(['stack'])
-    expect(optionNames('tokens')).toEqual(['stack'])
+    for (const name of ['tokens', 'cost', 'context', 'harness'])
+      expect(optionNames(name)).toEqual(['creator', 'days'])
+    expect(optionNames('compare')).toEqual(['creator', 'person', 'days'])
     expect(optionNames('model')).toEqual(['model'])
     expect(optionNames('leaderboard')).toBeUndefined()
     expect(optionNames('link')).toBeUndefined()

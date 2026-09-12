@@ -233,8 +233,9 @@ The Workflow section on the stack page. Spec:
   (stack, machine, date) with both the usage and the workflow half (ADR-0010); a
   re-synced day REPLACES that day, days append across syncs, and nothing prunes them
   server-side. The window-free sets live on `measuredInventory`, one row per (stack,
-  machine, harness) (ADR-0011). Nothing merges two machines: the Git day carries no
-  commit identity.
+  machine, harness) (ADR-0011). General workflow readings stay on one machine: the Git
+  day carries no commit identity. Discord context alone combines context atoms across
+  machines by harness. See the exception in ADR-0009 before changing that fold.
 * **Fit is a number nothing ranks by** (#277). Rows come in the fixed order of
   `WORKFLOW_ROW_ORDER`, and the first three are the podium. There is no rotation state,
   no pins or hides, no fit line and no expander.

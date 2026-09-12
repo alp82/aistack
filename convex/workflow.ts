@@ -170,7 +170,7 @@ const WorkflowWindow = v.object({
  * window, split into the harness part, the instructions part and the chat.
  * Every figure is over the folded window; the wire carries only the atoms.
  */
-const ContextHarness = v.object({
+export const ContextHarness = v.object({
 	/** The harness id used elsewhere in the payload. */
 	harness: v.string(),
 	/** Tokens; null when unknown. */

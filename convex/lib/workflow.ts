@@ -17,6 +17,7 @@ import {
 	buildLeadFacts,
 	buildWorkflowRows,
 	type ContextReading,
+	type ContextDay,
 	foldWorkflowDays,
 	inferContextWindow,
 	type KitReading,
@@ -48,7 +49,7 @@ export const utcDayOf = (ms: number): string =>
  * for a day that carries no usage half. Null when nothing names a model.
  */
 export function topModelOf(
-	harness: WorkflowWindow['harnesses'][number],
+	harness: Pick<WorkflowWindow['harnesses'][number], 'harness' | 'routing'>,
 	rows: readonly WorkflowDayRow[]
 ): string | null {
 	const tokens = new Map<string, number>()
@@ -98,19 +99,31 @@ export function contextReadingsOf(
 	for (const harness of section.harnesses) {
 		const context = harness.context
 		if (!context || !context.calls.main.some((row) => row.calls > 0)) continue
-		let window: number | null = context.window ?? null
-		if (window === null) {
-			const model = topModelOf(harness, rows)
-			const known = model === null ? null : contextWindowOf(catalog, model)
-			// Claude tiers cannot establish the window of a Grok model.
-			window = harness.harness === 'grok-build'
-				? (known !== null && known >= context.maxContext ? known : null)
-				: inferContextWindow(known, context.maxContext)
-		}
-		readings.push(readContextReading(harness.harness, context, window))
+		readings.push(readContextHarness(harness.harness, context, topModelOf(harness, rows), catalog))
 	}
 	return readings.length === 0 ? null : readings
 }
+
+/** Shared inference for the page and the context-only Discord fold. */
+export function readContextHarness(
+  harness: string,
+  context: ContextDay,
+  model: string | null,
+  catalog: ModelCatalog,
+): ContextReading {
+  let window: number | null = context.window ?? null
+  if (window === null) {
+    const known = model === null ? null : contextWindowOf(catalog, model)
+    window =
+      harness === 'grok-build'
+        ? known !== null && known >= context.maxContext
+          ? known
+          : null
+        : inferContextWindow(known, context.maxContext)
+  }
+  return readContextReading(harness, context, window)
+}
+
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

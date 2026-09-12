@@ -92,4 +92,6 @@ crons.daily(
   internal.modelImport.run,
 )
 
+crons.interval('discord-stats-cleanup', { hours: 1 }, internal.discordSessions.cleanup)
+
 export default crons

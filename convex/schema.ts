@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { type Infer, v } from 'convex/values'
 import { CliTokenScope } from './lib/cliScopes'
+import { View as DiscordView } from './lib/discordSession'
 
 const PageLink = v.object({
   name: v.string(),
@@ -801,6 +802,17 @@ export default defineSchema({
     .index('by_discordUserId', ['discordUserId'])
     .index('by_verified', ['verified']),
 
+  discordSessions: defineTable({
+    requester: v.string(), applicationId: v.string(), messageId: v.optional(v.string()),
+    initialInteraction: v.string(), expiresAt: v.number(),
+    revision: v.number(), status: v.union(v.literal('ready'), v.literal('busy'), v.literal('failed')),
+    view: DiscordView, pending: v.optional(DiscordView),
+    operation: v.optional(v.string()), startedAt: v.optional(v.number()),
+    workerClaimed: v.optional(v.boolean()),
+    seen: v.array(v.string()), private: v.boolean(),
+    modal: v.optional(v.object({ id: v.string(), kind: v.string(), revision: v.number() })),
+  }).index('by_initial', ['initialInteraction']).index('by_expiry', ['expiresAt']),
+
   discordLinkTokens: defineTable({
     tokenIdHash: v.string(),
     discordUserId: v.string(),
@@ -1308,7 +1320,8 @@ export default defineSchema({
     workflow: v.optional(WorkflowDay),
   })
     .index('by_stack', ['stackId'])
-    .index('by_stack_machine_date', ['stackId', 'machine', 'date']),
+    .index('by_stack_machine_date', ['stackId', 'machine', 'date'])
+    .index('by_stack_date', ['stackId', 'date']),
 
   // The live inventory (ADR-0011): one row per (stack, machine, harness),
   // REPLACED on every sync. What the day wire does not carry: the installed

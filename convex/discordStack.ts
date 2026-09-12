@@ -1,3 +1,4 @@
+import { orderCreatorStacks } from './lib/creatorOrder'
 import { type Infer, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalQuery } from './_generated/server'
@@ -48,7 +49,7 @@ export const resolveStack = internalQuery({
       .query('stacks')
       .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
       .collect()
-    const stack = stacks.sort((a, b) => b.updatedAt - a.updatedAt)[0]
+    const stack = orderCreatorStacks(stacks)[0]
     if (!stack) return { kind: 'unlinked' as const }
     return {
       kind: 'stack' as const,

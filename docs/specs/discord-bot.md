@@ -101,3 +101,52 @@ profile. Verification becomes required past 100 servers.
 - `/tool <name>` with a card worth posting.
 - A gateway daemon on the prod server, if a feature ever needs message events.
 - App verification and whatever growth past 100 servers demands.
+
+
+## Dated creator statistics data contract
+
+The [production data decision](https://github.com/alp82/aistack/issues/409#issuecomment-5643497282)
+supersedes the original token-command data selection above. `convex/discordStats.ts`
+provides the shared creator lookup and validated `DiscordAnswer` projection for the
+five-card release. Rendering and interaction integration consume this contract.
+
+Handle search returns at most 25 real creators, ordered exact, prefix, then substring.
+Prefix reads use the handle index. Substring discovery examines at most the first
+1,000 handles in index order; exact and prefix lookup are not limited to that pool.
+Profile and Discord first-stack selection share descending update time with a stable
+ID tie-breaker. Refreshes use the originally selected creator and stack IDs.
+
+The stack/date index bounds reads to the selected 1 through 180 UTC dates and the
+preceding equal-length period. Both bounds are inclusive. Missing usage stays null;
+legacy inventory totals never fill a dated period. `modelIds` supplies the collapsed
+5% list using raw token counts, while usage retains every row for the full list and
+aggregate accounting. Explicit harness selections survive missing data. Callers
+compare the same selected harness on both subjects and retain null for a missing side.
+
+Cost and workflow consent are read on every projection, using the existing default-on
+semantics. Usage dollars retain sources, priced share and lower-bound status from
+the shared pricing read. The context-only fold follows the exception in ADR-0009;
+it never folds Git or other workflow metrics across machines. Subscription totals
+are current monthly amounts, independent of the measured range. Bundles appear once,
+and the shared price ordering fills the preview with up to five real entries.
+
+## Five-card interaction release
+
+The current implementation replaces the v1 `/tokens stack` entry above with
+`/tokens`, `/cost`, `/context`, `/harness`, and `/compare`. Each accepts an optional
+`creator` handle and integer `days` from 1 through 180, default 7. `/compare` also
+accepts a `person` handle; omitting it opens the person picker. Both handle options
+use real creator autocomplete, and arbitrary typed handles are validated.
+`/stack`, `/leaderboard`, `/model`, and `/link` retain their entries.
+
+Stats replies use a PNG, requester-owned range/person/list/harness controls, and
+native profile links. Custom range and creator search use modals. Controls expire
+one hour after creation. The date anchor and selected stack IDs survive
+refinements; new commands start new anchors. Private recovery offers linking or
+creator browsing and a create-stack link where applicable.
+
+The [renderer and transport contract](../discord-renderer.md) records deployment
+configuration, durable lifecycle, response-token multipart delivery, consent
+rechecks, failure behavior and automated validation. Implementation readiness
+precedes live desktop/mobile acceptance and command registration. No activation
+switch or old token-option compatibility is part of this release.
