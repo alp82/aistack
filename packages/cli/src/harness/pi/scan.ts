@@ -137,7 +137,7 @@ export async function scan(
 
 			agg.files++;
 			stats.filesRead++;
-			if (opts.onProgress && agg.files % 200 === 0) opts.onProgress(agg.files);
+			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
 			try {
 				const verdict = await ingestFile(agg, fold, file, opts.sinceMs);
 				if (verdict === "foreign") {

@@ -182,12 +182,12 @@ describe("scan", () => {
 	});
 
 	it("reports progress on the caller's cadence without leaking paths", async () => {
-		for (let i = 0; i < 401; i++) {
+		for (let i = 0; i < 41; i++) {
 			writeTranscript(`proj/s-${i}.jsonl`, [assistant({})]);
 		}
 		const agg = createAggregate();
 		const seen: number[] = [];
 		await scan(agg, { roots: [root], onProgress: (n) => seen.push(n) });
-		expect(seen).toEqual([200, 400]);
+		expect(seen).toEqual([20, 40]);
 	});
 });

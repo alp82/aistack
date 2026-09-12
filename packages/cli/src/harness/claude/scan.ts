@@ -143,7 +143,7 @@ export async function scan(
 			const projectDir = rel.split(path.sep)[0] ?? "(root)";
 			agg.files++;
 			stats.filesRead++;
-			if (opts.onProgress && agg.files % 200 === 0) opts.onProgress(agg.files);
+			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
 			try {
 				await ingestFile(
 					agg,

@@ -33,7 +33,7 @@ import {
 	getToken,
 	type Settings,
 } from "../config.js";
-import { detectedAdapters, harnessLabel } from "../harness/index.js";
+import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
 	type LoadedSyncConfig,
@@ -55,7 +55,7 @@ import {
 	type ScanStats,
 	windowStartMs,
 } from "../harness/shared/window.js";
-import type { HarnessAdapter } from "../harness/types.js";
+import type { HarnessAdapter, HarnessScan } from "../harness/types.js";
 import { trace, traceTimer } from "../trace.js";
 import {
 	buildMeasuredDays,
@@ -127,6 +127,29 @@ export type PriceTableUsed = {
 	origin: "served" | "bundled";
 };
 
+/**
+ * One unit of stage work, as the terminal sees it. `id` is stable per step
+ * (`prices`, `settings`, `manifest`, `harness:<name>`, `git`, `review`);
+ * `label` is what to print. A `progress` carries the count done so far and the
+ * total when the step knows it.
+ */
+export type StageEvent =
+	| {
+			kind: "step";
+			id: string;
+			label: string;
+			state: "waiting" | "running" | "done" | "skipped" | "failed";
+			note?: string;
+	  }
+	| {
+			kind: "progress";
+			id: string;
+			done: number;
+			total?: number;
+			unit: string;
+			note?: string;
+	  };
+
 export type StageDeps = {
 	baseUrl: string;
 	now?: () => number;
@@ -136,13 +159,10 @@ export type StageDeps = {
 		baseUrl: string;
 		token?: string;
 	}) => Promise<LoadedSyncConfig>;
-	/** Override the adapter set. Tests only. */
-	adaptersImpl?: (
-		sinceMs: number,
-		hooks?: {
-			onAdapter?: (adapter: HarnessAdapter) => void | Promise<void>;
-		},
-	) => Promise<HarnessAdapter[]>;
+	/** Override the candidate adapters (every harness this build can read). Tests only. */
+	adaptersImpl?: () =>
+		| readonly HarnessAdapter[]
+		| Promise<readonly HarnessAdapter[]>;
 	/** Override the Git reader the workflow extraction shells out to. Tests only. */
 	gitRunnerImpl?: GitWorkflowRunner;
 	/**
@@ -166,14 +186,12 @@ export type StageDeps = {
 	 */
 	trigger?: SyncTrigger;
 	/**
-	 * Human-facing phase updates for the interactive terminal. A phase change
-	 * is AWAITED before the work it names starts: the spinner repaints on a
-	 * timer, and a phase that blocks the event loop (Cursor's SQLite walk) would
-	 * otherwise leave the previous phase's text on screen for minutes and read
-	 * as a hang at the wrong step. File-count updates inside a scan are not
-	 * awaited; they are frequent and the scan yields on its own.
+	 * Structured progress for the interactive terminal (#420). Steps run
+	 * concurrently, so a listener gets one `step` per unit of work and redraws
+	 * a board; nothing here is awaited, and a step that blocks the event loop
+	 * (a synchronous SQLite walk) stalls only its own row's updates.
 	 */
-	onProgress?: (message: string) => void | Promise<void>;
+	onEvent?: (event: StageEvent) => void;
 };
 
 export function stageId(bodyJson: string): string {
@@ -184,81 +202,112 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const now = (deps.now ?? Date.now)();
 	const token = (deps.getTokenImpl ?? getToken)();
 	const loadConfig = deps.loadConfigImpl ?? loadSyncConfig;
-	const adapters = deps.adaptersImpl ?? detectedAdapters;
+	const adapters = deps.adaptersImpl ?? (() => HARNESS_ADAPTERS);
 	const windowDays = deps.windowDays ?? DEFAULT_WINDOW_DAYS;
 	const projectWorkspaceId =
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
 	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
 	const fetchPrices = deps.fetchPricesImpl ?? fetchPriceTable;
-	// `phase` names the step that is about to run and waits for the terminal to
-	// show it; `note` refreshes a count inside a running step and returns at once.
-	const phase = async (message: string) => {
-		trace(message);
-		await deps.onProgress?.(message);
-	};
-	const note = (message: string) => {
-		void deps.onProgress?.(message);
+	const emit = (event: StageEvent) => deps.onEvent?.(event);
+	const step = (
+		id: string,
+		label: string,
+		state: "waiting" | "running" | "done" | "skipped" | "failed",
+		note?: string,
+	) => {
+		if (state !== "waiting")
+			trace(`${label} · ${state}${note ? ` · ${note}` : ""}`);
+		emit({ kind: "step", id, label, state, ...(note ? { note } : {}) });
 	};
 
-	// The price table comes from the server BEFORE any adapter prices a
-	// response (#336): the adapters call the module-level pricing functions,
-	// which read whichever pricer is active. Served rows win per key; the
-	// bundled constants fill what the server does not hold. Unreachable reads
-	// as bundled, and the gate says which one it was.
+	// The three startup reads are independent, so they go out together (#420).
+	// The price table must be active before any adapter prices a response
+	// (#336): the adapters call the module-level pricing functions, which read
+	// whichever pricer is active. Served rows win per key; the bundled constants
+	// fill what the server does not hold. Unreachable reads as bundled, and the
+	// gate says which one it was.
 	let prices: PriceTableUsed = {
 		id: BUNDLED_PRICE_TABLE_ID,
 		origin: "bundled",
 	};
-	await phase("Checking prices");
-	const pricesDone = traceTimer("prices");
-	try {
-		const table = await fetchPrices(deps.baseUrl);
-		if (table) {
-			setActivePricer(layeredPricer(table));
-			prices = { id: table.id, origin: "served" };
-			pricesDone(`served ${table.id}`);
-		} else {
+	step("prices", "Prices", "running");
+	step("settings", "Stack settings", "running");
+	if (token) step("manifest", "Synced days", "running");
+	const readPrices = async () => {
+		const done = traceTimer("prices");
+		try {
+			const table = await fetchPrices(deps.baseUrl);
+			if (table) {
+				setActivePricer(layeredPricer(table));
+				prices = { id: table.id, origin: "served" };
+				done(`served ${table.id}`);
+				step("prices", "Prices", "done", "current");
+			} else {
+				setActivePricer(null);
+				done("server has no price route, bundled table");
+				step("prices", "Prices", "done", "bundled table");
+			}
+		} catch (error) {
 			setActivePricer(null);
-			pricesDone("server has no price route, bundled table");
+			done(`fetch failed (${describeError(error)}), bundled table`);
+			step("prices", "Prices", "done", "unreachable, bundled table");
 		}
-	} catch (error) {
-		setActivePricer(null);
-		pricesDone(`fetch failed (${describeError(error)}), bundled table`);
-	}
-
-	await phase("Checking stack settings");
-	const settingsDone = traceTimer("stack settings");
-	const { config, source } = await loadConfig({
-		baseUrl: deps.baseUrl,
-		...(token ? { token } : {}),
-	});
-	settingsDone(
-		`${source}${config.stack ? ", stack resolved" : ", no stack"}, publishWorkflow ${config.publishWorkflow}, publishCost ${config.publishCost}`,
-	);
-
+	};
+	const readSettings = async () => {
+		const done = traceTimer("stack settings");
+		const loaded = await loadConfig({
+			baseUrl: deps.baseUrl,
+			...(token ? { token } : {}),
+		});
+		done(
+			`${loaded.source}${loaded.config.stack ? ", stack resolved" : ", no stack"}, publishWorkflow ${loaded.config.publishWorkflow}, publishCost ${loaded.config.publishCost}`,
+		);
+		step(
+			"settings",
+			"Stack settings",
+			"done",
+			loaded.source === "fetched"
+				? (loaded.config.stack?.name ?? "no stack")
+				: "unreachable",
+		);
+		return loaded;
+	};
 	// The server's day manifest (#307, ADR-0010): which dates it holds and with
 	// what fingerprint. Missing (an old server) or failing (network) reads as
 	// "send the whole window"; a publish that repeats a held date is correct,
 	// only wasteful. The manifest also names the retention, which bounds how
 	// far back the day scan reaches.
-	let manifest: DayManifest | null = null;
-	if (token) {
-		await phase("Checking previously synced days");
-		const manifestDone = traceTimer("day manifest");
+	const readManifest = async (): Promise<DayManifest | null> => {
+		if (!token) {
+			trace("day manifest · skipped, this machine holds no token");
+			return null;
+		}
+		const done = traceTimer("day manifest");
 		try {
-			manifest = await fetchManifest(deps.baseUrl, token);
-			manifestDone(
+			const manifest = await fetchManifest(deps.baseUrl, token);
+			done(
 				manifest
 					? `${manifest.days.length} days held, retention ${manifest.retentionDays}`
 					: "server has no manifest route, whole window goes",
 			);
+			step(
+				"manifest",
+				"Synced days",
+				"done",
+				manifest ? `${manifest.days.length} held` : "none",
+			);
+			return manifest;
 		} catch (error) {
-			manifest = null;
-			manifestDone(`fetch failed (${describeError(error)}), whole window goes`);
+			done(`fetch failed (${describeError(error)}), whole window goes`);
+			step("manifest", "Synced days", "done", "unreachable, whole window");
+			return null;
 		}
-	} else {
-		trace("day manifest · skipped, this machine holds no token");
-	}
+	};
+	const [, { config, source }, manifest] = await Promise.all([
+		readPrices(),
+		readSettings(),
+		readManifest(),
+	]);
 	const retentionDays = Math.max(
 		1,
 		Math.min(manifest?.retentionDays ?? MAX_DAY_WINDOW, MAX_DAY_WINDOW),
@@ -280,34 +329,94 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// date the server would keep. Two scans over the same files; the second is
 	// the one the days and the workflow blocks come from.
 	const daysSinceMs = windowStartMs(now, retentionDays);
-	// One phase per harness, so a detect that blocks the event loop (Cursor's
-	// history read) shows its own name on the spinner instead of the previous
-	// phase's. The historical pass repeats the same checks over a longer window
-	// and reuses the reads the first pass made where an adapter memoizes them.
-	const active = await adapters(sinceMs, {
-		onAdapter: (adapter) =>
-			phase(`Checking for ${harnessLabel(adapter.name)} history`),
-	});
+	// Every harness is checked and scanned at once (#420): the adapters are
+	// independent, the transcript readers are asynchronous, and Cursor's
+	// synchronous SQLite walk runs in a worker thread, so the board keeps
+	// drawing while the slowest one works. Results are assembled afterwards in
+	// registration order, which is display order at the gate.
+	const candidates = await adapters();
+	for (const adapter of candidates)
+		step(`harness:${adapter.name}`, harnessLabel(adapter.name), "waiting");
+	const readings = await Promise.all(
+		candidates.map((adapter) => readHarness(adapter)),
+	);
+	async function readHarness(adapter: HarnessAdapter): Promise<HarnessReading> {
+		const id = `harness:${adapter.name}`;
+		const label = harnessLabel(adapter.name);
+		const started = performance.now();
+		const elapsed = () =>
+			`${((performance.now() - started) / 1000).toFixed(1)} s`;
+		step(id, label, "running", "checking history");
+		const detectDone = traceTimer(`detect ${adapter.name}`);
+		const active = await adapter.detect({ sinceMs });
+		const historical =
+			active || (await adapter.detect({ sinceMs: daysSinceMs }));
+		detectDone(
+			active
+				? "found"
+				: historical
+					? "found (older than the window)"
+					: "nothing in window",
+		);
+		const reading: HarnessReading = { adapter, active, historical };
+		if (!historical) {
+			step(id, label, "skipped", "nothing in window");
+			return reading;
+		}
+		let seen = 0;
+		const progress = (phase: string) => (files: number, total?: number) => {
+			seen = files;
+			emit({
+				kind: "progress",
+				id,
+				done: files,
+				...(total !== undefined ? { total } : {}),
+				unit: "files",
+				note: phase,
+			});
+		};
+		if (active) {
+			step(id, label, "running", "recent usage");
+			const scanDone = traceTimer(`scan ${adapter.name} (recent)`);
+			reading.recent = await adapter.scan({
+				sinceMs,
+				publishWorkflow: false,
+				onProgress: progress("recent usage"),
+			});
+			scanDone(describeScan(reading.recent.stats));
+		}
+		step(id, label, "running", "history");
+		const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
+		reading.history = await adapter.scan({
+			sinceMs: daysSinceMs,
+			publishWorkflow: config.publishWorkflow,
+			onProgress: progress("history"),
+		});
+		scanDone(
+			`${describeScan(reading.history.stats)}${reading.history.scanComplete === false ? ", incomplete" : ""}`,
+		);
+		const files = Math.max(seen, reading.history.stats.filesRead);
+		step(
+			id,
+			label,
+			"done",
+			`${files} ${files === 1 ? "file" : "files"} · ${elapsed()}`,
+		);
+		return reading;
+	}
+	const active = readings.filter((r) => r.active).map((r) => r.adapter);
+	const historical = readings.filter((r) => r.historical).map((r) => r.adapter);
 	trace(
 		`active harnesses (${windowDays} days): ${active.map((a) => a.name).join(", ") || "none"}`,
 	);
-	const historical = await adapters(daysSinceMs);
 	trace(
 		`historical harnesses (${retentionDays} days): ${historical.map((a) => a.name).join(", ") || "none"}`,
 	);
 	let dayScansComplete = true;
 	const sessionDatesByHarness = new Map<string, Map<string, Set<string>>>();
-	for (const adapter of active) {
-		const label = harnessLabel(adapter.name);
-		await phase(`Scanning recent ${label} usage`);
-		const scanDone = traceTimer(`scan ${adapter.name} (recent)`);
-		const { aggregate, stats } = await adapter.scan({
-			sinceMs,
-			publishWorkflow: false,
-			onProgress: (files) =>
-				note(`Scanning recent ${label} usage · ${files} files`),
-		});
-		scanDone(describeScan(stats));
+	for (const { adapter, recent } of readings) {
+		if (!recent) continue;
+		const { aggregate, stats } = recent;
 		scanStats[adapter.name] = stats;
 		built.push(
 			buildPayload({
@@ -322,26 +431,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			}),
 		);
 	}
-	for (const adapter of historical) {
-		const label = harnessLabel(adapter.name);
-		await phase(`Reading historical ${label} days`);
-		const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
-		const {
-			aggregate,
-			stats,
-			workflow,
-			workflowLocal,
-			scanComplete,
-			sessionDates,
-		} = await adapter.scan({
-			sinceMs: daysSinceMs,
-			publishWorkflow: config.publishWorkflow,
-			onProgress: (files) =>
-				note(`Reading historical ${label} days · ${files} files`),
-		});
-		scanDone(
-			`${describeScan(stats)}${scanComplete === false ? ", incomplete" : ""}`,
-		);
+	for (const { adapter, history } of readings) {
+		if (!history) continue;
+		const { aggregate, workflow, workflowLocal, scanComplete, sessionDates } =
+			history;
 		if (scanComplete === false) dayScansComplete = false;
 		if (adapter.name === "grok-build" || adapter.name === "cursor")
 			sessionDatesByHarness.set(adapter.name, sessionDates ?? new Map());
@@ -371,7 +464,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// would be the one visible cost of a preference that is supposed to be free.
 	let workflow: WorkflowExtraction | undefined;
 	if (workflowScans.length > 0 && config.publishWorkflow) {
-		await phase("Reading Git history");
+		step("git", "Git history", "running");
 		const gitDone = traceTimer("git history");
 		workflow = deps.gitRunnerImpl
 			? extractLocalWorkflow({
@@ -386,6 +479,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 					toMs: now,
 				});
 		gitDone(`${workflow.days.length} days`);
+		step("git", "Git history", "done", `${workflow.days.length} days`);
 	} else {
 		trace(
 			`git history · skipped (${config.publishWorkflow ? "no harness scanned" : "publishWorkflow off"})`,
@@ -451,12 +545,13 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			: undefined,
 		CLI_VERSION,
 	);
-	await phase("Preparing review");
+	step("review", "Review", "running");
 	const bodyJson = JSON.stringify(body);
 	trace(
 		`days · ${days.mode}, ${days.send.length} to send${dayScansComplete ? "" : " (a scan was incomplete, no day rows go)"}`,
 	);
 	trace(`body · ${bodyJson.length} bytes, ${built.length} harness payloads`);
+	step("review", "Review", "done", `${days.send.length} days to send`);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 
 	const ctx = {
@@ -502,6 +597,16 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		...(acknowledgePublish ? { acknowledgePublish } : {}),
 	};
 }
+
+type HarnessReading = {
+	adapter: HarnessAdapter;
+	/** Wrote a transcript inside the snapshot window (#101). */
+	active: boolean;
+	/** Wrote a transcript inside the retention the day rows cover (#307). */
+	historical: boolean;
+	recent?: HarnessScan;
+	history?: HarnessScan;
+};
 
 function describeError(error: unknown): string {
 	if (error instanceof Error) {

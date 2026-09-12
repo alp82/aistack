@@ -113,39 +113,33 @@ describe("stageSync", () => {
 		expect(staged.bodyJson).not.toContain("-home-u-p");
 	});
 
-	// A phase message is the only thing a user sees while a step blocks the
-	// event loop, so the stage names the step first and waits for the terminal
-	// to show it. Detection names each harness through the adapters hook.
-	test("names each phase before its work and waits for the terminal to show it", async () => {
-		const seen: string[] = [];
-		let pending = 0;
+	// The terminal draws one row per step from these events (#420). Every
+	// harness gets a waiting row before any is checked, each network read is
+	// its own step, and a harness ends done with its file count.
+	test("emits one step per unit of work, in the order the board draws them", async () => {
+		const events: string[] = [];
 		const staged = await stageSync(
 			deps({
-				adaptersImpl: async (_sinceMs, hooks) => {
-					await hooks?.onAdapter?.(FAKE_CLAUDE_ADAPTER);
-					return [FAKE_CLAUDE_ADAPTER];
-				},
-				onProgress: async (message) => {
-					// Every earlier phase's promise settled before the next one started.
-					expect(pending).toBe(0);
-					pending++;
-					seen.push(message);
-					await new Promise((resolve) => setTimeout(resolve, 1));
-					pending--;
+				onEvent: (event) => {
+					events.push(
+						event.kind === "step"
+							? `${event.id} ${event.state}`
+							: `${event.id} ${event.done}/${event.total ?? "?"}`,
+					);
 				},
 			}),
 		);
 		expect(staged.blockedReason).toBeNull();
-		expect(seen).toEqual([
-			"Checking prices",
-			"Checking stack settings",
-			"Checking previously synced days",
-			"Checking for Claude Code history",
-			"Scanning recent Claude Code usage",
-			"Reading historical Claude Code days",
-			"Reading Git history",
-			"Preparing review",
+		expect(events.slice(0, 3)).toEqual([
+			"prices running",
+			"settings running",
+			"manifest running",
 		]);
+		expect(events).toContain("harness:claude-code waiting");
+		expect(
+			events.filter((e) => e.startsWith("harness:claude-code")).at(-1),
+		).toBe("harness:claude-code done");
+		expect(events.at(-1)).toBe("review done");
 	});
 
 	test("bodyJson is the exact serialization and the id derives from it", async () => {
@@ -248,24 +242,24 @@ describe("stageSync", () => {
 		const scanSince: number[] = [];
 		await stageSync(
 			deps({
-				adaptersImpl: async (sinceMs) => {
-					detectSince.push(sinceMs);
-					return [
-						{
-							...FAKE_CLAUDE_ADAPTER,
-							scan: async (opts) => {
-								scanSince.push(opts.sinceMs);
-								return FAKE_CLAUDE_ADAPTER.scan(opts);
-							},
+				adaptersImpl: () => [
+					{
+						...FAKE_CLAUDE_ADAPTER,
+						detect: async (opts) => {
+							detectSince.push(opts.sinceMs);
+							return true;
 						},
-					];
-				},
+						scan: async (opts) => {
+							scanSince.push(opts.sinceMs);
+							return FAKE_CLAUDE_ADAPTER.scan(opts);
+						},
+					},
+				],
 			}),
 		);
-		expect(detectSince).toEqual([
-			windowStartMs(NOW, DEFAULT_WINDOW_DAYS),
-			windowStartMs(NOW, 400),
-		]);
+		// A harness active in the snapshot window is historical by inclusion,
+		// so the second detect is skipped.
+		expect(detectSince).toEqual([windowStartMs(NOW, DEFAULT_WINDOW_DAYS)]);
 		// The snapshot scan reads the 30-day window; the day scan (#307) reads
 		// the whole retention, 400 days when no manifest names one.
 		expect(scanSince).toEqual([

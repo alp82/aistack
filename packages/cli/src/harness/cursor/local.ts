@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { Worker } from "node:worker_threads";
 import type { Session, SessionReadContext } from "cursor-history";
-import { trace, traceTimer } from "../../trace.js";
+import { trace, traceEnabled, traceTimer } from "../../trace.js";
 import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
@@ -127,15 +129,16 @@ export type LocalRead = {
 	stats: ScanStats;
 };
 /**
- * One read per root per process while the source is unchanged.
+ * One read per root per process.
  *
  * A sync asks this adapter four times (detect twice, scan twice), and every
- * read walks the whole global database on the main thread: on a 1.6 GB
- * `state.vscdb` the session listing alone costs tens of seconds of CPU, during
- * which the spinner cannot repaint. Four walks read as a hang; one is a wait.
- * The memo is keyed by the source stamp, so a database that changes between
- * two calls in the same run is read again, and the stamp check that marks a
- * read incomplete when the source moved under it still applies to each read.
+ * read walks the whole global database: on a 1.6 GB `state.vscdb` the session
+ * listing alone costs tens of seconds of CPU. Four walks read as a hang; one is
+ * a wait. The memo is keyed by root alone, not by the source stamp: while
+ * Cursor is open it appends to the write-ahead log continuously, so a stamp
+ * taken after the first read never matches and the read would repeat. A sync
+ * is one moment, and the read itself marks its result incomplete when the
+ * source moved under it (see `readLocalOnce`).
  */
 const localReads = new Map<
 	string,
@@ -150,23 +153,89 @@ export function forgetLocalReads(): void {
 /** Errors never escape with paths, prompts or database values. */
 export async function readLocal(
 	root = dataPath(),
-	onProgress?: (files: number) => void,
+	onProgress?: (files: number, total?: number) => void,
 ): Promise<LocalRead> {
-	const stamp = await sourceStamp(root);
 	const held = localReads.get(root);
-	if (held && held.stamp === stamp) {
+	if (held) {
 		trace("cursor · reusing this run's history read");
 		return held.read;
 	}
-	const read = readLocalOnce(root, stamp, onProgress);
+	// Nothing to walk, nothing to remember: an install that appears later in
+	// the same process (tests do this) must still be read.
+	if (!(await hasLocalSource(root))) {
+		trace("cursor · no local source");
+		return { sessions: [], complete: true, stats: emptyScanStats() };
+	}
+	const stamp = await sourceStamp(root);
+	const read = readLocalOffThread(root, stamp, onProgress);
 	localReads.set(root, { stamp, read });
 	return read;
 }
 
-async function readLocalOnce(
+/**
+ * The bundled worker next to the CLI entry (`tsup` emits `cursor-worker.js`
+ * beside `index.js`). Absent when running from source, where the read stays
+ * inline; `AISTACK_CURSOR_INLINE=1` forces inline in a build too.
+ */
+function workerFile(): URL | null {
+	if (process.env.AISTACK_CURSOR_INLINE === "1") return null;
+	const url = new URL("./cursor-worker.js", import.meta.url);
+	return existsSync(url) ? url : null;
+}
+
+/**
+ * The read walks the whole global database synchronously: cursor-history's
+ * session listing alone is tens of seconds of CPU on a database past a
+ * gigabyte. On the main thread that freezes the terminal; in a worker the
+ * board keeps drawing and the other harnesses keep scanning (#420). The
+ * worker returns the same `LocalRead` (sessions are plain data, token
+ * evidence is a Map), so the caller cannot tell which thread read it.
+ */
+async function readLocalOffThread(
 	root: string,
 	before: string,
-	onProgress?: (files: number) => void,
+	onProgress?: (files: number, total?: number) => void,
+): Promise<LocalRead> {
+	const file = workerFile();
+	if (!file) return readLocalOnce(root, before, onProgress);
+	return new Promise<LocalRead>((resolve) => {
+		const fallback = () => resolve(readLocalOnce(root, before, onProgress));
+		let settled = false;
+		const settle = (fn: () => void) => {
+			if (settled) return;
+			settled = true;
+			fn();
+		};
+		const worker = new Worker(file, {
+			workerData: { root, before, trace: traceEnabled() },
+		});
+		worker.on("message", (message: CursorWorkerMessage) => {
+			if (message.kind === "progress")
+				onProgress?.(message.files, message.total);
+			else if (message.kind === "result") settle(() => resolve(message.read));
+			else
+				settle(() => {
+					trace("cursor · worker failed, reading inline");
+					fallback();
+				});
+		});
+		worker.on("error", () => settle(fallback));
+		worker.on("exit", (code) => {
+			if (code !== 0) settle(fallback);
+		});
+	});
+}
+
+export type CursorWorkerMessage =
+	| { kind: "progress"; files: number; total?: number }
+	| { kind: "result"; read: LocalRead }
+	| { kind: "error" };
+
+/** The read itself, on whichever thread called it. */
+export async function readLocalOnce(
+	root: string,
+	before: string,
+	onProgress?: (files: number, total?: number) => void,
 ): Promise<LocalRead> {
 	const stats = emptyScanStats();
 	const out: LocalRead = { sessions: [], complete: true, stats };
@@ -201,7 +270,8 @@ async function readLocalOnce(
 				offset,
 				limit: 100,
 			});
-			pageDone(`${page.data.length} sessions`);
+			pageDone(`${page.data.length} of ${page.pagination.total} sessions`);
+			if (offset === 0) onProgress?.(0, page.pagination.total);
 			for (const summary of page.data) {
 				stats.filesFound++;
 				if (summary.resolutionState === "ambiguous") {
@@ -217,7 +287,7 @@ async function readLocalOnce(
 					const tokens = await readTokenEvidence(root, session);
 					out.sessions.push({ session, tokens });
 					stats.filesRead++;
-					onProgress?.(stats.filesRead);
+					onProgress?.(stats.filesRead, page.pagination.total);
 				} catch {
 					out.complete = false;
 					stats.filesUnreadable++;
