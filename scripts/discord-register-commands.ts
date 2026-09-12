@@ -1,53 +1,31 @@
-/**
- * Register the Discord slash commands (alp82/aistack#224).
- *
- * PUTs the whole command set, so a removed command disappears and a changed one
- * updates. Global by default; set DISCORD_GUILD_ID to register on one guild for
- * instant testing (global commands can take up to an hour to appear).
- *
- *   pnpm tsx scripts/discord-register-commands.ts [--dry-run]
- *
- * Needs DISCORD_APP_ID and DISCORD_BOT_TOKEN. The bot token is used here only;
- * the deployment never holds it.
- */
+/** Register the canonical command set. Production runs in deploy-convex.yml. */
+import { mkdir, writeFile } from 'node:fs/promises'
+import { parseArgs } from 'node:util'
+import { join } from 'node:path'
+import { DISCORD_COMMAND_DEFINITIONS } from './lib/discordCommandDefinitions.ts'
+import { registerCommands, rendererReady } from './lib/discordRegistration.ts'
 
-import {
-  commandsUrl,
-  DISCORD_COMMAND_DEFINITIONS,
-} from './lib/discordCommandDefinitions'
-
-const dryRun = process.argv.includes('--dry-run')
-const { DISCORD_APP_ID, DISCORD_BOT_TOKEN, DISCORD_GUILD_ID } = process.env
-
-if (!DISCORD_APP_ID || (!dryRun && !DISCORD_BOT_TOKEN)) {
-  console.error('Set DISCORD_APP_ID and DISCORD_BOT_TOKEN (DISCORD_GUILD_ID optional).')
-  process.exit(1)
-}
-
-const url = commandsUrl(DISCORD_APP_ID, DISCORD_GUILD_ID || undefined)
-const scope = DISCORD_GUILD_ID ? `guild ${DISCORD_GUILD_ID}` : 'global'
-
-if (dryRun) {
-  console.log(`PUT ${url} (${scope})`)
+const { values } = parseArgs({ options: {
+  'dry-run': { type: 'boolean' },
+  'output-dir': { type: 'string', default: '/tmp/aistack-discord-registration' },
+} })
+if (values['dry-run']) {
   console.log(JSON.stringify(DISCORD_COMMAND_DEFINITIONS, null, 2))
-  process.exit(0)
+} else {
+  const { DISCORD_APP_ID, DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, EXPECTED_COMMIT, DISCORD_RENDER_ORIGIN } = process.env
+  if (!DISCORD_APP_ID || !DISCORD_BOT_TOKEN) {
+    throw new Error('Set the repository Actions secret DISCORD_BOT_TOKEN once, then rerun the production workflow. DISCORD_APP_ID is configured by the workflow.')
+  }
+  const directory = values['output-dir']!
+  await mkdir(directory, { recursive: true })
+  const result = await registerCommands({
+    appId: DISCORD_APP_ID, token: DISCORD_BOT_TOKEN, guildId: DISCORD_GUILD_ID,
+    snapshot: (name, data) => writeFile(join(directory, name), `${JSON.stringify(data, null, 2)}\n`),
+    beforeWrite: async () => {
+      if (EXPECTED_COMMIT && (!DISCORD_RENDER_ORIGIN || !await rendererReady(DISCORD_RENDER_ORIGIN, EXPECTED_COMMIT))) {
+        throw new Error('Web renderer is not ready at the deployment revision; registration was not changed')
+      }
+    },
+  })
+  console.log(`${result.changed ? 'Registered' : 'Already registered'} and verified: ${result.names.map(name => `/${name}`).join(' ')}`)
 }
-
-const res = await fetch(url, {
-  method: 'PUT',
-  headers: {
-    authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-    'content-type': 'application/json',
-  },
-  body: JSON.stringify(DISCORD_COMMAND_DEFINITIONS),
-})
-
-const text = await res.text()
-console.log(`${res.status} ${res.statusText} (${scope})`)
-if (!res.ok) {
-  console.error(text)
-  process.exit(1)
-}
-
-const registered = JSON.parse(text) as Array<{ name: string }>
-console.log(`Registered: ${registered.map((c) => `/${c.name}`).join(' ')}`)

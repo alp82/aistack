@@ -114,7 +114,7 @@ Private identity recovery offers linking instructions and a creator picker.
 Selecting a real creator creates a public answer and binds controls to its new
 message. Creator browsing requires no account link. Live client verification of
 this transition and the remaining install-context cases belongs to the acceptance
-ticket, before release registration.
+ticket. The owner waived another live acceptance round for this release.
 
 `convex/discordStatsLifecycle.test.ts` exercises the signed HTTP handler, durable
 Convex state, fresh data queries, HMAC request and multipart transport with a
@@ -122,3 +122,15 @@ controlled Discord/renderer HTTP boundary. It covers refinements, modal nonces,
 privacy recovery, consent changes, date anchors, replay, expiry, worker claims,
 comparison harnesses and failure/retry behavior. It does not substitute for live
 Discord desktop/mobile acceptance.
+
+
+## Deployment readiness
+
+`GET /api/discord/render` returns the Coolify `SOURCE_COMMIT` and whether the
+runtime signing secret is configured, with no-store. It returns no credentials
+or user data. The production workflow waits for its exact commit and verifies
+that an unsigned POST is rejected before registering commands. The route imports
+the native renderer, so a missing Sharp runtime also prevents readiness. Native
+PNG and font output were verified during the initial production rollout.
+
+See [release operations](discord-release.md) for automatic registration and retries.
