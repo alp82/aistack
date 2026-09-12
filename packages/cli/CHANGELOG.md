@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.2](https://github.com/alp82/aistack/compare/cli-v0.16.1...cli-v0.16.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* **cli:** add sync --verbose and read Cursor history once per sync ([#420](https://github.com/alp82/aistack/issues/420)) ([2b5a1dc](https://github.com/alp82/aistack/commit/2b5a1dc29d6356fd4d8d49ea458252460dbc039f))
+* **cli:** scan every harness at once and draw a live board with progress bars ([#424](https://github.com/alp82/aistack/issues/424)) ([4601dd2](https://github.com/alp82/aistack/commit/4601dd26a3620eb9e5766038a736ee13799a3921))
+
 ## [0.16.1](https://github.com/alp82/aistack/compare/cli-v0.16.0...cli-v0.16.1) (2026-09-11)
 
 
