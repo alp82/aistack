@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
 import {
+	closeSync,
 	mkdirSync,
 	mkdtempSync,
+	openSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -95,16 +97,26 @@ test.each(["linux", "darwin"] as const)(
 			'#!/bin/sh\nread -r ignored || :\nprintf "%s %s\\n" "$AISTACK_HOOK_SOURCE" "$*" >> "$HOOK_TEST_RECEIPT"\ncase "$*" in *latest*) exit 1;; esac\n',
 			{ mode: 0o755 },
 		);
-		const output = execFileSync("sh", ["-c", cursorHookCommand(os)], {
-			input: '{"email":"private@example.test"}',
-			env: {
-				...process.env,
-				PATH: `${dir}:${process.env.PATH}`,
-				HOOK_TEST_RECEIPT: receipt,
-			},
-			encoding: "utf8",
-			timeout: 2000,
-		});
+		// The launcher exits without reading stdin. Writing through execFileSync's
+		// pipe races that exit and can throw EPIPE even when the hook succeeds.
+		const inputFile = join(dir, "hook-input.json");
+		writeFileSync(inputFile, '{"email":"private@example.test"}\n');
+		const inputFd = openSync(inputFile, "r");
+		let output: string;
+		try {
+			output = execFileSync("sh", ["-c", cursorHookCommand(os)], {
+				stdio: [inputFd, "pipe", "pipe"],
+				env: {
+					...process.env,
+					PATH: `${dir}:${process.env.PATH}`,
+					HOOK_TEST_RECEIPT: receipt,
+				},
+				encoding: "utf8",
+				timeout: 2000,
+			});
+		} finally {
+			closeSync(inputFd);
+		}
 		expect(output).toBe("");
 		await expect
 			.poll(() => {
