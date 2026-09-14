@@ -1,3 +1,4 @@
+import { type TraceLevel, traceError } from "../trace.js";
 // Stage one send: scan every ACTIVE harness → build → derive the gate's text
 // from the exact bytes. Active, not installed: a harness with nothing in the
 // window is not scanned and does not publish, so a dead Claude Code install no
@@ -214,9 +215,20 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		label: string,
 		state: "waiting" | "running" | "done" | "skipped" | "failed",
 		note?: string,
+		level?: TraceLevel,
 	) => {
 		if (state !== "waiting")
-			trace(`${label} · ${state}${note ? ` · ${note}` : ""}`);
+			trace(
+				`${label} · ${state}${note ? ` · ${note}` : ""}`,
+				level ??
+					(state === "failed"
+						? "error"
+						: state === "done"
+							? "success"
+							: state === "skipped"
+								? "warn"
+								: "info"),
+			);
 		emit({ kind: "step", id, label, state, ...(note ? { note } : {}) });
 	};
 
@@ -248,9 +260,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				step("prices", "Prices", "done", "bundled table");
 			}
 		} catch (error) {
+			traceError("price table fetch", error, "warn");
 			setActivePricer(null);
-			done(`fetch failed (${describeError(error)}), bundled table`);
-			step("prices", "Prices", "done", "unreachable, bundled table");
+			done("fetch failed, bundled table", "warn");
+			step("prices", "Prices", "done", "unreachable, bundled table", "warn");
 		}
 	};
 	const readSettings = async () => {
@@ -298,8 +311,15 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			);
 			return manifest;
 		} catch (error) {
-			done(`fetch failed (${describeError(error)}), whole window goes`);
-			step("manifest", "Synced days", "done", "unreachable, whole window");
+			traceError("day manifest fetch", error, "warn");
+			done("fetch failed, whole window goes", "warn");
+			step(
+				"manifest",
+				"Synced days",
+				"done",
+				"unreachable, whole window",
+				"warn",
+			);
 			return null;
 		}
 	};
@@ -383,7 +403,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				publishWorkflow: false,
 				onProgress: progress("recent usage"),
 			});
-			scanDone(describeScan(reading.recent.stats));
+			scanDone(
+				describeScan(reading.recent.stats),
+				reading.recent.stats.filesUnreadable ? "warn" : "success",
+			);
 		}
 		step(id, label, "running", "history");
 		const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
@@ -394,6 +417,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		});
 		scanDone(
 			`${describeScan(reading.history.stats)}${reading.history.scanComplete === false ? ", incomplete" : ""}`,
+			reading.history.scanComplete === false ||
+				reading.history.stats.filesUnreadable > 0
+				? "warn"
+				: "success",
 		);
 		const files = Math.max(seen, reading.history.stats.filesRead);
 		step(
@@ -401,6 +428,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			label,
 			"done",
 			`${files} ${files === 1 ? "file" : "files"} · ${elapsed()}`,
+			reading.history.scanComplete === false ||
+				reading.history.stats.filesUnreadable > 0
+				? "warn"
+				: "success",
 		);
 		return reading;
 	}
@@ -549,6 +580,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const bodyJson = JSON.stringify(body);
 	trace(
 		`days · ${days.mode}, ${days.send.length} to send${dayScansComplete ? "" : " (a scan was incomplete, no day rows go)"}`,
+		dayScansComplete ? "success" : "warn",
 	);
 	trace(`body · ${bodyJson.length} bytes, ${built.length} harness payloads`);
 	step("review", "Review", "done", `${days.send.length} days to send`);
@@ -561,6 +593,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		source,
 		baseUrl: deps.baseUrl,
 		scanStats,
+		incompleteDayScan: !dayScansComplete,
 		days,
 		prices,
 		// The real terminal, so the inventory rows break where this window ends
@@ -607,13 +640,6 @@ type HarnessReading = {
 	recent?: HarnessScan;
 	history?: HarnessScan;
 };
-
-function describeError(error: unknown): string {
-	if (error instanceof Error) {
-		return error.name === "TimeoutError" ? "timed out" : error.message;
-	}
-	return String(error);
-}
 
 function describeScan(stats: ScanStats): string {
 	return `${stats.filesRead}/${stats.filesFound} files read, ${stats.filesUnreadable} unreadable`;

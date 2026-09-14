@@ -487,5 +487,12 @@ test("Cursor corrections rebuild a former date and incomplete reads withhold the
 			?.usage,
 	).toBeUndefined();
 	complete = false;
-	expect((await stageSync(input)).body.measuredDays).toBeUndefined();
+	const incomplete = await stageSync(input);
+	expect(incomplete.body.measuredDays).toBeUndefined();
+	expect(incomplete.summary).toContain(
+		"days      not published: a historical scan was incomplete",
+	);
+	expect(incomplete.summary).toContain(
+		"Model breakdown and daily statistics will not update.",
+	);
 });

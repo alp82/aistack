@@ -1,3 +1,4 @@
+import { traceError } from "../trace.js";
 // The local stdio MCP server - the send channel picked by the spike #35.
 //
 // Wayfinder ticket #41 (map #29). Two tools, two beats:
@@ -149,6 +150,7 @@ export function createSyncServer(
 		try {
 			staged = await stage({ baseUrl: deps.baseUrl, now });
 		} catch (e) {
+			traceError("sync server request", e);
 			staged = null;
 			const message = e instanceof Error ? e.message : String(e);
 			return ok(id, textResult(`Preview failed: ${message}`, true));
@@ -361,6 +363,7 @@ export function runStdioSyncServer(deps: SyncServerDeps): void {
 				try {
 					server.handle(JSON.parse(line));
 				} catch (e) {
+					traceError("sync server request", e);
 					deps.log?.(`parse error: ${String(e)}`);
 				}
 			}

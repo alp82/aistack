@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { traceError } from "../../trace.js";
 import { asObj, asStr } from "../shared/aggregate.js";
 import { type Contribution, count, timestamp } from "./evidence.js";
 import { globalDb } from "./local.js";
@@ -36,7 +37,8 @@ export async function existingAccount(root: string): Promise<Account | null> {
 		if (!user) return null;
 		// Expired access still identifies the account, so it cannot fall back to a different account cache.
 		return { scope: digest(subject), cookie: `${user}%3A%3A${token}` };
-	} catch {
+	} catch (error) {
+		traceError("cursor account lookup", error, "warn");
 		return null;
 	} finally {
 		db?.close();
@@ -45,12 +47,18 @@ export async function existingAccount(root: string): Promise<Account | null> {
 
 export function apiContribution(value: unknown): Contribution | null {
 	const raw = asObj(value);
-	if (!raw) throw new Error("Invalid Cursor event");
+	if (!raw)
+		throw Object.assign(new Error("Invalid Cursor event"), {
+			code: "CURSOR_INVALID_EVENT",
+		});
 	const session = asStr(raw.conversationId);
 	if (!session || raw.cloudAgentId || session.startsWith("bc-")) return null;
 	const tsMs = timestamp(raw.timestamp);
 	const usage = raw.tokenUsage == null ? {} : asObj(raw.tokenUsage);
-	if (tsMs === null || !usage) throw new Error("Invalid Cursor event");
+	if (tsMs === null || !usage)
+		throw Object.assign(new Error("Invalid Cursor event"), {
+			code: "CURSOR_INVALID_EVENT",
+		});
 	const buckets: Contribution["buckets"] = {};
 	for (const [key, field] of [
 		["input", "inputTokens"],
@@ -60,7 +68,10 @@ export function apiContribution(value: unknown): Contribution | null {
 	] as const) {
 		if (usage[field] === undefined || usage[field] === null) continue;
 		const value = count(usage[field]);
-		if (value === undefined) throw new Error("Invalid Cursor token bucket");
+		if (value === undefined)
+			throw Object.assign(new Error("Invalid Cursor token bucket"), {
+				code: "CURSOR_INVALID_TOKEN_BUCKET",
+			});
 		buckets[key] = value;
 	}
 	const id = asStr(raw.id) ?? asStr(raw.eventId);
@@ -107,11 +118,16 @@ export async function fetchWindow(
 				}),
 			},
 		);
-		if (!response.ok) throw new Error("Cursor usage unavailable");
+		if (!response.ok)
+			throw Object.assign(new Error("Cursor usage unavailable"), {
+				status: response.status,
+			});
 		const payload = asObj(await response.json());
 		const events = payload?.usageEventsDisplay;
 		if (!Array.isArray(events) || events.length > pageSize)
-			throw new Error("Invalid Cursor page");
+			throw Object.assign(new Error("Invalid Cursor page"), {
+				code: "CURSOR_INVALID_PAGE",
+			});
 		if (payload?.totalUsageEventsCount !== undefined) {
 			const reported = count(payload.totalUsageEventsCount);
 			if (
@@ -119,12 +135,17 @@ export async function fetchWindow(
 				!Number.isInteger(reported) ||
 				(total !== undefined && total !== reported)
 			)
-				throw new Error("Cursor page count changed");
+				throw Object.assign(new Error("Cursor page count changed"), {
+					code: "CURSOR_PAGE_COUNT_CHANGED",
+				});
 			total = reported;
 		}
 		if (events.length) {
 			const key = digest(JSON.stringify(events));
-			if (pages.has(key)) throw new Error("Repeated Cursor page");
+			if (pages.has(key))
+				throw Object.assign(new Error("Repeated Cursor page"), {
+					code: "CURSOR_REPEATED_PAGE",
+				});
 			pages.add(key);
 		}
 		retrieved += events.length;
@@ -132,19 +153,28 @@ export async function fetchWindow(
 			const event = apiContribution(value);
 			if (!event) continue;
 			if (event.tsMs < from || event.tsMs >= to)
-				throw new Error("Cursor event outside query");
+				throw Object.assign(new Error("Cursor event outside query"), {
+					code: "CURSOR_EVENT_OUTSIDE_QUERY",
+				});
 			if (event.id && eventIds.has(event.id)) continue;
 			if (event.id) eventIds.add(event.id);
 			out.push(event);
 		}
 		if (total !== undefined && retrieved > total)
-			throw new Error("Invalid Cursor page count");
+			throw Object.assign(new Error("Invalid Cursor page count"), {
+				code: "CURSOR_INVALID_PAGE_COUNT",
+			});
 		if (
 			(total !== undefined && retrieved === total) ||
 			(total === undefined && events.length < pageSize)
 		)
 			return out;
-		if (!events.length) throw new Error("Incomplete Cursor pages");
+		if (!events.length)
+			throw Object.assign(new Error("Incomplete Cursor pages"), {
+				code: "CURSOR_INCOMPLETE_PAGES",
+			});
 	}
-	throw new Error("Cursor page limit");
+	throw Object.assign(new Error("Cursor page limit"), {
+		code: "CURSOR_PAGE_LIMIT",
+	});
 }

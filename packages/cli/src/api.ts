@@ -107,7 +107,10 @@ export async function stackCollect(
 			"Authentication expired. Run `npx @use-aistack/cli login` again.",
 		);
 	if (!res.ok) {
-		throw new Error(await formatHttpError(res, "Collect failed"));
+		throw Object.assign(
+			new Error(await formatHttpError(res, "Collect failed")),
+			{ status: res.status },
+		);
 	}
 	return res.json();
 }
@@ -192,7 +195,9 @@ export async function syncPublish(
 	if (res.status === 403 || res.status === 429)
 		throw failure("Sync failed", res);
 	if (!res.ok) {
-		throw new Error(await formatHttpError(res, "Sync failed"));
+		throw Object.assign(new Error(await formatHttpError(res, "Sync failed")), {
+			status: res.status,
+		});
 	}
 	return res.json();
 }
@@ -225,7 +230,10 @@ export async function fetchDayManifest(
 	if (res.status === 403 || res.status === 429)
 		throw failure("Manifest fetch failed", res);
 	if (!res.ok) {
-		throw new Error(await formatHttpError(res, "Manifest fetch failed"));
+		throw Object.assign(
+			new Error(await formatHttpError(res, "Manifest fetch failed")),
+			{ status: res.status },
+		);
 	}
 	const body = (await res.json()) as {
 		retentionDays?: unknown;
@@ -303,7 +311,10 @@ export async function setAutoSync(
 	if (res.status === 403 || res.status === 429)
 		throw failure("Auto-sync update failed", res);
 	if (!res.ok) {
-		throw new Error(await formatHttpError(res, "Auto-sync update failed"));
+		throw Object.assign(
+			new Error(await formatHttpError(res, "Auto-sync update failed")),
+			{ status: res.status },
+		);
 	}
 	return res.json();
 }

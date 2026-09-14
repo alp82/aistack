@@ -97,7 +97,9 @@ export async function retainedContextCalls(
 		const raw = await optionalRead(path.join(cacheDir, file));
 		// A partial cache write cannot silently replace a previously published day.
 		if (raw && !raw.endsWith("\n"))
-			throw new Error("Incomplete Grok context cache");
+			throw Object.assign(new Error("Incomplete Grok context cache"), {
+				code: "GROK_INCOMPLETE_CONTEXT_CACHE",
+			});
 		for (const line of raw.split("\n").filter(Boolean)) {
 			const call = asObj(JSON.parse(line));
 			if (
@@ -111,7 +113,9 @@ export async function retainedContextCalls(
 				!Number.isSafeInteger(call.tokens) ||
 				call.tokens < 0
 			)
-				throw new Error("Invalid Grok context cache");
+				throw Object.assign(new Error("Invalid Grok context cache"), {
+					code: "GROK_INVALID_CONTEXT_CACHE",
+				});
 			if (call.tsMs >= cutoff && call.tsMs <= now)
 				calls.set(call.id, {
 					id: call.id,

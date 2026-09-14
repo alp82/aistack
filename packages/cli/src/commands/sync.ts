@@ -1,3 +1,4 @@
+import { traceError } from "../trace.js";
 // The documented default sync surface (#56, built by #55/#57).
 //
 // The MCP-free channel: a human types `aistack sync` in their own terminal,
@@ -208,6 +209,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 			onEvent: board.handle,
 		});
 	} catch (e) {
+		traceError("sync scan", e);
 		board.stop();
 		outroError(e instanceof Error ? e.message : String(e));
 		process.exitCode = 1;
@@ -289,6 +291,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		if (!asked) await offerConnectUpsell();
 		outro("done");
 	} catch (e) {
+		traceError("sync publish", e);
 		s.stop("Publish failed");
 		outroError(e instanceof Error ? e.message : String(e));
 		process.exitCode = 1;

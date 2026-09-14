@@ -1,3 +1,4 @@
+import { traceError } from "../../trace.js";
 // I/O shell around the pure analyzer: find transcript roots, stream JSONL, hand
 // each parsed record to ingestRecord. Nothing leaves this machine.
 //
@@ -55,7 +56,9 @@ async function* walkJsonl(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
 		entries = await readdir(dir, { withFileTypes: true });
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("claude transcript discovery", error, "warn");
 		return;
 	}
 	for (const e of entries) {
@@ -113,7 +116,9 @@ export async function scan(
 			let resolved: string;
 			try {
 				resolved = await realpath(file);
-			} catch {
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+					traceError("claude transcript path resolution", error, "warn");
 				resolved = file;
 			}
 			if (visited.has(resolved)) {
@@ -132,7 +137,9 @@ export async function scan(
 						stats.filesSkippedByMtime++;
 						continue;
 					}
-				} catch {
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+						traceError("claude transcript stat", error, "warn");
 					/* unreadable stat - fall through and try to read it */
 				}
 			}
@@ -152,7 +159,8 @@ export async function scan(
 					projectWorkspaces,
 					opts.sinceMs,
 				);
-			} catch {
+			} catch (error) {
+				traceError("claude transcript read", error);
 				// Swallow deliberately: the error object carries the absolute path.
 				stats.filesUnreadable++;
 				stats.filesRead--;
@@ -166,7 +174,9 @@ async function exists(p: string): Promise<boolean> {
 	try {
 		await stat(p);
 		return true;
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("claude source stat", error, "warn");
 		return false;
 	}
 }
@@ -189,7 +199,9 @@ async function ingestFile(
 		let rec: unknown;
 		try {
 			rec = JSON.parse(line);
-		} catch {
+		} catch (error) {
+			if (agg.parseErrors === 0)
+				traceError("claude transcript JSON (first failure)", error, "warn");
 			agg.parseErrors++;
 			continue;
 		}

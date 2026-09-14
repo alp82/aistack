@@ -4,6 +4,7 @@ import {
 	normalizeModel,
 	type TokenCounts,
 } from "@aistack/pricing";
+import { trace, traceError } from "../../trace.js";
 import {
 	createHarnessWorkflowReducer,
 	createWorkflowLocalSources,
@@ -58,8 +59,13 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 			...loaded.value.local,
 			...Object.values(loaded.value.windows).flatMap((w) => w.events),
 		].some((row) => row.tsMs >= options.sinceMs && !ids.has(row.session))
-	)
+	) {
+		trace(
+			"cursor history incomplete · previously dated source is missing or no longer dated",
+			"warn",
+		);
 		complete = false;
+	}
 	const account = await (options.accountImpl ?? existingAccount)(root);
 	const cache = await refreshAccount({
 		cache: loaded.value,
@@ -84,8 +90,13 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 		loaded.value.local.some(
 			(row) => row.tsMs >= options.sinceMs && !dated.has(row.session),
 		)
-	)
+	) {
+		trace(
+			"cursor history incomplete · previously dated source is missing or no longer dated",
+			"warn",
+		);
 		complete = false;
+	}
 	const previousDates = new Map<string, Set<string>>();
 	for (const row of [
 		...loaded.value.local,
@@ -100,7 +111,8 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 		cache.sessions = [...ids].sort();
 		try {
 			await saveCache(file, cache);
-		} catch {
+		} catch (error) {
+			traceError("cursor cache save", error);
 			complete = false;
 		}
 	}

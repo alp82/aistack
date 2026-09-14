@@ -1,3 +1,4 @@
+import { traceError } from "../../trace.js";
 // I/O shell around the pure Codex analyzer: find rollout files, stream JSONL
 // (plain or zstd), hand each parsed line to ingestLine. Nothing leaves this
 // machine.
@@ -53,7 +54,9 @@ async function* walkRollouts(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
 		entries = await readdir(dir, { withFileTypes: true });
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("codex rollout discovery", error, "warn");
 		return;
 	}
 	for (const e of entries) {
@@ -104,7 +107,9 @@ export async function scan(
 			let resolved: string;
 			try {
 				resolved = await realpath(file);
-			} catch {
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+					traceError("codex rollout path resolution", error, "warn");
 				resolved = file;
 			}
 			// Dedup key = resolved path with `.zst` stripped. Codex's compression
@@ -129,7 +134,9 @@ export async function scan(
 						stats.filesSkippedByMtime++;
 						continue;
 					}
-				} catch {
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+						traceError("codex rollout stat", error, "warn");
 					/* unreadable stat - fall through and try to read it */
 				}
 			}
@@ -167,7 +174,9 @@ async function exists(p: string): Promise<boolean> {
 	try {
 		await stat(p);
 		return true;
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("codex source stat", error, "warn");
 		return false;
 	}
 }
@@ -205,10 +214,12 @@ function ingestWithRetry(
 	try {
 		return ingestFile(agg, file, opts);
 	} catch (e) {
+		traceError("codex rollout read", e);
 		if (errorClass(e) === "ENOENT" && !file.endsWith(".zst")) {
 			try {
 				return ingestFile(agg, `${file}.zst`, opts);
 			} catch (e2) {
+				traceError("codex compressed rollout retry", e2);
 				return { ok: false, reason: errorClass(e2) };
 			}
 		}
@@ -217,11 +228,10 @@ function ingestWithRetry(
 }
 
 /**
- * Whole-file read rather than a stream: a `.zst` rollout must be decompressed
- * as one buffer anyway, and rollout files are single sessions - megabytes,
- * not gigabytes. The lines are parsed BEFORE any of them folds into the
- * aggregate, because the fingerprint verdict (#73) arrives only at end of
- * file: a foreign file must leave the aggregate untouched.
+ * Keep bytes until the fingerprint is known, decoding one line at a time.
+ * Long sessions can exceed Node's string limit even when each line is small.
+ * Two passes over the same bytes avoid retaining every parsed transcript and
+ * ensure a foreign rollout leaves the aggregate untouched.
  */
 function ingestFile(
 	agg: Aggregate,
@@ -229,41 +239,48 @@ function ingestFile(
 	opts: ScanOptions,
 ): IngestOutcome {
 	const readFile = opts.readFileImpl ?? readFileSync;
-	let text: string;
+	const raw = readFile(file);
+	let bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 	if (file.endsWith(".zst")) {
 		if (zstdDecompress === null) throw readError("zstd-unsupported");
-		const raw = readFile(file);
 		try {
-			text = zstdDecompress(
-				Buffer.isBuffer(raw) ? raw : Buffer.from(raw),
-			).toString("utf8");
-		} catch {
+			bytes = zstdDecompress(bytes);
+		} catch (error) {
+			traceError("codex zstd decompression", error);
 			throw readError("zstd-corrupt");
 		}
-	} else {
-		text = readFile(file).toString("utf8");
 	}
 
-	const records: unknown[] = [];
 	let nonEmptyLines = 0;
 	let parseErrors = 0;
-	for (const line of text.split("\n")) {
-		if (!line) continue;
-		nonEmptyLines++;
-		try {
-			records.push(JSON.parse(line));
-		} catch {
-			parseErrors++;
+	function* records(): Generator<unknown> {
+		for (let start = 0; start < bytes.length; ) {
+			const newline = bytes.indexOf(10, start);
+			const end = newline < 0 ? bytes.length : newline;
+			const line = bytes.subarray(start, end).toString("utf8");
+			start = end + 1;
+			if (!line) continue;
+			nonEmptyLines++;
+			let record: unknown;
+			try {
+				record = JSON.parse(line);
+			} catch (error) {
+				if (parseErrors === 0)
+					traceError("codex rollout JSON (first failure)", error, "warn");
+				parseErrors++;
+				continue;
+			}
+			yield record;
 		}
 	}
 
-	const verdict = classifyRollout(records);
+	const verdict = classifyRollout(records());
 	if (!verdict.genuine) return { ok: true, ...verdict };
 
 	agg.lines += nonEmptyLines;
 	agg.parseErrors += parseErrors;
 	const state = createFileState();
-	for (const rec of records) ingestLine(agg, rec, state, opts.sinceMs);
+	for (const rec of records()) ingestLine(agg, rec, state, opts.sinceMs);
 	return { ok: true, genuine: true };
 }
 
@@ -280,17 +297,18 @@ function ingestFile(
  * tool X"; the originator label is diagnostic only.
  */
 function classifyRollout(
-	records: readonly unknown[],
+	records: Iterable<unknown>,
 ): { genuine: true } | { genuine: false; originator: string } {
 	let originator: string | null = null;
 	let sawTurnContext = false;
 	let sawTokenCount = false;
-	let genuine = records.length > 0;
-	for (const [i, raw] of records.entries()) {
+	let genuine = true;
+	let count = 0;
+	for (const raw of records) {
 		const rec = asObj(raw);
 		const type = rec ? asStr(rec.type) : null;
 		const payload = rec ? asObj(rec.payload) : null;
-		if (i === 0 && type !== "session_meta") genuine = false;
+		if (count++ === 0 && type !== "session_meta") genuine = false;
 		if (type === "session_meta" && payload && originator === null) {
 			originator = asStr(payload.originator);
 		} else if (type === "turn_context") {
@@ -303,7 +321,7 @@ function classifyRollout(
 			sawTokenCount = true;
 		}
 	}
-	if (sawTokenCount && !sawTurnContext) genuine = false;
+	if (count === 0 || (sawTokenCount && !sawTurnContext)) genuine = false;
 	if (genuine) return { genuine: true };
 	return { genuine: false, originator: originator ?? "(none)" };
 }
@@ -322,7 +340,9 @@ function readConfiguredMcpServers(agg: Aggregate, configFile?: string): void {
 		if (servers && typeof servers === "object" && !Array.isArray(servers)) {
 			names = Object.keys(servers);
 		}
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("codex MCP configuration", error, "warn");
 		return;
 	}
 	noteConfiguredMcpServers(agg, names);

@@ -1,3 +1,4 @@
+import { traceError } from "../trace.js";
 // `sync --auto` - the silent background run (#62, map #60).
 //
 // The tenets from map #29 hold: passive analysis, never passive publish. TWO
@@ -184,6 +185,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 			}
 		}
 	} catch (e) {
+		traceError("auto-sync", e);
 		failure = e instanceof Error ? e.message : String(e);
 	}
 
