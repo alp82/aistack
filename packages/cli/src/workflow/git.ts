@@ -1,6 +1,7 @@
 import { execFile, execFileSync } from "node:child_process";
 import path from "node:path";
 import type { GitDay } from "@aistack/workflow-rules";
+import { trace } from "../trace.js";
 
 /**
  * Both rules changed together in #278: a path a machine owns (a dependency
@@ -9,7 +10,14 @@ import type { GitDay } from "@aistack/workflow-rules";
  * the same repository.
  */
 export const TEST_FILE_RULE_VERSION = "test-files/v2";
-export const FILE_TYPE_RULE_VERSION = "file-types/v2";
+/**
+ * v3: a file over `BIG_FILE_THRESHOLD` counts no line. Git treats it as binary,
+ * so its record reads `-` for both counts, the same as an image. Nobody writes
+ * a megabyte of source by hand; what reaches that size is a dump, a rotated
+ * log, or a generated table, and diffing it was most of the Git cost on a
+ * repository that had committed a few (19 s of 20 on one monorepo).
+ */
+export const FILE_TYPE_RULE_VERSION = "file-types/v3";
 /**
  * Which commits count at all (#279). A merge commit and a commit whose every
  * path is machine-owned leave the reading. Without this id a reading synced
@@ -226,6 +234,10 @@ function isUnauthoredPath(file: string): boolean {
 }
 
 const COMMIT_MARKER = "aistack-commit";
+/** Git's `core.bigFileThreshold` for the read: above it a blob is binary. */
+const BIG_FILE_THRESHOLD = "1m";
+/** Git processes at once. After deduplication there are few, and each is CPU-bound. */
+const GIT_CONCURRENCY = 4;
 
 function parseNumstat(
 	field: string,
@@ -280,14 +292,17 @@ export function extractGitWorkflow(
 	options: ExtractGitWorkflowOptions,
 ): GitWorkflowResult {
 	const run = options.run ?? defaultRunner;
-	const roots = new Set<string>();
+	const roots = new Map<string, string>();
 	for (const directory of options.workingDirectories) {
-		const root = run(directory, ["rev-parse", "--show-toplevel"])?.trim();
-		if (root) roots.add(root);
+		const root = parseRepositoryRoot(run(directory, gitRevParseArgs()));
+		if (root && !roots.has(root.key)) roots.set(root.key, root.cwd);
 	}
 	const histories: string[] = [];
-	for (const root of roots) {
-		const history = run(root, gitLogArgs());
+	let index = 0;
+	for (const cwd of roots.values()) {
+		const done = repositoryTimer(++index, roots.size);
+		const history = run(cwd, gitLogArgs());
+		done(history);
 		if (history) histories.push(history);
 	}
 	return reduceGitHistories(histories, options);
@@ -300,24 +315,88 @@ export async function extractGitWorkflowAsync(
 	},
 ): Promise<GitWorkflowResult> {
 	const run = options.run ?? defaultAsyncRunner;
-	const roots = new Set<string>();
+	const roots = new Map<string, string>();
 	for (const directory of options.workingDirectories) {
-		const root = (
-			await run(directory, ["rev-parse", "--show-toplevel"])
-		)?.trim();
-		if (root) roots.add(root);
+		const root = parseRepositoryRoot(await run(directory, gitRevParseArgs()));
+		if (root && !roots.has(root.key)) roots.set(root.key, root.cwd);
 	}
-	const histories = await Promise.all(
-		[...roots].map((root) => run(root, gitLogArgs())),
+	const queue = [...roots.values()];
+	const total = queue.length;
+	const histories: string[] = [];
+	let index = 0;
+	const worker = async (): Promise<void> => {
+		for (let cwd = queue.shift(); cwd !== undefined; cwd = queue.shift()) {
+			const done = repositoryTimer(++index, total);
+			const history = await run(cwd, gitLogArgs());
+			done(history);
+			if (history) histories.push(history);
+		}
+	};
+	await Promise.all(
+		Array.from({ length: Math.min(GIT_CONCURRENCY, total) }, worker),
 	);
-	return reduceGitHistories(
-		histories.filter((history): history is string => history !== null),
-		options,
-	);
+	return reduceGitHistories(histories, options);
+}
+
+/**
+ * One line asks for both: the directory every worktree of a repository shares,
+ * and the top level of this checkout. The first is the identity, the second
+ * is where `git log` runs.
+ */
+function gitRevParseArgs(): readonly string[] {
+	return [
+		"rev-parse",
+		"--path-format=absolute",
+		"--git-common-dir",
+		"--show-toplevel",
+	];
+}
+
+/**
+ * A repository is read once, however many worktrees of it the sessions
+ * touched. `--all` walks the refs of the shared directory, so two worktrees
+ * hand back the same history, and the reducer's hash set was the only thing
+ * keeping the duplicate reads from counting twice. On one machine 98
+ * top levels were 12 repositories, and 86 reads were thrown away.
+ *
+ * Exposed for tests: a fake runner may answer with the top level alone, and
+ * then the top level is the identity.
+ */
+export function parseRepositoryRoot(
+	output: string | null,
+): { key: string; cwd: string } | null {
+	if (!output) return null;
+	const [common, top] = output.split("\n").map((line) => line.trim());
+	if (!common) return null;
+	return { key: common, cwd: top || common };
+}
+
+function repositoryTimer(
+	index: number,
+	total: number,
+): (history: string | null) => void {
+	const started = performance.now();
+	return (history) => {
+		const ms = Math.round(performance.now() - started);
+		const commits =
+			history === null ? "unreadable" : `${countCommits(history)} commits`;
+		trace(`git repository ${index}/${total} · ${ms} ms · ${commits}`);
+	};
+}
+
+function countCommits(history: string): number {
+	let count = 0;
+	for (let at = history.indexOf(COMMIT_MARKER); at !== -1; ) {
+		count++;
+		at = history.indexOf(COMMIT_MARKER, at + COMMIT_MARKER.length);
+	}
+	return count;
 }
 
 function gitLogArgs(): readonly string[] {
 	return [
+		"-c",
+		`core.bigFileThreshold=${BIG_FILE_THRESHOLD}`,
 		"log",
 		"--all",
 		"--no-merges",

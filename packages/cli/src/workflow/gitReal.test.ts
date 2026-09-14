@@ -182,4 +182,41 @@ describe("extractGitWorkflow over real Git output", () => {
 			true,
 		);
 	});
+
+	it("counts no line for a file over the big-file threshold (file-types/v3)", () => {
+		const linesOf = (extension: string) =>
+			read().changedLinesByExtension.find((row) => row.extension === extension)
+				?.changedLines ?? 0;
+		const tsBefore = linesOf(".ts");
+		const commitsBefore = read().commits;
+		// 1.2 MB of JSON: an approved extension, but nobody typed it.
+		write(root, "fixtures/dump.json", lines(60_000, '"row-value-padding"'));
+		write(root, "src/real.ts", lines(3));
+		git(root, ["add", "-A"]);
+		git(root, ["commit", "-m", "dump"]);
+
+		// The dump reads as binary: no line on either side, and no withheld line
+		// either. The commit itself still counts, and the small file still does.
+		expect(linesOf(".json")).toBe(0);
+		expect(linesOf(".ts")).toBe(tsBefore + 3);
+		expect(read().commits).toBe(commitsBefore + 1);
+	});
+
+	it("reads a repository once through a worktree and the main checkout", () => {
+		const worktree = path.join(root, "..", `${path.basename(root)}-wt`);
+		git(root, ["worktree", "add", "--quiet", "-b", "wt", worktree]);
+		try {
+			const result = foldGitDays(
+				extractGitWorkflow({
+					workingDirectories: [root, worktree],
+					fromMs: Date.parse("2026-08-01T00:00:00Z"),
+					toMs: Date.parse("2026-08-31T23:59:59Z"),
+					utcOffsetMinutes: 120,
+				}).days,
+			);
+			expect(result.commits).toBe(read().commits);
+		} finally {
+			git(root, ["worktree", "remove", "--force", worktree]);
+		}
+	});
 });

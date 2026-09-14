@@ -259,6 +259,16 @@ a coding language, so `Dockerfile`, `LICENSE` and `.gitignore` are withheld by t
 while their lines stay in the denominator. The v1 rule ranked them together as
 `(none)`, which read as the leading language of a TypeScript repository.
 
+`file-types/v3` counts no line for a file over 1 MB. The CLI reads with Git's
+`core.bigFileThreshold` at that size, so such a blob is binary to Git and its record
+reads `-` on both sides, like an image: no line in either half. Nobody writes a
+megabyte of source by hand; what reaches that size is a dump, a rotated log, or a
+generated table, and diffing those was 19 of the 20 seconds one monorepo cost the
+scan. The commit still counts, and a small file in the same commit still counts its
+lines. The CLI also reads each repository once, however many of its worktrees the
+sessions touched; the fold is unchanged, since the reducer already kept one entry per
+commit hash.
+
 ## The wire
 
 **Superseded on 2026-08-28** ([ADR-0010](../adr/0010-the-cli-ships-only-the-days-the-server-lacks.md),
