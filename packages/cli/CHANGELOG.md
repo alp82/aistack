@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/alp82/aistack/compare/cli-v0.16.2...cli-v0.16.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* **cli:** stop the Cursor read from scanning the whole database per page ([#425](https://github.com/alp82/aistack/issues/425)) ([217ec62](https://github.com/alp82/aistack/commit/217ec626669e534e7cebf650f37bb01bdd314524))
+
 ## [0.16.2](https://github.com/alp82/aistack/compare/cli-v0.16.1...cli-v0.16.2) (2026-09-12)
 
 
