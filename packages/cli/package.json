@@ -30,7 +30,6 @@
   "dependencies": {
     "@clack/prompts": "^0.10.0",
     "commander": "^13.1.0",
-    "cursor-history": "0.18.0",
     "ignore": "^7.0.0",
     "open": "^10.1.0",
     "picocolors": "^1.1.0",
@@ -41,6 +40,7 @@
     "@aistack/pricing": "workspace:*",
     "@aistack/workflow-rules": "workspace:*",
     "@types/node": "^24",
+    "cursor-history": "0.18.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.2"
   },

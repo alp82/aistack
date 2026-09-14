@@ -10,8 +10,13 @@ import { type CursorWorkerMessage, readLocalOnce } from "./local.js";
 const port = parentPort;
 if (!port) throw new Error("cursor worker started without a parent port");
 const post = (message: CursorWorkerMessage) => port.postMessage(message);
-const input = workerData as { root: string; before: string; trace: boolean };
-if (input.trace) enableTrace();
+const input = workerData as {
+	root: string;
+	before: string;
+	trace: boolean;
+	traceStartedAt: number;
+};
+if (input.trace) enableTrace(undefined, input.traceStartedAt);
 
 readLocalOnce(input.root, input.before, (files, total) =>
 	post({ kind: "progress", files, ...(total !== undefined ? { total } : {}) }),

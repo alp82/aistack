@@ -11,3 +11,6 @@ onlyBuiltDependencies:
   - core-js
   - esbuild
   - sharp
+
+patchedDependencies:
+  cursor-history@0.18.0: patches/cursor-history@0.18.0.patch

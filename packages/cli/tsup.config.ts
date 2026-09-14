@@ -11,7 +11,16 @@ export default defineConfig({
   clean: true,
   // These private workspace packages are never published, so the CLI bundles
   // them into dist. Externalizing either package would break the npm release.
-  noExternal: ['@aistack/pricing', '@aistack/workflow-rules'],
+  //
+  // cursor-history is bundled too, so the pnpm patch in patches/ ships to
+  // users: as an external dependency npm would install the unpatched
+  // registry copy. The patch fixes the quadratic page walk that hangs sync on
+  // a multi-gigabyte Cursor database (`? IS NULL OR rowid > ?` plans as a
+  // full SCAN per page; `rowid > COALESCE(?, -1)` seeks). The Cursor read
+  // goes through node:sqlite, so the library's better-sqlite3 import stays
+  // external and is never resolved.
+  noExternal: ['@aistack/pricing', '@aistack/workflow-rules', 'cursor-history'],
+  external: ['better-sqlite3'],
   banner: { js: '#!/usr/bin/env node' },
   // tsup strips the `node:` prefix from builtin imports by default. `fs` and
   // `zlib` survive that; `sqlite` does not - it resolves ONLY as `node:sqlite`

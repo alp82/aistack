@@ -1,0 +1,134 @@
+diff --git a/dist/cjs/core/composer-sqlite.js b/dist/cjs/core/composer-sqlite.js
+index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..4e5896ace0371edac4dbc96a87b66bc4b4548841 100644
+--- a/dist/cjs/core/composer-sqlite.js
++++ b/dist/cjs/core/composer-sqlite.js
+@@ -24,7 +24,19 @@ function sqliteLikeLiteralPrefix(value) {
+  * IDs that differ only by case cannot share payload rows.
+  */
+ function exactBlobPrefixPredicate(qualifiedKey) {
+-    return `${qualifiedKey} IS NOT NULL AND substr(CAST(${qualifiedKey} AS BLOB), 1, length(CAST(? AS BLOB))) = CAST(? AS BLOB)`;
++    // A range on the key column first, so the UNIQUE index serves the lookup;
++    // the substr comparison then keeps the byte-exact semantics on that range.
++    // Without the range every selected-session read is a full table scan.
++    // Bind: lower bound, upper bound, prefix, prefix.
++    return `${qualifiedKey} >= ? AND ${qualifiedKey} < ? AND ${qualifiedKey} IS NOT NULL AND substr(CAST(${qualifiedKey} AS BLOB), 1, length(CAST(? AS BLOB))) = CAST(? AS BLOB)`;
++}
++/** The smallest text greater than every text that starts with `prefix`. */
++function exactPrefixUpperBound(prefix) {
++    const last = prefix.codePointAt(prefix.length - 1);
++    if (last === undefined || last >= 0x10ffff)
++        return prefix + String.fromCodePoint(0x10ffff) + String.fromCodePoint(0x10ffff);
++    const lastLength = last > 0xffff ? 2 : 1;
++    return prefix.slice(0, prefix.length - lastLength) + String.fromCodePoint(last + 1);
+ }
+ function abortError(signal) {
+     if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
+@@ -151,8 +163,8 @@ function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, si
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND (? IS NULL OR ${table}.rowid > ?) ORDER BY ${table}.rowid ASC LIMIT ?`)
+-            .all(keyPattern, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++            .all(keyPattern, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -181,8 +193,8 @@ function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, visit, sig
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
+-            .all(keyPattern, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .all(keyPattern, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -205,8 +217,8 @@ function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix, budget
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
+-            .all(keyPrefix, keyPrefix, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .all(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -336,7 +348,7 @@ function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget,
+     throwIfAborted(signal);
+     const raw = db
+         .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+-        .get(keyPrefix, keyPrefix);
++        .get(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix);
+     if (!raw)
+         return undefined;
+     const metadata = normalizeBubbleMetadata(raw, keyPrefix);
+diff --git a/dist/core/composer-sqlite.js b/dist/core/composer-sqlite.js
+index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..a688b33eb3f8a0e1fa7c59e1a3cc1bcac9075dbf 100644
+--- a/dist/core/composer-sqlite.js
++++ b/dist/core/composer-sqlite.js
+@@ -9,7 +9,19 @@ export function sqliteLikeLiteralPrefix(value) {
+  * IDs that differ only by case cannot share payload rows.
+  */
+ function exactBlobPrefixPredicate(qualifiedKey) {
+-    return `${qualifiedKey} IS NOT NULL AND substr(CAST(${qualifiedKey} AS BLOB), 1, length(CAST(? AS BLOB))) = CAST(? AS BLOB)`;
++    // A range on the key column first, so the UNIQUE index serves the lookup;
++    // the substr comparison then keeps the byte-exact semantics on that range.
++    // Without the range every selected-session read is a full table scan.
++    // Bind: lower bound, upper bound, prefix, prefix.
++    return `${qualifiedKey} >= ? AND ${qualifiedKey} < ? AND ${qualifiedKey} IS NOT NULL AND substr(CAST(${qualifiedKey} AS BLOB), 1, length(CAST(? AS BLOB))) = CAST(? AS BLOB)`;
++}
++/** The smallest text greater than every text that starts with `prefix`. */
++function exactPrefixUpperBound(prefix) {
++    const last = prefix.codePointAt(prefix.length - 1);
++    if (last === undefined || last >= 0x10ffff)
++        return prefix + String.fromCodePoint(0x10ffff) + String.fromCodePoint(0x10ffff);
++    const lastLength = last > 0xffff ? 2 : 1;
++    return prefix.slice(0, prefix.length - lastLength) + String.fromCodePoint(last + 1);
+ }
+ function abortError(signal) {
+     if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
+@@ -136,8 +148,8 @@ export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, vi
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND (? IS NULL OR ${table}.rowid > ?) ORDER BY ${table}.rowid ASC LIMIT ?`)
+-            .all(keyPattern, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++            .all(keyPattern, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -166,8 +178,8 @@ export function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, vis
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
+-            .all(keyPattern, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .all(keyPattern, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -190,8 +202,8 @@ export function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix,
+     while (true) {
+         throwIfAborted(signal);
+         const rawPage = db
+-            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
+-            .all(keyPrefix, keyPrefix, afterRowId, afterRowId, pageRows);
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .all(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix, afterRowId, pageRows);
+         if (rawPage.length === 0)
+             break;
+         const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
+@@ -321,7 +333,7 @@ export function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix,
+     throwIfAborted(signal);
+     const raw = db
+         .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+-        .get(keyPrefix, keyPrefix);
++        .get(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix);
+     if (!raw)
+         return undefined;
+     const metadata = normalizeBubbleMetadata(raw, keyPrefix);
