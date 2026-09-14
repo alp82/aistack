@@ -8,7 +8,7 @@
 // that stalls only stalls its own row. On a pipe it prints the finished rows
 // once, at stop.
 
-import { dim, lime, red } from "../theme.js";
+import { dim, lime, red, yellow } from "../theme.js";
 import type { StageEvent } from "./stage.js";
 
 export type BoardRow = {
@@ -16,6 +16,7 @@ export type BoardRow = {
 	label: string;
 	state: "waiting" | "running" | "done" | "skipped" | "failed";
 	note?: string;
+	level?: "info" | "success" | "warn" | "error";
 	done?: number;
 	total?: number;
 	unit?: string;
@@ -42,6 +43,7 @@ export function applyEvent(
 		row.label = event.label;
 		row.state = event.state;
 		row.note = event.note;
+		row.level = event.level;
 		if (event.state === "running" && row.startedAt === undefined)
 			row.startedAt = now;
 		if (event.state === "done" || event.state === "failed") row.endedAt = now;
@@ -116,7 +118,7 @@ export function renderRows(
 				break;
 			}
 			case "done":
-				icon = lime("●");
+				icon = row.level === "warn" ? yellow("⚠") : lime("●");
 				body = dim(row.note ?? "done");
 				break;
 			case "skipped":

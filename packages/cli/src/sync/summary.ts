@@ -655,10 +655,11 @@ export function buildGateSummary(ctx: GateContext): string {
 	// The counts are the sync's one plain sentence about diff-only publishing.
 	if (body.measuredDays) {
 		out.push(...daysBlock(body.measuredDays, ctx.days));
-	} else if (ctx.incompleteDayScan) {
+	}
+	if (ctx.incompleteDayScan) {
 		out.push(
-			"days      not published: a historical scan was incomplete",
-			"          Model breakdown and daily statistics will not update.",
+			"coverage  partial history: publishing the dated evidence available",
+			"          Previously recorded evidence is retained; missing usage is not estimated.",
 		);
 	}
 

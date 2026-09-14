@@ -274,6 +274,9 @@ export async function readLocalOnce(
 	const readDone = traceTimer("cursor history read");
 	let context: SessionReadContext | undefined;
 	let retrySmallPage = false;
+	let unresolved = 0;
+	let corrupted = 0;
+	let ambiguous = 0;
 	try {
 		const reader = await import("cursor-history");
 		const options = {
@@ -304,10 +307,6 @@ export async function readLocalOnce(
 			for (const summary of page.data) {
 				stats.filesFound++;
 				if (summary.resolutionState === "ambiguous") {
-					trace(
-						"cursor session resolution incomplete · ambiguous source",
-						"warn",
-					);
 					out.complete = false;
 				}
 				try {
@@ -316,10 +315,9 @@ export async function readLocalOnce(
 						session.resolutionState !== "complete" ||
 						session.messages.some((m) => m.metadata?.corrupted)
 					) {
-						trace(
-							"cursor session incomplete · unresolved or corrupted messages",
-							"warn",
-						);
+						if (session.resolutionState !== "complete") unresolved++;
+						if (session.messages.some((m) => m.metadata?.corrupted))
+							corrupted++;
 						out.complete = false;
 					}
 					const tokens = await readTokenEvidence(root, session);
@@ -328,7 +326,8 @@ export async function readLocalOnce(
 					onProgress?.(stats.filesRead, page.pagination.total);
 				} catch (error) {
 					if (isPageByteLimit(error)) throw error;
-					traceError("cursor history", error);
+					if (traceErrorCode(error) === "SESSION_AMBIGUOUS") ambiguous++;
+					else traceError("cursor session skipped", error, "warn");
 					out.complete = false;
 					stats.filesUnreadable++;
 				} finally {
@@ -382,6 +381,12 @@ export async function readLocalOnce(
 			"warn",
 		);
 		out.complete = false;
+	}
+	if (unresolved || corrupted || ambiguous) {
+		trace(
+			`cursor partial history · ${unresolved} sessions unresolved, ${corrupted} with corrupted messages, ${ambiguous} skipped with conflicting copies${ambiguous ? " (SESSION_AMBIGUOUS)" : ""} · available dated usage retained`,
+			"warn",
+		);
 	}
 	readDone(
 		`${stats.filesRead}/${stats.filesFound} sessions read, ${stats.filesUnreadable} unreadable${out.complete ? "" : ", incomplete"}`,

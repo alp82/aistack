@@ -124,9 +124,13 @@ export async function fetchWindow(
 			});
 		const payload = asObj(await response.json());
 		const events = payload?.usageEventsDisplay;
-		if (!Array.isArray(events) || events.length > pageSize)
+		if (!Array.isArray(events))
 			throw Object.assign(new Error("Invalid Cursor page"), {
-				code: "CURSOR_INVALID_PAGE",
+				code: "CURSOR_INVALID_PAGE_SHAPE",
+			});
+		if (events.length > pageSize)
+			throw Object.assign(new Error("Cursor page exceeds requested size"), {
+				code: "CURSOR_PAGE_TOO_LARGE",
 			});
 		if (payload?.totalUsageEventsCount !== undefined) {
 			const reported = count(payload.totalUsageEventsCount);

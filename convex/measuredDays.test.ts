@@ -139,8 +139,8 @@ function usageDay(over: UsageOver = {}): UsageDay {
 
 type DayIn = { date: string; usage?: UsageDay; workflow?: WorkflowDay }
 
-function dayWire(days: DayIn[], utcOffsetMinutes = 120) {
-  return { aggregateVersion: 'measured-days/v1', utcOffsetMinutes, days }
+function dayWire(days: DayIn[], utcOffsetMinutes = 120, partial = false) {
+  return { ...(partial ? { partial: true } : {}), aggregateVersion: 'measured-days/v1', utcOffsetMinutes, days }
 }
 
 async function seedStack(t: Ctx, over: Partial<Doc<'stacks'>> = {}) {
@@ -619,4 +619,47 @@ describe('the workflow read over the new table', () => {
     expect(view?.window.days).toBe(2)
     expect(view?.section.git.commits).toBe(2)
   })
+})
+
+test('partial syncs retain recorded usage and workflow, add new models, and are idempotent', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId } = await seedStack(t)
+  const date = '2026-08-28'
+  const original = { date, usage: usageDay({ input: 1000, usd: 1 }), workflow: workflowDay(date) }
+  await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([original]) })
+  const smaller = usageDay({ input: 100, usd: 0.1 })
+  smaller.harnesses[0].models.push(...usageDay({ model: 'new-model', input: 50 }).harnesses[0].models)
+  const wire = dayWire([{ date, usage: smaller }, { date: '2026-08-27', usage: usageDay({ input: 75 }) }], 120, true)
+  await publish(t, stackId, { machine: 'laptop', measuredDays: wire })
+  const first = (await storedDays(t)).find(row => row.date === date)!
+  expect(first.usage?.harnesses[0].models).toContainEqual(original.usage.harnesses[0].models[0])
+  expect(first.usage?.harnesses[0].models).toHaveLength(2)
+  expect(first.workflow).toEqual(original.workflow)
+  expect(first.fingerprint).toBe(dayFingerprint({ date, usage: first.usage, workflow: first.workflow }))
+  await publish(t, stackId, { machine: 'laptop', measuredDays: wire })
+  const repeated = (await storedDays(t)).find(row => row.date === date)!
+  expect(repeated.fingerprint).toBe(first.fingerprint)
+  expect(await storedDays(t)).toHaveLength(2)
+  await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([{ date }], 120, true) })
+  expect((await storedDays(t)).find(row => row.date === date)?.fingerprint).toBe(first.fingerprint)
+})
+
+test('partial syncs grow covered models but retain incomparable token buckets and absent harnesses', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId } = await seedStack(t)
+  const date = '2026-08-28'
+  const held = usageDay({ input: 1000, usd: 1, sessions: 3 })
+  held.harnesses[0].models[0].tokens.output = 20
+  held.harnesses.push(...usageDay({ harness: 'cursor', input: 500 }).harnesses)
+  await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([{ date, usage: held }]) })
+  const incomparable = usageDay({ input: 2000, usd: 2 })
+  await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([{ date, usage: incomparable }], 120, true) })
+  let row = (await storedDays(t))[0]
+  expect(row.usage).toEqual(held)
+  const fuller = usageDay({ input: 2000, usd: 2, sessions: 4 })
+  fuller.harnesses[0].models[0].tokens.output = 30
+  await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([{ date, usage: fuller }], 120, true) })
+  row = (await storedDays(t))[0]
+  expect(row.usage?.harnesses[0]).toEqual(fuller.harnesses[0])
+  expect(row.usage?.harnesses[1]).toEqual(held.harnesses[1])
 })

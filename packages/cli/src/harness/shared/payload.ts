@@ -617,6 +617,8 @@ export function toPayloadWorkflow(
 
 /** The day rows on the wire (#307), plus the machine's clock. */
 export type PayloadMeasuredDays = {
+	/** Retain stored evidence when a scan cannot reconstruct the full history. */
+	partial?: boolean;
 	aggregateVersion: typeof MEASURED_DAYS_V1;
 	/** Minutes EAST of UTC, as `PayloadWorkflow` carried it (#218). */
 	utcOffsetMinutes: number;
@@ -719,6 +721,7 @@ export function buildSyncBody(
 				measuredDays: {
 					aggregateVersion: MEASURED_DAYS_V1,
 					utcOffsetMinutes: measuredDays.utcOffsetMinutes,
+					...(measuredDays.partial ? { partial: true } : {}),
 					days: applyDayConsent(measuredDays.days, syncConfig),
 				},
 			}

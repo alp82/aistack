@@ -31,7 +31,9 @@ npx @use-aistack/cli sync --verbose
 AISTACK_DEBUG=1 npx @use-aistack/cli sync   # the same, for a hook or a script
 ```
 
-The lines go to stderr and hold counts and durations only: no paths, prompts, or database values. Paste them into a bug report.
+The lines go to stderr and hold counts, durations, and safe error codes: no paths, prompts, or database values. Paste them into a bug report. Expected Git discovery misses are summarized as informational messages; incomplete Cursor sessions are grouped into one warning.
+
+Partial history still contributes dated usage. The review marks it as partial, and the backend retains previously recorded evidence. Missing models, harnesses, dates, and workflow readings are not cleared by a partial sync. Repeated readings are not added together. An existing model is updated only when the incoming reading covers all its stored token buckets and recorded cost; otherwise the stored model reading stays. A complete scan can still apply corrections through the normal daily replacement path.
 
 ### `npx @use-aistack/cli sync --auto on` / `off`
 

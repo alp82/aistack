@@ -139,7 +139,11 @@ export async function refreshAccount(input: {
 			if (previous?.events.length && events.length === 0 && to <= now) continue;
 			next.windows[key] = { from, to, fetchedAt: now, events };
 		} catch (error) {
-			traceError("cursor account enrichment", error, "warn");
+			traceError(
+				"cursor account usage refresh (using local and previously cached usage)",
+				error,
+				"warn",
+			);
 			// A first run may still publish complete local evidence. Existing enrichment survives.
 			// Stop after an auth/network failure, rather than retrying every historical window.
 			break;

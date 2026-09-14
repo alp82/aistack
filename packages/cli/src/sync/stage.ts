@@ -141,6 +141,7 @@ export type StageEvent =
 			label: string;
 			state: "waiting" | "running" | "done" | "skipped" | "failed";
 			note?: string;
+			level?: TraceLevel;
 	  }
 	| {
 			kind: "progress";
@@ -229,7 +230,14 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 								? "warn"
 								: "info"),
 			);
-		emit({ kind: "step", id, label, state, ...(note ? { note } : {}) });
+		emit({
+			kind: "step",
+			id,
+			label,
+			state,
+			...(note ? { note } : {}),
+			...(level ? { level } : {}),
+		});
 	};
 
 	// The three startup reads are independent, so they go out together (#420).
@@ -466,7 +474,12 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		if (!history) continue;
 		const { aggregate, workflow, workflowLocal, scanComplete, sessionDates } =
 			history;
-		if (scanComplete === false) dayScansComplete = false;
+		if (
+			scanComplete === false ||
+			history.stats.filesUnreadable > 0 ||
+			aggregate.parseErrors > 0
+		)
+			dayScansComplete = false;
 		if (adapter.name === "grok-build" || adapter.name === "cursor")
 			sessionDatesByHarness.set(adapter.name, sessionDates ?? new Map());
 		workflowScans.push({ aggregate: workflow, local: workflowLocal });
@@ -541,7 +554,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			dayScansComplete = false;
 		acknowledgements.push(() => saveGrokDateHints(scope, current));
 	}
-	if (acknowledgements.length)
+	if (acknowledgements.length && dayScansComplete)
 		acknowledgePublish = () => {
 			for (const acknowledge of acknowledgements) acknowledge();
 		};
@@ -551,12 +564,13 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			...(workflow ? { workflow: workflow.days } : {}),
 			from: utcDate(daysSinceMs),
 			to: utcDate(now),
-			includeDates: correctionDates,
+			// A partial scan cannot prove that a formerly dated session disappeared.
+			includeDates: dayScansComplete ? correctionDates : new Set(),
 		}),
 		config,
 	);
 	const days = selectDaysToPublish({
-		local: dayScansComplete ? localDays : [],
+		local: localDays,
 		manifest,
 		todayUtc: utcDate(now),
 	});
@@ -566,9 +580,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		config,
 		settings.autoSync,
 		deps.trigger,
-		historical.length > 0 && dayScansComplete
+		historical.length > 0
 			? {
 					aggregateVersion: MEASURED_DAYS_V1,
+					...(!dayScansComplete ? { partial: true } : {}),
 					utcOffsetMinutes:
 						workflow?.utcOffsetMinutes ?? machineUtcOffsetMinutes(),
 					days: days.send,
@@ -579,11 +594,17 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	step("review", "Review", "running");
 	const bodyJson = JSON.stringify(body);
 	trace(
-		`days · ${days.mode}, ${days.send.length} to send${dayScansComplete ? "" : " (a scan was incomplete, no day rows go)"}`,
+		`days · ${days.mode}, ${days.send.length} to send${dayScansComplete ? "" : " (partial history; publishing available evidence)"}`,
 		dayScansComplete ? "success" : "warn",
 	);
 	trace(`body · ${bodyJson.length} bytes, ${built.length} harness payloads`);
-	step("review", "Review", "done", `${days.send.length} days to send`);
+	step(
+		"review",
+		"Review",
+		"done",
+		`${days.send.length} days to send${dayScansComplete ? "" : " · partial history"}`,
+		dayScansComplete ? "success" : "warn",
+	);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 
 	const ctx = {

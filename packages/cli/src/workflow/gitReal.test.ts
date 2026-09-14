@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { foldGitDays } from "@aistack/workflow-rules";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { extractGitWorkflow } from "./git.js";
+import { disableTrace, enableTrace } from "../trace.js";
+import { extractGitWorkflow, extractGitWorkflowAsync } from "./git.js";
 
 /**
  * These cases run the real `git` binary, so the extractor parses the real
@@ -220,3 +221,37 @@ describe("extractGitWorkflow over real Git output", () => {
 		}
 	});
 });
+
+it.each([false, true])(
+	"summarizes expected Git discovery misses without warning spam (%s)",
+	async (asyncRun) => {
+		const directory = fs.mkdtempSync(
+			path.join(os.tmpdir(), "aistack-nonrepo-"),
+		);
+		const logs: string[] = [];
+		enableTrace((line) => logs.push(line));
+		try {
+			const options = {
+				workingDirectories: [
+					directory,
+					path.join(directory, "removed-worktree"),
+				],
+				fromMs: 0,
+				toMs: Date.now(),
+				utcOffsetMinutes: 0,
+			};
+			await (asyncRun
+				? extractGitWorkflowAsync(options)
+				: extractGitWorkflow(options));
+			expect(logs).toHaveLength(1);
+			expect(logs[0]).toContain(
+				"skipped 1 missing directories, 1 non-repository directories",
+			);
+			expect(logs[0]).toContain("INFO");
+			expect(logs[0]).not.toContain(directory);
+		} finally {
+			disableTrace();
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	},
+);

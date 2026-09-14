@@ -180,7 +180,7 @@ _Avoid_: workflow draft (the LLM draft was ruled out, see ADR-0002)
 **Workflow day**:
 One machine's workflow atoms for one UTC date: harness counts, sums, maxes and bucket
 histograms, plus the Git counts. Only combinable atoms, never a share or a median. A
-re-synced day replaces that day, and days append across syncs.
+complete re-synced day replaces that day; partial readings retain prior evidence. Days append across syncs.
 _Avoid_: workflow section (that named the one 30-day section the wire carried before #285)
 
 **Measured day**:
@@ -188,6 +188,10 @@ One machine's combinable atoms for one UTC date, both halves in one row: the wor
 atoms and the usage atoms (tokens by kind, cost, sessions). One shape, one version. The
 `publishWorkflow` and `publishCost` bits each gate their own half, at both ends.
 _Avoid_: workflow day, usage day (the row holds both halves; a half is a block, not a row)
+
+**Partial reading**:
+A measured reading from history the machine could not fully reconstruct. It contributes
+available dated evidence while retaining previously recorded evidence for the same machine.
 
 **Day manifest**:
 The list of dates the server holds for one (stack, machine), each with its day

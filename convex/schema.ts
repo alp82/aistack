@@ -491,6 +491,8 @@ export const UsageDay = v.object({ harnesses: v.array(UsageHarnessDay) })
  * gets against (stack, machine, date), replacing the day.
  */
 export const MeasuredDayWire = v.object({
+  /** Partial history adds evidence without reducing stored readings. */
+  partial: v.optional(v.boolean()),
   /** `measured-days/v1`. */
   aggregateVersion: v.string(),
   /** Minutes east of UTC on the publishing machine; see `WorkflowWire`. */

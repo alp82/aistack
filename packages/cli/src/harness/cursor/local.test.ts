@@ -16,6 +16,10 @@ import {
 } from "./local.js";
 import { scan } from "./scan.js";
 
+vi.mock("cursor-history", async (importOriginal) => ({
+	...(await importOriginal<typeof import("cursor-history")>()),
+}));
+
 let dir: string;
 let root: string;
 beforeEach(async () => {
@@ -27,6 +31,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
 	disableTrace();
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	await rm(dir, { recursive: true, force: true });
 });
@@ -164,63 +169,82 @@ it("discovers Windows, XDG and configured workspace roots without scanning anoth
 	).toBe("/configured");
 });
 
-it("extracts sessions when a metadata page exceeds the reader byte budget", async () => {
-	await createSource();
-	const db = new DatabaseSync(
-		path.join(dir, "User", "globalStorage", "state.vscdb"),
-	);
-	// Each value fits on its own; the page of bubble metadata does not.
-	db.prepare(
-		"UPDATE cursorDiskKV SET value = json_set(value, '$.padding', ?) WHERE key LIKE 'bubbleId:%'",
-	).run("x".repeat(1400));
-	db.prepare(
-		"UPDATE cursorDiskKV SET value = json_set(value, '$.tokenCount', json(?)) WHERE key LIKE '%assistant-1'",
-	).run(JSON.stringify({ inputTokens: 123, outputTokens: 0 }));
-	db.close();
-	const reading = await readLocalOnce(root, undefined, undefined, {
-		sqlitePageBytes: 2048,
-		sqliteValueBytes: 2048,
-	});
-	expect(reading.complete).toBe(true);
-	expect(reading.sessions).toHaveLength(1);
-	expect(reading.sessions[0].session.messages).toHaveLength(2);
-	const staged = await stageSync({
-		baseUrl: "https://cursor-recovery.invalid",
-		now: () => Date.parse("2026-09-14T12:00:00Z"),
-		getTokenImpl: () => "fixture-token",
-		getProjectWorkspaceIdImpl: () => "AAAAAAAAAAAAAAAAAAAAAA",
-		loadConfigImpl: async () => ({
-			source: "fetched",
-			config: {
-				...BUNDLED_SYNC_CONFIG,
-				publishWorkflow: false,
-				stack: { name: "Fixture", slug: path.basename(dir) },
-			},
-		}),
-		fetchManifestImpl: async () => null,
-		fetchPricesImpl: async () => null,
-		adaptersImpl: async () => [
-			{
-				...cursorAdapter,
-				detect: async () => true,
-				scan: (options) =>
-					scan({
-						...options,
-						root,
-						now: Date.parse("2026-09-14T12:00:00Z"),
-						cachePath: path.join(dir, "usage-cache.json"),
-						readLocalImpl: async () => reading,
-						accountImpl: async () => null,
-					}),
-			},
-		],
-	});
-	expect(staged.blockedReason).toBeNull();
-	const day = staged.body.measuredDays?.days.find(
-		(d) => d.date === "2026-09-10",
-	);
-	expect(day?.usage?.harnesses[0].models[0].tokens.input).toBe(123);
-});
+it.each([false, true])(
+	"publishes recovered token evidence, including partial transcripts (%s)",
+	async (partial) => {
+		await createSource();
+		const db = new DatabaseSync(
+			path.join(dir, "User", "globalStorage", "state.vscdb"),
+		);
+		// Each value fits on its own; the page of bubble metadata does not.
+		db.prepare(
+			"UPDATE cursorDiskKV SET value = json_set(value, '$.padding', ?) WHERE key LIKE 'bubbleId:%'",
+		).run("x".repeat(1400));
+		db.prepare(
+			"UPDATE cursorDiskKV SET value = json_set(value, '$.tokenCount', json(?)) WHERE key LIKE '%assistant-1'",
+		).run(JSON.stringify({ inputTokens: 123, outputTokens: 0 }));
+		if (partial) {
+			// Exercise the library's partial-resolution contract while retaining
+			// its real SQLite token extraction for the surviving messages.
+			const reader = await import("cursor-history");
+			const getSession = reader.getSession;
+			vi.spyOn(reader, "getSession").mockImplementation(async (...args) => ({
+				...(await getSession(...args)),
+				resolutionState: "partial",
+			}));
+		}
+		const logs: string[] = [];
+		enableTrace((line) => logs.push(line));
+		db.close();
+		const reading = await readLocalOnce(root, undefined, undefined, {
+			sqlitePageBytes: 2048,
+			sqliteValueBytes: 2048,
+		});
+		expect(reading.complete).toBe(!partial);
+		expect(reading.sessions).toHaveLength(1);
+		if (partial)
+			expect(
+				logs.filter((line) => line.includes("cursor partial history")),
+			).toHaveLength(1);
+		const staged = await stageSync({
+			baseUrl: "https://cursor-recovery.invalid",
+			now: () => Date.parse("2026-09-14T12:00:00Z"),
+			getTokenImpl: () => "fixture-token",
+			getProjectWorkspaceIdImpl: () => "AAAAAAAAAAAAAAAAAAAAAA",
+			loadConfigImpl: async () => ({
+				source: "fetched",
+				config: {
+					...BUNDLED_SYNC_CONFIG,
+					publishWorkflow: false,
+					stack: { name: "Fixture", slug: path.basename(dir) },
+				},
+			}),
+			fetchManifestImpl: async () => null,
+			fetchPricesImpl: async () => null,
+			adaptersImpl: async () => [
+				{
+					...cursorAdapter,
+					detect: async () => true,
+					scan: (options) =>
+						scan({
+							...options,
+							root,
+							now: Date.parse("2026-09-14T12:00:00Z"),
+							cachePath: path.join(dir, "usage-cache.json"),
+							readLocalImpl: async () => reading,
+							accountImpl: async () => null,
+						}),
+				},
+			],
+		});
+		expect(staged.blockedReason).toBeNull();
+		const day = staged.body.measuredDays?.days.find(
+			(d) => d.date === "2026-09-10",
+		);
+		expect(day?.usage?.harnesses[0].models[0].tokens.input).toBe(123);
+		expect(staged.body.measuredDays?.partial).toBe(partial || undefined);
+	},
+);
 
 it("stops retrying when one record itself exceeds the page limit and logs safe details", async () => {
 	await createSource();
