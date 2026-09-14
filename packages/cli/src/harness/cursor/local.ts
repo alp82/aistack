@@ -4,7 +4,12 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import type { Session, SessionReadContext } from "cursor-history";
-import { trace, traceEnabled, traceTimer } from "../../trace.js";
+import {
+	trace,
+	traceEnabled,
+	traceStartedAt,
+	traceTimer,
+} from "../../trace.js";
 import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
@@ -207,7 +212,12 @@ async function readLocalOffThread(
 			fn();
 		};
 		const worker = new Worker(file, {
-			workerData: { root, before, trace: traceEnabled() },
+			workerData: {
+				root,
+				before,
+				trace: traceEnabled(),
+				traceStartedAt: traceStartedAt(),
+			},
 		});
 		worker.on("message", (message: CursorWorkerMessage) => {
 			if (message.kind === "progress")

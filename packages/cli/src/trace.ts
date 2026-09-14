@@ -12,6 +12,9 @@
 // here prints a path, a prompt, or a database value: counts and durations only.
 
 let sink: ((line: string) => void) | null = null;
+// Wall-clock epoch, not performance.now(): a worker thread has its own
+// performance time origin, so the Cursor worker would otherwise restart the
+// column at +0.00s and hide how long the read has been running.
 let startedAtMs = 0;
 
 const stderrSink = (line: string) => {
@@ -26,10 +29,15 @@ export function traceRequestedByEnv(env = process.env): boolean {
 
 export function enableTrace(
 	write: (line: string) => void = stderrSink,
-	now: () => number = () => performance.now(),
+	startedAt: number = Date.now(),
 ): void {
 	sink = write;
-	startedAtMs = now();
+	startedAtMs = startedAt;
+}
+
+/** The epoch millisecond the trace column counts from; hand it to a worker. */
+export function traceStartedAt(): number {
+	return startedAtMs;
 }
 
 export function disableTrace(): void {
@@ -41,7 +49,7 @@ export function traceEnabled(): boolean {
 }
 
 function elapsedLabel(): string {
-	const seconds = (performance.now() - startedAtMs) / 1000;
+	const seconds = (Date.now() - startedAtMs) / 1000;
 	return `+${seconds.toFixed(seconds < 10 ? 2 : 1)}s`;
 }
 
