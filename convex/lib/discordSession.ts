@@ -37,7 +37,6 @@ export const ACTIONS = [
   'range30',
   'range',
   'search',
-  'subject',
   'compare',
   'person',
   'harness',

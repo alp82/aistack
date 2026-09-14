@@ -118,6 +118,7 @@ export const resolveCreator = internalQuery({
     discordUserId: v.string(),
     handle: v.optional(v.string()),
     creatorId: v.optional(v.id('creators')),
+    unflaggedOnly: v.optional(v.boolean()),
   },
   returns: v.union(
     v.object({ kind: v.literal('unlinked') }),
@@ -152,7 +153,7 @@ export const resolveCreator = internalQuery({
         .query('stacks')
         .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
         .collect(),
-    )[0]
+    ).find((stack) => !args.unflaggedOnly || stack.isLowQuality !== true)
     if (!stack) return { kind: 'no-stack' as const, creatorId: creator._id }
     return {
       kind: 'target' as const,
@@ -170,6 +171,7 @@ export const searchCreators = internalQuery({
       creatorId: v.id('creators'),
       handle: v.string(),
       name: v.string(),
+      label: v.string(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -180,27 +182,45 @@ export const searchCreators = internalQuery({
         q.gte('slug', term).lt('slug', `${term}\uffff`),
       )
       .take(25)
-    const pool =
-      prefix.length < 25
-        ? await ctx.db.query('creators').withIndex('by_slug').take(1000)
-        : []
+    const pool = await ctx.db.query('creators').withIndex('by_slug').take(1000)
     const unique = [
       ...new Map([...prefix, ...pool].map((c) => [c._id, c])).values(),
     ]
     const rank = (slug: string) =>
       slug === term ? 0 : slug.startsWith(term) ? 1 : 2
-    return unique
+    const candidates = unique
       .filter(
         (c) =>
           c.slug.trim().length > 0 &&
           c.slug.length <= 100 &&
-          c.slug.includes(term),
+          (c.slug.toLowerCase().includes(term) ||
+            c.name.toLowerCase().includes(term)),
       )
       .sort(
         (a, b) => rank(a.slug) - rank(b.slug) || a.slug.localeCompare(b.slug),
       )
-      .slice(0, 25)
-      .map((c) => ({ creatorId: c._id, handle: c.slug, name: c.name }))
+    const choices = []
+    for (const creator of candidates) {
+      const name = creator.name.trim()
+      const readableName = /\p{L}/u.test(name)
+      if (!readableName && !/\p{L}/u.test(creator.slug)) continue
+      const stacks = await ctx.db
+        .query('stacks')
+        .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+        .collect()
+      if (!stacks.some((stack) => stack.isLowQuality !== true)) continue
+      choices.push({
+        creatorId: creator._id,
+        handle: creator.slug,
+        name,
+        label: (readableName && name !== creator.slug
+          ? `${name} (@${creator.slug})`
+          : `@${creator.slug}`
+        ).slice(0, 100),
+      })
+      if (choices.length === 25) break
+    }
+    return choices
   },
 })
 

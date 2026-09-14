@@ -132,8 +132,8 @@ export const begin = internalMutation({
     } else if (args.action === 'search') {
       if (!view.picker) return { error: 'Open the person picker first.' }
       view.search = (args.value ?? '').slice(0, 100)
-    } else if (args.action === 'subject' || args.action === 'compare') {
-      view.picker = args.action === 'subject' ? 'subject' : 'comparison'
+    } else if (args.action === 'compare') {
+      view.picker = 'comparison'
       view.search = ''
     } else if (args.action === 'back') {
       if (!view.subject || (view.command === 'compare' && !view.comparison))

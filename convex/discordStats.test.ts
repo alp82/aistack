@@ -396,3 +396,72 @@ describe('Discord dated data contract', () => {
     )
   })
 })
+
+test('creator discovery filters ineligible stacks and identities before the result limit', async () => {
+  const t = convexTest(schema, modules)
+  const valid = await seed(t)
+  await t.run(async (ctx) => {
+    const creator = await ctx.db.get(valid.creatorId)
+    const stack = await ctx.db.get(valid.stackId)
+    if (!creator || !stack) throw new Error('Missing fixture')
+    const {
+      _id: creatorId,
+      _creationTime: creatorTime,
+      ...creatorFields
+    } = creator
+    const { _id: stackId, _creationTime: stackTime, ...stackFields } = stack
+    for (let i = 0; i < 30; i++) {
+      const id = await ctx.db.insert('creators', {
+        ...creatorFields,
+        slug: `a-${i}`,
+        name: `Flagged ${i}`,
+      })
+      await ctx.db.insert('stacks', {
+        ...stackFields,
+        creatorId: id,
+        isLowQuality: true,
+      })
+    }
+    for (const [slug, name, hasStack] of [
+      ['-10', '', true],
+      ['123', '456', true],
+      ['no-stack', 'No stack', false],
+      ['456', 'Sam', true],
+      ['nameless', '', true],
+      ['unicode', '匠百', true],
+    ] as const) {
+      const id = await ctx.db.insert('creators', {
+        ...creatorFields,
+        slug,
+        name,
+      })
+      if (hasStack)
+        await ctx.db.insert('stacks', { ...stackFields, creatorId: id })
+    }
+    // The newest stack is flagged, but this creator still has an eligible stack.
+    await ctx.db.insert('stacks', {
+      ...stackFields,
+      isLowQuality: true,
+      updatedAt: 2,
+    })
+  })
+  const choices = await t.query(internal.discordStats.searchCreators, {
+    text: '',
+  })
+  expect(choices.map((c) => c.label)).toEqual([
+    'Sam (@456)',
+    'Alice (@alice)',
+    '@nameless',
+    '匠百 (@unicode)',
+  ])
+  expect(
+    await t.query(internal.discordStats.resolveCreator, {
+      discordUserId: 'other',
+      handle: 'alice',
+      unflaggedOnly: true,
+    }),
+  ).toMatchObject({ kind: 'target', ...valid })
+  expect(
+    await t.query(internal.discordStats.searchCreators, { text: 'a-' }),
+  ).toEqual([])
+})

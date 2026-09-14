@@ -31,7 +31,7 @@ export function controls(
   view: View,
   subject: DiscordAnswer | null,
   comparison: DiscordAnswer | null,
-  choices: Array<{ handle: string; name: string }> = [],
+  choices: Array<{ handle: string; name: string; label: string }> = [],
 ) {
   const key = (action: string) => controlId(id, revision, action)
   if (view.picker) {
@@ -53,10 +53,7 @@ export function controls(
               ? 'Choose a creator'
               : 'Compare with a creator',
           options: choices.map((c) => ({
-            label: `@${c.handle}`.slice(0, 100),
-            ...(c.name.trim()
-              ? { description: c.name.trim().slice(0, 100) }
-              : {}),
+            label: c.label,
             value: c.handle,
           })),
         }),
@@ -70,7 +67,7 @@ export function controls(
       button(key('compare'), 'Compare'),
     ),
   ]
-  const extra = [button(key('subject'), 'Person')]
+  const extra: ReturnType<typeof button>[] = []
   if (
     (view.command === 'tokens' &&
       (subject?.current.hasMoreModels ||
@@ -91,7 +88,7 @@ export function controls(
           : 'Full list',
       ),
     )
-  rows.push(row(...extra))
+  if (extra.length) rows.push(row(...extra))
   const harnesses =
     view.command === 'context'
       ? subject?.current.context.map((h) => h.harness)
@@ -328,7 +325,11 @@ export const fulfill = internalAction({
       if (args.action === 'person') {
         const target = await ctx.runQuery(
           internal.discordStats.resolveCreator,
-          { discordUserId: session.requester, handle: args.value },
+          {
+            discordUserId: session.requester,
+            handle: args.value,
+            unflaggedOnly: view.picker === 'comparison',
+          },
         )
         if (target.kind !== 'target')
           throw new Error('Selected creator is unavailable')
