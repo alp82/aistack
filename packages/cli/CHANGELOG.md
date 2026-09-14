@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.5](https://github.com/alp82/aistack/compare/cli-v0.16.4...cli-v0.16.5) (2026-09-14)
+
+
+### Bug Fixes
+
+* **cli:** recover large history scans and improve verbose diagnostics ([#429](https://github.com/alp82/aistack/issues/429)) ([b1cc286](https://github.com/alp82/aistack/commit/b1cc28614c1823535dab45da9928f687e6c428fc))
+
 ## [0.16.4](https://github.com/alp82/aistack/compare/cli-v0.16.3...cli-v0.16.4) (2026-09-14)
 
 
