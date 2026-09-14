@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.7](https://github.com/alp82/aistack/compare/cli-v0.16.6...cli-v0.16.7) (2026-09-14)
+
+
+### Bug Fixes
+
+* **cli:** publish partial daily usage without losing stored evidence ([#433](https://github.com/alp82/aistack/issues/433)) ([c969bba](https://github.com/alp82/aistack/commit/c969bbac9c1d524e61f5d220c348afa01de3c177))
+
 ## [0.16.6](https://github.com/alp82/aistack/compare/cli-v0.16.5...cli-v0.16.6) (2026-09-14)
 
 
