@@ -54,7 +54,9 @@ export function controls(
               : 'Compare with a creator',
           options: choices.map((c) => ({
             label: `@${c.handle}`.slice(0, 100),
-            description: c.name.slice(0, 100),
+            ...(c.name.trim()
+              ? { description: c.name.trim().slice(0, 100) }
+              : {}),
             value: c.handle,
           })),
         }),
