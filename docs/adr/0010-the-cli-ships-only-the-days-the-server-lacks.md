@@ -47,3 +47,28 @@ is what keeps the freshness stat honest.
 Decided in [alp82/aistack#305](https://github.com/alp82/aistack/issues/305), part of
 [map #302](https://github.com/alp82/aistack/issues/302). See ADR-0009 for why a day is
 one machine's, which the manifest key inherits.
+
+## Partial history (2026-09-14)
+
+A partial historical scan still publishes its dated evidence, marked `partial` on the
+measured-day wire. Withholding every day because one Cursor session was unresolved
+prevented valid usage from every harness from reaching the site. A partial reading
+must also retain evidence already stored for that machine; an unreadable session
+cannot prove that its earlier usage disappeared.
+
+The backend retains missing models and harnesses, adds newly observed entries, and
+replaces an existing model only when the incoming reading covers every stored token
+bucket, cache-write tier, and recorded dollar amount. It keeps the whole model record
+with its price source. It does not add overlapping daily aggregates or combine token
+buckets from conflicting readings. Session counts use the larger reading; project
+keys are a union. Existing workflow harnesses and Git readings survive a partial
+scan because session histograms cannot safely combine without event identities.
+
+The stored fingerprint covers the retained result. Repeating a partial sync does
+not add usage again; it can resend when its local fingerprint differs from the
+retained backend reading. Empty correction dates and local date-hint acknowledgements
+are omitted on partial scans. Complete scans retain the original replacement semantics.
+
+Deploy the backend's optional `partial` wire field before releasing a CLI that sends
+it. Old clients keep their existing behavior; an older backend rejects the new field
+instead of silently treating a partial reading as a full replacement.

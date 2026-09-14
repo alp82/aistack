@@ -184,3 +184,27 @@ describe("board", () => {
 		expect(out.map(plain)).toEqual(["│  ● Prices  current\n"]);
 	});
 });
+
+test("completed partial readings keep a warning on the final board", () => {
+	const rows = new Map<string, BoardRow>();
+	applyEvent(
+		rows,
+		{
+			kind: "step",
+			id: "review",
+			label: "Review",
+			state: "done",
+			level: "warn",
+			note: "3 days to send · partial history",
+		},
+		100,
+	);
+	const rendered = renderRows([...rows.values()], {
+		now: 100,
+		width: 120,
+		frame: 0,
+	}).join("\n");
+	expect(rendered).toContain("⚠");
+	expect(rendered).toContain("partial history");
+	expect(rendered).not.toContain("●");
+});

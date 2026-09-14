@@ -1,4 +1,5 @@
 import { execFile, execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import type { GitDay } from "@aistack/workflow-rules";
 import { trace, traceError } from "../trace.js";
@@ -61,25 +62,70 @@ export type ExtractGitWorkflowOptions = {
 	run?: GitWorkflowRunner;
 };
 
-const defaultRunner: GitWorkflowRunner = (cwd, args) => {
+type ReportGitError = (
+	error: unknown,
+	cwd: string,
+	args: readonly string[],
+	stderr?: string,
+) => void;
+
+function gitDiagnostics() {
+	let missing = 0;
+	let nonRepositories = 0;
+	const report: ReportGitError = (error, cwd, args, stderr) => {
+		const details = error as { code?: unknown; stderr?: unknown };
+		if (args[0] === "rev-parse") {
+			if (details.code === "ENOENT" && !existsSync(cwd)) {
+				missing++;
+				return;
+			}
+			const message =
+				stderr ?? (typeof details.stderr === "string" ? details.stderr : "");
+			if (/not a git repository/i.test(message)) {
+				nonRepositories++;
+				return;
+			}
+		}
+		traceError(
+			args.includes("log") ? "git history" : "git repository discovery",
+			error,
+			"warn",
+		);
+	};
+	return {
+		report,
+		finish: () => {
+			if (missing || nonRepositories)
+				trace(
+					`git discovery · skipped ${missing} missing directories, ${nonRepositories} non-repository directories`,
+				);
+		},
+	};
+}
+
+const defaultRunner = (
+	cwd: string,
+	args: readonly string[],
+	report: ReportGitError,
+): string | null => {
 	try {
 		return execFileSync("git", [...args], {
 			cwd,
 			encoding: "utf8",
-			stdio: ["ignore", "pipe", "ignore"],
+			stdio: ["ignore", "pipe", "pipe"],
 			maxBuffer: 64 * 1024 * 1024,
 		});
 	} catch (error) {
-		traceError(
-			args[0] === "log" ? "git history" : "git repository discovery",
-			error,
-			"warn",
-		);
+		report(error, cwd, args);
 		return null;
 	}
 };
 
-const defaultAsyncRunner: AsyncGitWorkflowRunner = (cwd, args) =>
+const defaultAsyncRunner = (
+	cwd: string,
+	args: readonly string[],
+	report: ReportGitError,
+): Promise<string | null> =>
 	new Promise((resolve) => {
 		execFile(
 			"git",
@@ -89,13 +135,8 @@ const defaultAsyncRunner: AsyncGitWorkflowRunner = (cwd, args) =>
 				encoding: "utf8",
 				maxBuffer: 64 * 1024 * 1024,
 			},
-			(error, stdout) => {
-				if (error)
-					traceError(
-						args[0] === "log" ? "git history" : "git repository discovery",
-						error,
-						"warn",
-					);
+			(error, stdout, stderr) => {
+				if (error) report(error, cwd, args, stderr);
 				resolve(error ? null : stdout);
 			},
 		);
@@ -304,12 +345,16 @@ function isLateNight(hour: number): boolean {
 export function extractGitWorkflow(
 	options: ExtractGitWorkflowOptions,
 ): GitWorkflowResult {
-	const run = options.run ?? defaultRunner;
+	const diagnostics = gitDiagnostics();
+	const run =
+		options.run ??
+		((cwd, args) => defaultRunner(cwd, args, diagnostics.report));
 	const roots = new Map<string, string>();
 	for (const directory of options.workingDirectories) {
 		const root = parseRepositoryRoot(run(directory, gitRevParseArgs()));
 		if (root && !roots.has(root.key)) roots.set(root.key, root.cwd);
 	}
+	diagnostics.finish();
 	const histories: string[] = [];
 	let index = 0;
 	for (const cwd of roots.values()) {
@@ -327,12 +372,16 @@ export async function extractGitWorkflowAsync(
 		run?: AsyncGitWorkflowRunner;
 	},
 ): Promise<GitWorkflowResult> {
-	const run = options.run ?? defaultAsyncRunner;
+	const diagnostics = gitDiagnostics();
+	const run =
+		options.run ??
+		((cwd, args) => defaultAsyncRunner(cwd, args, diagnostics.report));
 	const roots = new Map<string, string>();
 	for (const directory of options.workingDirectories) {
 		const root = parseRepositoryRoot(await run(directory, gitRevParseArgs()));
 		if (root && !roots.has(root.key)) roots.set(root.key, root.cwd);
 	}
+	diagnostics.finish();
 	const queue = [...roots.values()];
 	const total = queue.length;
 	const histories: string[] = [];

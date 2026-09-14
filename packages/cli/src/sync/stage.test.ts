@@ -455,7 +455,7 @@ describe("stageSync", () => {
 	});
 });
 
-test("Cursor corrections rebuild a former date and incomplete reads withhold the machine day block", async () => {
+test("Cursor corrections rebuild a former date and partial reads publish observed usage", async () => {
 	let complete = true;
 	const adapter: HarnessAdapter = {
 		...FAKE_CLAUDE_ADAPTER,
@@ -488,11 +488,16 @@ test("Cursor corrections rebuild a former date and incomplete reads withhold the
 	).toBeUndefined();
 	complete = false;
 	const incomplete = await stageSync(input);
-	expect(incomplete.body.measuredDays).toBeUndefined();
+	expect(incomplete.body.measuredDays?.days.map((day) => day.date)).toEqual([
+		"2026-07-20",
+	]);
+	expect(
+		incomplete.body.measuredDays?.days[0].usage?.harnesses[0].models.length,
+	).toBeGreaterThan(0);
 	expect(incomplete.summary).toContain(
-		"days      not published: a historical scan was incomplete",
+		"coverage  partial history: publishing the dated evidence available",
 	);
 	expect(incomplete.summary).toContain(
-		"Model breakdown and daily statistics will not update.",
+		"Previously recorded evidence is retained; missing usage is not estimated.",
 	);
 });

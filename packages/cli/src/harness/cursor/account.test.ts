@@ -112,3 +112,15 @@ it("reuses only a synthetic existing SQLite login, identifies account changes an
 	expect((await existingAccount(root))?.scope).not.toBe(first?.scope);
 	db.close();
 });
+
+it.each([
+	[{ unexpected: true }, "CURSOR_INVALID_PAGE_SHAPE"],
+	[
+		{ usageEventsDisplay: Array.from({ length: 101 }, () => ({})) },
+		"CURSOR_PAGE_TOO_LARGE",
+	],
+])("distinguishes invalid account page responses", async (page, code) => {
+	await expect(
+		fetchWindow(account, from, to, async () => Response.json(page)),
+	).rejects.toMatchObject({ code });
+});

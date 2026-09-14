@@ -2,9 +2,10 @@
  * The measured day store and the live inventory (ADR-0010, ADR-0011, #307).
  *
  * One `measuredDays` row per (stack, machine, UTC date) holds `{ usage?,
- * workflow? }` under one version and one fingerprint. A publish REPLACES each
- * day it names and appends the rest. Nothing here prunes: the 400-day limit is
- * the CLI's send window and the page's read cap, never a delete.
+ * workflow? }` under one version and one fingerprint. A complete publish replaces
+ * each day it names; partial readings retain prior evidence. New days append.
+ * Nothing here prunes: the 400-day limit is the CLI's send window and the
+ * page's read cap, never a delete.
  *
  * A READING IS ONE MACHINE'S, PER DAY (ADR-0009). Nothing here merges machines.
  */
@@ -19,6 +20,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { MeasuredDayWire, MeasuredPayload, WorkflowWire } from '../schema'
 import type { Pricer } from '@aistack/pricing'
+import { retainPartialDay } from './partialMeasuredDay'
 import { repriceSnapshot } from './reprice'
 import { sourceOrder, visibleSources } from './sources'
 import {
@@ -221,9 +223,8 @@ export async function findMeasuredDay(
  * Store one machine's days: a re-synced day replaces that day, a new day is
  * appended, and NO day is pruned.
  *
- * REPLACE PER DAY, NEVER MERGE. The row the CLI sends for a date is the
- * complete reading of that date as the machine now sees it; adding it to the
- * stored row would double-count every session the machine still holds.
+ * Complete scans replace the day. Partial scans extend it conservatively:
+ * missing entries survive and overlapping model records are never added.
  */
 export async function storeMeasuredDays(
   ctx: MutationCtx,
@@ -232,8 +233,12 @@ export async function storeMeasuredDays(
   checkMeasuredDays(args.wire)
   let replaced = 0
   let inserted = 0
-  for (const day of args.wire.days) {
-    const existing = await findMeasuredDay(ctx, args.stackId, args.machine, day.date)
+  for (const incoming of args.wire.days) {
+    const existing = await findMeasuredDay(ctx, args.stackId, args.machine, incoming.date)
+    const day = args.wire.partial && existing ? retainPartialDay(existing, incoming) : incoming
+    // Retaining old entries can enlarge the union. Reject an oversized result
+    // rather than silently dropping previously recorded models or projects.
+    if (args.wire.partial && day.usage) checkUsageDay(day.usage, `retained day ${day.date}`)
     const usage =
       day.usage ?? (args.keepUsage && existing ? existing.usage : undefined)
     const content: MeasuredDay = {
