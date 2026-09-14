@@ -69,7 +69,7 @@ describe("extractGitWorkflow", () => {
 				{
 					date: "2026-08-04",
 					testFileRuleVersion: "test-files/v2",
-					fileTypeRuleVersion: "file-types/v2",
+					fileTypeRuleVersion: "file-types/v3",
 					commitSetRuleVersion: "commit-set/v1",
 					commits: 2,
 					lateNightCommits: 2,
@@ -198,5 +198,63 @@ describe("extractGitWorkflow", () => {
 		});
 
 		expect(asyncResult).toEqual(sync);
+	});
+
+	it("reads a repository once however many of its worktrees the sessions touched", async () => {
+		const history = record(
+			"aaaa",
+			"2026-08-04T10:00:00+00:00",
+			"3\t1\tsrc/a.ts\n",
+		);
+		const logCalls: string[] = [];
+		const run: GitWorkflowRunner = (cwd, args) => {
+			if (args[0] === "rev-parse") {
+				// The shared directory first, this checkout's top level second.
+				if (cwd.startsWith("/work/repo"))
+					return "/work/repo/.git\n/work/repo\n";
+				if (cwd.startsWith("/work/repo-wt"))
+					return "/work/repo/.git\n/work/repo-wt\n";
+				if (cwd.startsWith("/other")) return "/other/.git\n/other\n";
+				return null;
+			}
+			logCalls.push(cwd);
+			return history;
+		};
+		const options = {
+			workingDirectories: ["/work/repo/src", "/work/repo-wt/src", "/other"],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 0,
+		};
+
+		const sync = extractGitWorkflow({ ...options, run });
+		expect(logCalls).toEqual(["/work/repo", "/other"]);
+
+		logCalls.length = 0;
+		const asyncResult = await extractGitWorkflowAsync({
+			...options,
+			run: async (cwd, args) => run(cwd, args),
+		});
+		expect(logCalls.sort()).toEqual(["/other", "/work/repo"]);
+		expect(asyncResult).toEqual(sync);
+		// The one history is folded once per repository, not once per worktree,
+		// and the same commit hash in the second repository is still one commit.
+		expect(sync.days[0]?.commits).toBe(1);
+	});
+
+	it("tells git to treat a large blob as binary", () => {
+		const args: string[][] = [];
+		extractGitWorkflow({
+			workingDirectories: ["/work/repo"],
+			fromMs: 0,
+			toMs: 1,
+			utcOffsetMinutes: 0,
+			run: (_cwd, a) => {
+				args.push([...a]);
+				return a[0] === "rev-parse" ? "/work/repo\n" : "";
+			},
+		});
+		const log = args.find((a) => a.includes("log"));
+		expect(log?.slice(0, 3)).toEqual(["-c", "core.bigFileThreshold=1m", "log"]);
 	});
 });
