@@ -166,9 +166,7 @@ test('autocomplete validates real handles; unlinked users can browse typed handl
       options: [{ name: 'creator', focused: true, value: '@ali' }],
     },
   })
-  expect(result.data.choices).toEqual([
-    { name: '@alice (alice)', value: 'alice' },
-  ])
+  expect(result.data.choices).toEqual([{ name: '@alice', value: 'alice' }])
   expect(
     await post(t, {
       type: 2,
@@ -694,13 +692,13 @@ test('full-list controls replace the image and return to the five-percent list',
 })
 
 // Model Discord's rejection of empty select values and descriptions.
-test.each(['subject', 'compare'])(
+test.each(['compare'])(
   '%s opens a usable picker when creator records have empty fields',
   async (action) => {
     const t = convexTest(schema, modules)
     await seed(t)
     await seed(t, '', 'empty-discord')
-    const unnamed = await seed(t, '-10', 'unnamed-discord')
+    const unnamed = await seed(t, 'unnamed', 'unnamed-discord')
     await t.run((ctx) => ctx.db.patch(unnamed.creatorId, { name: '' }))
     const original = fetcher.getMockImplementation()!
     fetcher.mockImplementation((url: string, init: RequestInit) => {
@@ -709,9 +707,12 @@ test.each(['subject', 'compare'])(
         const options = (body.components ?? [])
           .flatMap((row: any) => row.components)
           .flatMap((component: any) => component.options ?? [])
-        if (options.some((option: any) =>
-          !option.value || option.description === '',
-        )) return Promise.resolve(new Response(null, { status: 400 }))
+        if (
+          options.some(
+            (option: any) => !option.value || option.description === '',
+          )
+        )
+          return Promise.resolve(new Response(null, { status: 400 }))
       }
       return original(url, init)
     })
@@ -719,15 +720,85 @@ test.each(['subject', 'compare'])(
     const previous = await state(t)
     await click(t, action)
     await run(t)
-    expect(patches.some((p) => p.content?.includes('could not be updated'))).toBe(false)
+    expect(
+      patches.some((p) => p.content?.includes('could not be updated')),
+    ).toBe(false)
     expect((await state(t)).revision).toBe(previous.revision + 1)
-    expect((await state(t)).view.picker).toBe(action === 'subject' ? 'subject' : 'comparison')
+    expect((await state(t)).view.picker).toBe(
+      action === 'subject' ? 'subject' : 'comparison',
+    )
     const s = await state(t)
     await click(t, 'person', {
-      data: { custom_id: controlId(s._id, s.revision, 'person'), values: ['-10'] },
+      data: {
+        custom_id: controlId(s._id, s.revision, 'person'),
+        values: ['unnamed'],
+      },
     })
     await run(t)
     expect((await state(t)).view.picker).toBeNull()
-    expect(renders[1][action === 'subject' ? 'subject' : 'comparison'].identity.handle).toBe('-10')
+    expect(
+      renders[1][action === 'subject' ? 'subject' : 'comparison'].identity
+        .handle,
+    ).toBe('unnamed')
   },
 )
+
+test.each(['tokens', 'cost', 'context', 'harness', 'compare'])(
+  '/%s never offers Person and rejects stale Person controls',
+  async (command) => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    await seed(t, 'bob', 'bob-discord')
+    await start(
+      t,
+      command,
+      command === 'compare' ? [{ name: 'person', value: 'bob' }] : [],
+    )
+    const components = patches[0].components.flatMap(
+      (row: any) => row.components,
+    )
+    expect(components.some((c: any) => c.label === 'Person')).toBe(false)
+    expect(components.some((c: any) => c.label === 'Compare')).toBe(true)
+    expect(
+      patches[0].components.every((row: any) => row.components.length > 0),
+    ).toBe(true)
+    expect((await click(t, 'subject')).data.content).toBe('Unknown control.')
+  },
+)
+
+test('comparison autocomplete and picker share readable eligible creator labels', async () => {
+  const t = convexTest(schema, modules)
+  await seed(t)
+  const bob = await seed(t, 'bob', 'bob-discord')
+  await t.run((ctx) => ctx.db.patch(bob.creatorId, { name: 'Bob Smith' }))
+  const result = await post(t, {
+    type: 4,
+    data: {
+      name: 'compare',
+      options: [{ name: 'person', focused: true, value: 'Bob Smith' }],
+    },
+  })
+  expect(result.data.choices).toEqual([
+    { name: 'Bob Smith (@bob)', value: 'bob' },
+  ])
+  await start(t, 'cost')
+  await click(t, 'compare')
+  await run(t)
+  const options = patches[1].components
+    .flatMap((row: any) => row.components)
+    .flatMap((c: any) => c.options ?? [])
+  expect(options.find((o: any) => o.value === 'bob').label).toBe(
+    result.data.choices[0].name,
+  )
+  await t.run((ctx) => ctx.db.patch(bob.stackId, { isLowQuality: true }))
+  const s = await state(t)
+  await click(t, 'person', {
+    data: {
+      custom_id: controlId(s._id, s.revision, 'person'),
+      values: ['bob'],
+    },
+  })
+  await run(t)
+  expect((await state(t)).view.comparison).toBeNull()
+  expect(renders).toHaveLength(1)
+})

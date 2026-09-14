@@ -51,7 +51,7 @@ export async function statsInteraction(
       type: 8,
       data: {
         choices: choices.map((c) => ({
-          name: `@${c.handle} (${c.name})`.slice(0, 100),
+          name: c.label,
           value: c.handle,
         })),
       },
@@ -106,6 +106,7 @@ export async function statsInteraction(
         ? await ctx.runQuery(internal.discordStats.resolveCreator, {
             discordUserId: requester,
             handle: person,
+            unflaggedOnly: true,
           })
         : null
     const comparison =
