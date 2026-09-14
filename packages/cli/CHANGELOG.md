@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.6](https://github.com/alp82/aistack/compare/cli-v0.16.5...cli-v0.16.6) (2026-09-14)
+
+
+### Bug Fixes
+
+* **cli:** avoid broken-pipe race in detached hook validation ([#431](https://github.com/alp82/aistack/issues/431)) ([8d5ec72](https://github.com/alp82/aistack/commit/8d5ec72171fdda24dd5ca82e6765a757feaac2b9))
+
 ## [0.16.5](https://github.com/alp82/aistack/compare/cli-v0.16.4...cli-v0.16.5) (2026-09-14)
 
 
