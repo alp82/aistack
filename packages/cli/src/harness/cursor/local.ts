@@ -3,10 +3,16 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import type { Session, SessionReadContext } from "cursor-history";
+import type {
+	Session,
+	SessionReadContext,
+	SourceReadLimitsOverride,
+} from "cursor-history";
 import {
 	trace,
 	traceEnabled,
+	traceError,
+	traceErrorCode,
 	traceStartedAt,
 	traceTimer,
 } from "../../trace.js";
@@ -229,9 +235,18 @@ async function readLocalOffThread(
 					fallback();
 				});
 		});
-		worker.on("error", () => settle(fallback));
+		worker.on("error", (error) =>
+			settle(() => {
+				traceError("cursor worker", error);
+				fallback();
+			}),
+		);
 		worker.on("exit", (code) => {
-			if (code !== 0) settle(fallback);
+			if (code !== 0)
+				settle(() => {
+					trace(`cursor worker exited · code=${code}; reading inline`, "warn");
+					fallback();
+				});
 		});
 	});
 }
@@ -244,9 +259,11 @@ export type CursorWorkerMessage =
 /** The read itself, on whichever thread called it. */
 export async function readLocalOnce(
 	root: string,
-	before: string,
+	before: string | undefined,
 	onProgress?: (files: number, total?: number) => void,
+	sourceReadLimits?: SourceReadLimitsOverride,
 ): Promise<LocalRead> {
+	before ??= await sourceStamp(root);
 	const stats = emptyScanStats();
 	const out: LocalRead = { sessions: [], complete: true, stats };
 	if (!(await hasLocalSource(root))) {
@@ -256,17 +273,19 @@ export async function readLocalOnce(
 	trace(`cursor · global database ${await globalDbSize(root)}`);
 	const readDone = traceTimer("cursor history read");
 	let context: SessionReadContext | undefined;
+	let retrySmallPage = false;
 	try {
 		const reader = await import("cursor-history");
 		const options = {
 			dataPath: root,
 			sqliteDriver: "node:sqlite" as const,
-			onDiagnostic: () => {
+			onDiagnostic: (diagnostic: { code?: string }) => {
+				traceError("cursor source diagnostic", diagnostic, "warn");
 				out.complete = false;
 			},
 			signal: AbortSignal.timeout(120_000),
 		};
-		context = reader.createSessionReadContext(options);
+		context = reader.createSessionReadContext({ ...options, sourceReadLimits });
 		const config = { ...options, readContext: context };
 		let offset = 0;
 		while (true) {
@@ -285,6 +304,10 @@ export async function readLocalOnce(
 			for (const summary of page.data) {
 				stats.filesFound++;
 				if (summary.resolutionState === "ambiguous") {
+					trace(
+						"cursor session resolution incomplete · ambiguous source",
+						"warn",
+					);
 					out.complete = false;
 				}
 				try {
@@ -292,13 +315,20 @@ export async function readLocalOnce(
 					if (
 						session.resolutionState !== "complete" ||
 						session.messages.some((m) => m.metadata?.corrupted)
-					)
+					) {
+						trace(
+							"cursor session incomplete · unresolved or corrupted messages",
+							"warn",
+						);
 						out.complete = false;
+					}
 					const tokens = await readTokenEvidence(root, session);
 					out.sessions.push({ session, tokens });
 					stats.filesRead++;
 					onProgress?.(stats.filesRead, page.pagination.total);
-				} catch {
+				} catch (error) {
+					if (isPageByteLimit(error)) throw error;
+					traceError("cursor history", error);
 					out.complete = false;
 					stats.filesUnreadable++;
 				} finally {
@@ -307,24 +337,55 @@ export async function readLocalOnce(
 			}
 			if (!page.pagination.hasMore) break;
 			if (page.data.length === 0 || offset >= 100_000) {
+				trace(
+					"cursor listing incomplete · empty page or pagination limit",
+					"warn",
+				);
 				out.complete = false;
 				break;
 			}
 			offset += page.data.length;
 		}
-	} catch {
+	} catch (error) {
+		traceError("cursor history", error);
+		retrySmallPage =
+			isPageByteLimit(error) && sourceReadLimits?.sqlitePageRows !== 1;
+		stats.unreadableFiles.push({
+			path: "history",
+			reason: traceErrorCode(error),
+		});
 		out.complete = false;
 		stats.filesUnreadable++;
 	} finally {
 		try {
 			await context?.dispose();
-		} catch {
+		} catch (error) {
+			traceError("cursor reader disposal", error);
 			out.complete = false;
 		}
 	}
-	if (before !== (await sourceStamp(root))) out.complete = false;
+	if (retrySmallPage) {
+		readDone(
+			"page byte limit reached; retrying with one SQLite row per page",
+			"warn",
+		);
+		// Restart after disposing the context. No partially collected sessions
+		// survive the retry, and the byte/value limits remain in force.
+		return readLocalOnce(root, before, onProgress, {
+			...sourceReadLimits,
+			sqlitePageRows: 1,
+		});
+	}
+	if (before !== (await sourceStamp(root))) {
+		trace(
+			"cursor history incomplete · database changed during the read",
+			"warn",
+		);
+		out.complete = false;
+	}
 	readDone(
 		`${stats.filesRead}/${stats.filesFound} sessions read, ${stats.filesUnreadable} unreadable${out.complete ? "" : ", incomplete"}`,
+		out.complete ? "success" : "warn",
 	);
 	return out;
 }
@@ -336,4 +397,13 @@ async function globalDbSize(root: string): Promise<string> {
 	} catch {
 		return "absent";
 	}
+}
+
+function isPageByteLimit(error: unknown): boolean {
+	const details = asObj(asObj(error)?.details);
+	return (
+		traceErrorCode(error) === "SOURCE_LIMIT_EXCEEDED" &&
+		details?.sourceKind === "sqlite" &&
+		details.bound === "sqlite-page-bytes"
+	);
 }

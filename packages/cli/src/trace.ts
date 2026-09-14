@@ -11,17 +11,24 @@
 // so the MCP server's stdout protocol and a piped summary stay clean. Nothing
 // here prints a path, a prompt, or a database value: counts and durations only.
 
-let sink: ((line: string) => void) | null = null;
-// Wall-clock epoch, not performance.now(): a worker thread has its own
-// performance time origin, so the Cursor worker would otherwise restart the
-// column at +0.00s and hide how long the read has been running.
-let startedAtMs = 0;
+import { bold, dim, lime, red, yellow } from "./theme.js";
 
-const stderrSink = (line: string) => {
-	process.stderr.write(`${line}\n`);
+export type TraceLevel = "info" | "success" | "warn" | "error";
+const levelLabels = {
+	info: "INFO ",
+	success: " OK  ",
+	warn: "WARN ",
+	error: "ERROR",
 };
+const levelColors = { info: bold, success: lime, warn: yellow, error: red };
+let sink: ((line: string) => void) | null = null;
+let startedAtMs = 0;
+let clock = () => Date.now();
+let colored = false;
+let columns: number | undefined;
 
-/** True when the environment asks for diagnostics without a flag. */
+const stderrSink = (line: string) => process.stderr.write(`${line}\n`);
+
 export function traceRequestedByEnv(env = process.env): boolean {
 	const value = env.AISTACK_DEBUG?.trim().toLowerCase();
 	return value === "1" || value === "true" || value === "yes";
@@ -30,12 +37,22 @@ export function traceRequestedByEnv(env = process.env): boolean {
 export function enableTrace(
 	write: (line: string) => void = stderrSink,
 	startedAt: number = Date.now(),
+	options: { color?: boolean; columns?: number; now?: () => number } = {},
 ): void {
 	sink = write;
+	columns =
+		options.columns ??
+		(process.stderr.isTTY ? process.stderr.columns : undefined);
+	clock = options.now ?? (() => Date.now());
 	startedAtMs = startedAt;
+	colored =
+		options.color ??
+		(Boolean(process.stderr.isTTY) &&
+			process.env.NO_COLOR === undefined &&
+			process.env.TERM !== "dumb");
 }
 
-/** The epoch millisecond the trace column counts from; hand it to a worker. */
+/** Shared epoch keeps worker and main-thread timestamps aligned. */
 export function traceStartedAt(): number {
 	return startedAtMs;
 }
@@ -43,33 +60,127 @@ export function traceStartedAt(): number {
 export function disableTrace(): void {
 	sink = null;
 }
-
 export function traceEnabled(): boolean {
 	return sink !== null;
 }
 
-function elapsedLabel(): string {
-	const seconds = (Date.now() - startedAtMs) / 1000;
-	return `+${seconds.toFixed(seconds < 10 ? 2 : 1)}s`;
-}
-
-/** One diagnostic line. A no-op unless tracing is on, so callers never guard. */
-export function trace(message: string): void {
+/** Format every diagnostic through one stderr renderer, including continuation lines. */
+export function trace(message: string, level: TraceLevel = "info"): void {
 	if (!sink) return;
-	sink(`[aistack ${elapsedLabel().padStart(7)}] ${message}`);
+	const seconds = Math.max(0, (clock() - startedAtMs) / 1000);
+	const time = `+${seconds.toFixed(2)}s`.padStart(10);
+	const prefix = `[aistack ${time}]`;
+	const label = levelLabels[level];
+	const width = columns ? Math.max(16, columns - prefix.length - 7) : undefined;
+	const lines = message.split(/\r?\n/).flatMap((line) => {
+		if (!width) return [line];
+		const result: string[] = [];
+		let rest = line;
+		while (rest.length > width) {
+			const space = rest.lastIndexOf(" ", width);
+			const cut = space > 0 ? space : width;
+			result.push(rest.slice(0, cut));
+			rest = rest.slice(cut).trimStart();
+		}
+		return [...result, rest];
+	});
+	for (const [index, line] of lines.entries()) {
+		const head =
+			index === 0 ? `${prefix} ${label} ` : " ".repeat(prefix.length + 7);
+		const styledHead =
+			index === 0 && colored
+				? `${dim(prefix)} ${levelColors[level](label)} `
+				: head;
+		sink(
+			`${styledHead}${colored && (level === "error" || level === "warn") ? levelColors[level](line) : line}`,
+		);
+	}
 }
 
-/**
- * Time one step. Returns a function that prints `label · N ms` plus an optional
- * result note, so a caller writes `const done = traceTimer("x"); ...; done("ok")`.
- */
-export function traceTimer(label: string): (note?: string) => void {
+export function traceTimer(
+	label: string,
+): (note?: string, level?: TraceLevel) => void {
 	if (!sink) return () => {};
-	const started = performance.now();
-	return (note) => {
-		const ms = Math.round(performance.now() - started);
-		trace(`${label} · ${ms} ms${note ? ` · ${note}` : ""}`);
-	};
+	const started = clock();
+	return (note, level = "success") =>
+		trace(
+			`${label} · ${Math.round(clock() - started)} ms${note ? ` · ${note}` : ""}`,
+			level,
+		);
+}
+
+const knownNames = new Set([
+	"Error",
+	"TypeError",
+	"RangeError",
+	"SyntaxError",
+	"ReferenceError",
+	"URIError",
+	"EvalError",
+	"AggregateError",
+	"AbortError",
+	"TimeoutError",
+]);
+const object = (value: unknown): Record<string, unknown> | null =>
+	value !== null && typeof value === "object"
+		? (value as Record<string, unknown>)
+		: null;
+
+/** Stable error identity without message, stack, SQL, paths or response bodies. */
+export function traceErrorCode(error: unknown): string {
+	const value = object(error);
+	const code = value?.code;
+	if (typeof code === "string" && /^[A-Z][A-Z0-9_]{0,63}$/.test(code))
+		return code;
+	return typeof value?.name === "string" && knownNames.has(value.name)
+		? value.name
+		: "unknown";
+}
+
+/** The operation is a static caller label. Exception text is never safe to print wholesale. */
+export function traceError(
+	operation: string,
+	error: unknown,
+	level: TraceLevel = "error",
+): void {
+	if (!sink) return;
+	const seen = new Set<unknown>();
+	function describe(value: unknown, depth = 0): string {
+		if (depth >= 4 || seen.has(value)) return "[cause omitted]";
+		seen.add(value);
+		const row = object(value);
+		const code = traceErrorCode(value);
+		const name = row?.name;
+		const fields =
+			typeof name === "string" && knownNames.has(name) && name !== code
+				? [name, code]
+				: [code];
+		const details = object(row?.details);
+		if (code === "SOURCE_LIMIT_EXCEEDED" && details) {
+			if (
+				typeof details.bound === "string" &&
+				/^(sqlite|jsonl|zip)-[a-z-]{1,32}$/.test(details.bound)
+			)
+				fields.push(details.bound);
+			for (const key of ["limit", "observedAtLeast"]) {
+				const n = details[key];
+				if (typeof n === "number" && Number.isSafeInteger(n) && n >= 0)
+					fields.push(`${key}=${n}`);
+			}
+		}
+		for (const key of ["status", "statusCode", "errno", "errcode", "code"]) {
+			const n = row?.[key];
+			if (typeof n === "number" && Number.isSafeInteger(n))
+				fields.push(`${key}=${n}`);
+		}
+		if (row?.cause !== undefined)
+			fields.push(`cause: ${describe(row.cause, depth + 1)}`);
+		if (value instanceof AggregateError)
+			for (const child of value.errors.slice(0, 4))
+				fields.push(`cause: ${describe(child, depth + 1)}`);
+		return fields.join(" · ");
+	}
+	trace(`${operation} failed · ${describe(error)}`, level);
 }
 
 /** The facts a bug report needs first, printed once when tracing starts. */

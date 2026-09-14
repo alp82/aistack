@@ -1,3 +1,4 @@
+import { traceError } from "../../trace.js";
 // I/O shell around the pure opencode analyzer: find `opencode*.db`, open it
 // read-only with node:sqlite, project NAMED COLUMNS through json_extract, and
 // hand plain values to the fold. Nothing leaves this machine.
@@ -63,7 +64,9 @@ async function dbFilesIn(root: string): Promise<string[]> {
 			.filter((e) => e.isFile() && isStoreFile(e.name))
 			.map((e) => path.join(root, e.name))
 			.sort();
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("opencode database discovery", error, "warn");
 		return [];
 	}
 }
@@ -92,7 +95,9 @@ async function loadSqlite(): Promise<((file: string) => SqliteDb) | null> {
 		};
 		if (typeof mod.DatabaseSync !== "function") return null;
 		return (file) => new mod.DatabaseSync(file, { readOnly: true });
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("opencode SQLite initialization", error, "warn");
 		return null;
 	}
 }
@@ -144,6 +149,7 @@ export async function scan(
 				readDb(agg, state, open, file, sinceMs);
 				stats.filesRead++;
 			} catch (e) {
+				traceError("opencode database read", e);
 				stats.filesUnreadable++;
 				stats.unreadableFiles.push({
 					path: path.basename(file),
@@ -161,7 +167,9 @@ function checkMigrationCeiling(db: SqliteDb): void {
 	let newest: unknown;
 	try {
 		newest = db.prepare("select max(id) as id from migration").get()?.id;
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("opencode database close", error, "warn");
 		throw readError("schema-unversioned");
 	}
 	const prefix = Number.parseInt(String(newest ?? ""), 10);
@@ -323,13 +331,16 @@ function readDb(
 					messageId: r.message_id,
 				});
 			}
-		} catch {
+		} catch (error) {
+			traceError("opencode v2 content", error, "warn");
 			/* v2 content unreadable - the message tokens already counted */
 		}
 	} finally {
 		try {
 			db.close();
-		} catch {
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+				traceError("opencode MCP configuration", error, "warn");
 			/* already closed or never opened fully */
 		}
 	}
@@ -376,7 +387,9 @@ function readConfiguredMcpServers(
 		if (mcp && typeof mcp === "object" && !Array.isArray(mcp)) {
 			noteConfiguredMcpServers(agg, state, Object.keys(mcp));
 		}
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("opencode detection database close", error, "warn");
 		return;
 	}
 }
@@ -447,12 +460,15 @@ export async function detectOpencode(opts: {
 						)
 						.get(opts.sinceMs) !== undefined;
 				if (probe("message") || probe("session_message")) return true;
-			} catch {
+			} catch (error) {
+				traceError("opencode detection", error, "warn");
 				/* unreadable or foreign DB - not detection */
 			} finally {
 				try {
 					db?.close();
-				} catch {
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+						traceError("opencode source stat", error, "warn");
 					/* ignore */
 				}
 			}
@@ -465,7 +481,9 @@ async function exists(p: string): Promise<boolean> {
 	try {
 		await stat(p);
 		return true;
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("opencode source discovery or metadata", error, "warn");
 		return false;
 	}
 }

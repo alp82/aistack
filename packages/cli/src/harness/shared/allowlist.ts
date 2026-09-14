@@ -1,3 +1,4 @@
+import { traceError } from "../../trace.js";
 // Fail-closed name filtering for the measured layer.
 //
 // Wayfinder ticket #37 (map #29), decisions 2-4 of the wire-format grilling #33.
@@ -381,6 +382,11 @@ export async function loadSyncConfig(opts: {
 			},
 		});
 		if (!res.ok) {
+			traceError(
+				"stack settings fetch",
+				{ code: "HTTP_ERROR", status: res.status },
+				"warn",
+			);
 			return {
 				config: BUNDLED_SYNC_CONFIG,
 				source: "bundled",
@@ -389,6 +395,11 @@ export async function loadSyncConfig(opts: {
 		}
 		const parsed = readSyncConfig(await res.json());
 		if (!parsed) {
+			traceError(
+				"stack settings response",
+				{ code: "INVALID_RESPONSE" },
+				"warn",
+			);
 			return {
 				config: BUNDLED_SYNC_CONFIG,
 				source: "bundled",
@@ -397,6 +408,7 @@ export async function loadSyncConfig(opts: {
 		}
 		return { config: parsed, source: "fetched" };
 	} catch (err) {
+		traceError("stack settings fetch", err, "warn");
 		return {
 			config: BUNDLED_SYNC_CONFIG,
 			source: "bundled",

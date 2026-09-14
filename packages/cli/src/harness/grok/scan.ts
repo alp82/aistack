@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { parse as parseToml } from "smol-toml";
+import { trace, traceError } from "../../trace.js";
 import { asObj, asStr, countsTotal } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import type { Aggregate } from "./analyzer.js";
@@ -50,7 +51,9 @@ async function stableRead(file: string, jsonl: boolean): Promise<FileRead> {
 					if (!line.trim()) continue;
 					try {
 						lines.push(JSON.parse(line));
-					} catch {
+					} catch (error) {
+						if (!lines.includes(null))
+							traceError("grok evidence JSON (first failure)", error, "warn");
 						lines.push(null);
 					}
 				}
@@ -63,10 +66,12 @@ async function stableRead(file: string, jsonl: boolean): Promise<FileRead> {
 				if (before.size === after.size && before.mtimeMs === after.mtimeMs)
 					return { json: JSON.parse(raw), complete: true };
 			}
-		} catch {
+		} catch (error) {
+			traceError("grok evidence read (will retry)", error, "warn");
 			/* retry a transient read or parse failure */
 		}
 	}
+	trace("grok evidence incomplete · retries exhausted", "error");
 	return { complete: false };
 }
 
@@ -86,6 +91,8 @@ async function directories(root: string): Promise<string[] | null> {
 		}
 		return out.sort();
 	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+			traceError("grok session discovery", error);
 		return (error as NodeJS.ErrnoException).code === "ENOENT" ? [] : null;
 	}
 }
@@ -152,7 +159,8 @@ export async function scan(
 			let entries: Dirent[];
 			try {
 				entries = await readdir(dir, { withFileTypes: true });
-			} catch {
+			} catch (error) {
+				traceError("grok session listing", error);
 				complete = false;
 				continue;
 			}
@@ -309,7 +317,8 @@ export async function scan(
 				dates.add(new Date(call.tsMs).toISOString().slice(0, 10));
 				sessionDates.set(call.session, dates);
 			}
-		} catch {
+		} catch (error) {
+			traceError("grok retained context", error);
 			complete = false;
 			stats.filesUnreadable++;
 		}

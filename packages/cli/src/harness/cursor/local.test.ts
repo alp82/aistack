@@ -3,8 +3,18 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { stageSync } from "../../sync/stage.js";
+import { disableTrace, enableTrace } from "../../trace.js";
+import { BUNDLED_SYNC_CONFIG } from "../shared/allowlist.js";
+import { cursorAdapter } from "./adapter.js";
 import rows from "./fixtures/composer-rows.json";
-import { dataPath, forgetLocalReads, readLocal } from "./local.js";
+import {
+	dataPath,
+	forgetLocalReads,
+	readLocal,
+	readLocalOnce,
+} from "./local.js";
+import { scan } from "./scan.js";
 
 let dir: string;
 let root: string;
@@ -16,6 +26,7 @@ beforeEach(async () => {
 	forgetLocalReads();
 });
 afterEach(async () => {
+	disableTrace();
 	vi.unstubAllEnvs();
 	await rm(dir, { recursive: true, force: true });
 });
@@ -151,4 +162,91 @@ it("discovers Windows, XDG and configured workspace roots without scanning anoth
 	expect(
 		dataPath({ CURSOR_DATA_PATH: "/configured" }, "/home/test", "linux"),
 	).toBe("/configured");
+});
+
+it("extracts sessions when a metadata page exceeds the reader byte budget", async () => {
+	await createSource();
+	const db = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	// Each value fits on its own; the page of bubble metadata does not.
+	db.prepare(
+		"UPDATE cursorDiskKV SET value = json_set(value, '$.padding', ?) WHERE key LIKE 'bubbleId:%'",
+	).run("x".repeat(1400));
+	db.prepare(
+		"UPDATE cursorDiskKV SET value = json_set(value, '$.tokenCount', json(?)) WHERE key LIKE '%assistant-1'",
+	).run(JSON.stringify({ inputTokens: 123, outputTokens: 0 }));
+	db.close();
+	const reading = await readLocalOnce(root, undefined, undefined, {
+		sqlitePageBytes: 2048,
+		sqliteValueBytes: 2048,
+	});
+	expect(reading.complete).toBe(true);
+	expect(reading.sessions).toHaveLength(1);
+	expect(reading.sessions[0].session.messages).toHaveLength(2);
+	const staged = await stageSync({
+		baseUrl: "https://cursor-recovery.invalid",
+		now: () => Date.parse("2026-09-14T12:00:00Z"),
+		getTokenImpl: () => "fixture-token",
+		getProjectWorkspaceIdImpl: () => "AAAAAAAAAAAAAAAAAAAAAA",
+		loadConfigImpl: async () => ({
+			source: "fetched",
+			config: {
+				...BUNDLED_SYNC_CONFIG,
+				publishWorkflow: false,
+				stack: { name: "Fixture", slug: path.basename(dir) },
+			},
+		}),
+		fetchManifestImpl: async () => null,
+		fetchPricesImpl: async () => null,
+		adaptersImpl: async () => [
+			{
+				...cursorAdapter,
+				detect: async () => true,
+				scan: (options) =>
+					scan({
+						...options,
+						root,
+						now: Date.parse("2026-09-14T12:00:00Z"),
+						cachePath: path.join(dir, "usage-cache.json"),
+						readLocalImpl: async () => reading,
+						accountImpl: async () => null,
+					}),
+			},
+		],
+	});
+	expect(staged.blockedReason).toBeNull();
+	const day = staged.body.measuredDays?.days.find(
+		(d) => d.date === "2026-09-10",
+	);
+	expect(day?.usage?.harnesses[0].models[0].tokens.input).toBe(123);
+});
+
+it("stops retrying when one record itself exceeds the page limit and logs safe details", async () => {
+	await createSource();
+	const db = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	db.prepare(
+		"UPDATE cursorDiskKV SET value = json_set(value, '$.padding', ?) WHERE key LIKE 'bubbleId:%'",
+	).run("private-message".repeat(300));
+	db.close();
+	const logs: string[] = [];
+	enableTrace((line) => logs.push(line));
+	const reading = await readLocalOnce(root, undefined, undefined, {
+		sqlitePageBytes: 2048,
+		sqliteValueBytes: 2048,
+	});
+	expect(reading.complete).toBe(false);
+	expect(
+		logs.filter((l) => l.includes("retrying with one SQLite row")),
+	).toHaveLength(1);
+	expect(logs.join("\n")).toContain(
+		"SOURCE_LIMIT_EXCEEDED · sqlite-page-bytes · limit=2048",
+	);
+	expect(logs.join("\n")).not.toContain("private-message");
+	expect(logs.join("\n")).not.toContain(dir);
+	expect(reading.stats.unreadableFiles).toEqual([
+		{ path: "history", reason: "SOURCE_LIMIT_EXCEEDED" },
+	]);
 });

@@ -4,7 +4,7 @@
 // terminal for as long as the walk takes.
 
 import { parentPort, workerData } from "node:worker_threads";
-import { enableTrace } from "../../trace.js";
+import { enableTrace, traceError } from "../../trace.js";
 import { type CursorWorkerMessage, readLocalOnce } from "./local.js";
 
 const port = parentPort;
@@ -22,5 +22,8 @@ readLocalOnce(input.root, input.before, (files, total) =>
 	post({ kind: "progress", files, ...(total !== undefined ? { total } : {}) }),
 ).then(
 	(read) => post({ kind: "result", read }),
-	() => post({ kind: "error" }),
+	(error) => {
+		traceError("cursor worker history", error);
+		post({ kind: "error" });
+	},
 );

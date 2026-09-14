@@ -65,6 +65,8 @@ export type GateContext = {
 	 * unchanged, which the bytes cannot say.
 	 */
 	days?: DaySelection;
+	/** Local scan health explaining why the entire day block was withheld. */
+	incompleteDayScan?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -653,6 +655,11 @@ export function buildGateSummary(ctx: GateContext): string {
 	// The counts are the sync's one plain sentence about diff-only publishing.
 	if (body.measuredDays) {
 		out.push(...daysBlock(body.measuredDays, ctx.days));
+	} else if (ctx.incompleteDayScan) {
+		out.push(
+			"days      not published: a historical scan was incomplete",
+			"          Model breakdown and daily statistics will not update.",
+		);
 	}
 
 	// In the bytes, so it is in the preview (#78's rule, applied to #213). Off

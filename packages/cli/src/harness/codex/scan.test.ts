@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as zlib from "node:zlib";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { finalize } from "../shared/aggregate.js";
 import { createAggregate } from "./analyzer.js";
 import { scan } from "./scan.js";
@@ -214,5 +214,26 @@ describe("unreadable files are named locally (#75)", () => {
 		expect(stats.unreadableFiles).toEqual([
 			{ path: join("2026/07/20", "rollout-a.jsonl"), reason: "EACCES" },
 		]);
+	});
+});
+
+describe("large rollout decoding", () => {
+	it("counts usage without decoding the entire file as one string", async () => {
+		writeRollout("rollout-large.jsonl", GENUINE);
+		const raw = Buffer.from(GENUINE.map((r) => JSON.stringify(r)).join("\n"));
+		// Reproduce Node's whole-file string ceiling on a small fixture.
+		vi.spyOn(raw, "toString").mockImplementation(() => {
+			throw Object.assign(new Error("string too long"), {
+				code: "ERR_STRING_TOO_LONG",
+			});
+		});
+		const agg = createAggregate();
+		const stats = await scan(agg, {
+			roots: [root],
+			...missingConfig,
+			readFileImpl: () => raw,
+		});
+		expect(stats.filesUnreadable).toBe(0);
+		expect(finalize(agg).models[0]?.tokens.output).toBe(100);
 	});
 });

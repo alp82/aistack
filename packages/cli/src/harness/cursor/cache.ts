@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { traceError } from "../../trace.js";
 import { asObj } from "../shared/aggregate.js";
 import { type Account, digest, fetchWindow } from "./account.js";
 import { type Contribution, count, timestamp } from "./evidence.js";
@@ -65,7 +66,9 @@ export async function loadCache(
 			!raw.local.every(validContribution) ||
 			!windows
 		)
-			throw new Error("Invalid cache");
+			throw Object.assign(new Error("Invalid cache"), {
+				code: "CURSOR_INVALID_CACHE",
+			});
 		for (const value of Object.values(windows)) {
 			const w = asObj(value);
 			if (
@@ -76,10 +79,14 @@ export async function loadCache(
 				!Array.isArray(w.events) ||
 				!w.events.every(validContribution)
 			)
-				throw new Error("Invalid window");
+				throw Object.assign(new Error("Invalid window"), {
+					code: "CURSOR_INVALID_WINDOW",
+				});
 		}
 		return { value: raw as CursorCache, complete: true };
 	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+			traceError("cursor cache read", error);
 		return {
 			value: emptyCache(),
 			complete: (error as NodeJS.ErrnoException).code === "ENOENT",
@@ -131,7 +138,8 @@ export async function refreshAccount(input: {
 			).filter((e) => sessionIds.has(e.session));
 			if (previous?.events.length && events.length === 0 && to <= now) continue;
 			next.windows[key] = { from, to, fetchedAt: now, events };
-		} catch {
+		} catch (error) {
+			traceError("cursor account enrichment", error, "warn");
 			// A first run may still publish complete local evidence. Existing enrichment survives.
 			// Stop after an auth/network failure, rather than retrying every historical window.
 			break;

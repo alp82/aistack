@@ -1,7 +1,7 @@
 import { execFile, execFileSync } from "node:child_process";
 import path from "node:path";
 import type { GitDay } from "@aistack/workflow-rules";
-import { trace } from "../trace.js";
+import { trace, traceError } from "../trace.js";
 
 /**
  * Both rules changed together in #278: a path a machine owns (a dependency
@@ -69,7 +69,12 @@ const defaultRunner: GitWorkflowRunner = (cwd, args) => {
 			stdio: ["ignore", "pipe", "ignore"],
 			maxBuffer: 64 * 1024 * 1024,
 		});
-	} catch {
+	} catch (error) {
+		traceError(
+			args[0] === "log" ? "git history" : "git repository discovery",
+			error,
+			"warn",
+		);
 		return null;
 	}
 };
@@ -84,7 +89,15 @@ const defaultAsyncRunner: AsyncGitWorkflowRunner = (cwd, args) =>
 				encoding: "utf8",
 				maxBuffer: 64 * 1024 * 1024,
 			},
-			(error, stdout) => resolve(error ? null : stdout),
+			(error, stdout) => {
+				if (error)
+					traceError(
+						args[0] === "log" ? "git history" : "git repository discovery",
+						error,
+						"warn",
+					);
+				resolve(error ? null : stdout);
+			},
 		);
 	});
 

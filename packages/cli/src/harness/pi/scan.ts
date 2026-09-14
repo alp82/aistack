@@ -1,3 +1,4 @@
+import { traceError } from "../../trace.js";
 // I/O shell around the pure pi analyzer: find session files, stream JSONL,
 // hand each parsed entry to ingestEntry. Nothing leaves this machine.
 //
@@ -76,7 +77,9 @@ async function* walkSessions(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
 		entries = await readdir(dir, { withFileTypes: true });
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("pi transcript discovery", error, "warn");
 		return;
 	}
 	for (const e of entries) {
@@ -112,7 +115,9 @@ export async function scan(
 			let resolved: string;
 			try {
 				resolved = await realpath(file);
-			} catch {
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+					traceError("pi transcript path resolution", error, "warn");
 				resolved = file;
 			}
 			if (visited.has(resolved)) {
@@ -130,7 +135,9 @@ export async function scan(
 						stats.filesSkippedByMtime++;
 						continue;
 					}
-				} catch {
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+						traceError("pi transcript stat", error, "warn");
 					/* unreadable stat - fall through and try to read it */
 				}
 			}
@@ -155,7 +162,8 @@ export async function scan(
 						reason: "version-too-new",
 					});
 				}
-			} catch {
+			} catch (error) {
+				traceError("pi transcript read", error);
 				// Swallow deliberately: the error object carries the absolute path.
 				stats.filesUnreadable++;
 				stats.filesRead--;
@@ -173,7 +181,9 @@ async function exists(p: string): Promise<boolean> {
 	try {
 		await stat(p);
 		return true;
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
+			traceError("pi source stat", error, "warn");
 		return false;
 	}
 }
@@ -203,7 +213,9 @@ async function ingestFile(
 			let entry: unknown;
 			try {
 				entry = JSON.parse(line);
-			} catch {
+			} catch (error) {
+				if (agg.parseErrors === 0)
+					traceError("pi transcript JSON (first failure)", error, "warn");
 				agg.parseErrors++;
 				continue;
 			}
