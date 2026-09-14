@@ -692,3 +692,42 @@ test('full-list controls replace the image and return to the five-percent list',
   await run(t)
   expect(renders[2].full).toBe(false)
 })
+
+// Model Discord's rejection of empty select values and descriptions.
+test.each(['subject', 'compare'])(
+  '%s opens a usable picker when creator records have empty fields',
+  async (action) => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    await seed(t, '', 'empty-discord')
+    const unnamed = await seed(t, '-10', 'unnamed-discord')
+    await t.run((ctx) => ctx.db.patch(unnamed.creatorId, { name: '' }))
+    const original = fetcher.getMockImplementation()!
+    fetcher.mockImplementation((url: string, init: RequestInit) => {
+      if (init.method === 'PATCH' && typeof init.body === 'string') {
+        const body = JSON.parse(init.body)
+        const options = (body.components ?? [])
+          .flatMap((row: any) => row.components)
+          .flatMap((component: any) => component.options ?? [])
+        if (options.some((option: any) =>
+          !option.value || option.description === '',
+        )) return Promise.resolve(new Response(null, { status: 400 }))
+      }
+      return original(url, init)
+    })
+    await start(t, 'cost')
+    const previous = await state(t)
+    await click(t, action)
+    await run(t)
+    expect(patches.some((p) => p.content?.includes('could not be updated'))).toBe(false)
+    expect((await state(t)).revision).toBe(previous.revision + 1)
+    expect((await state(t)).view.picker).toBe(action === 'subject' ? 'subject' : 'comparison')
+    const s = await state(t)
+    await click(t, 'person', {
+      data: { custom_id: controlId(s._id, s.revision, 'person'), values: ['-10'] },
+    })
+    await run(t)
+    expect((await state(t)).view.picker).toBeNull()
+    expect(renders[1][action === 'subject' ? 'subject' : 'comparison'].identity.handle).toBe('-10')
+  },
+)

@@ -190,7 +190,12 @@ export const searchCreators = internalQuery({
     const rank = (slug: string) =>
       slug === term ? 0 : slug.startsWith(term) ? 1 : 2
     return unique
-      .filter((c) => c.slug.includes(term))
+      .filter(
+        (c) =>
+          c.slug.trim().length > 0 &&
+          c.slug.length <= 100 &&
+          c.slug.includes(term),
+      )
       .sort(
         (a, b) => rank(a.slug) - rank(b.slug) || a.slug.localeCompare(b.slug),
       )
