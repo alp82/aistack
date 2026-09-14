@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.4](https://github.com/alp82/aistack/compare/cli-v0.16.3...cli-v0.16.4) (2026-09-14)
+
+
+### Bug Fixes
+
+* **cli:** read each Git repository once and skip diffs of megabyte blobs ([#427](https://github.com/alp82/aistack/issues/427)) ([cf8b1d4](https://github.com/alp82/aistack/commit/cf8b1d4ec6dfbcfdd9f33d64121fac626d046a44))
+
 ## [0.16.3](https://github.com/alp82/aistack/compare/cli-v0.16.2...cli-v0.16.3) (2026-09-14)
 
 
