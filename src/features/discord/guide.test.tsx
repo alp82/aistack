@@ -2,10 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
-import {
-	DISCORD_INSTALL_URL,
-	DISCORD_USER_REAUTHORIZE_URL,
-} from "@/lib/discord";
+import { DISCORD_INSTALL_URL } from "@/lib/discord";
 import { DiscordGuidePage } from "./DiscordGuidePage";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,8 +25,8 @@ test("public guide renders complete setup and an example before hydration", () =
 	const html = renderToString(<DiscordGuidePage />);
 	expect(html).toContain("<h1>");
 	expect(html).toContain("Synthetic /tokens example");
-	expect(html).toContain("Missing commands?");
-	expect(html).toContain("/link/discord");
+	expect(html).toContain("Connect your stack (optional)");
+	expect(html).not.toContain("Choose what to explore");
 });
 
 test("five example controls update images while install and account actions remain distinct", () => {
@@ -48,12 +45,4 @@ test("five example controls update images while install and account actions rema
 		"href",
 		DISCORD_INSTALL_URL,
 	);
-	expect(
-		screen.getByRole("link", { name: "Manage your Discord account" }),
-	).toHaveAttribute("href", "/link/discord");
-	expect(
-		screen.getByRole("link", {
-			name: "Reauthorize your personal installation",
-		}),
-	).toHaveAttribute("href", DISCORD_USER_REAUTHORIZE_URL);
 });

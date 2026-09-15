@@ -1,9 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-	DISCORD_INSTALL_URL,
-	DISCORD_USER_REAUTHORIZE_URL,
-} from "@/lib/discord";
+import { DISCORD_INSTALL_URL } from "@/lib/discord";
 import compareImage from "./discord-guide-images/compare.png";
 import contextImage from "./discord-guide-images/context.png";
 import costImage from "./discord-guide-images/cost.png";
@@ -23,7 +19,7 @@ const commands = [
 		name: "cost",
 		title: "Understand your costs",
 		description:
-			"See current monthly subscriptions alongside measured usage cost for the selected dates.",
+			"See current monthly subscriptions next to the measured usage cost for the selected dates.",
 		image: costImage,
 	},
 	{
@@ -37,7 +33,7 @@ const commands = [
 		name: "harness",
 		title: "See where you work",
 		description:
-			"See token usage across harnesses, then compare the same harness with another creator.",
+			"See how your tokens split across coding harnesses, then compare the split with another creator.",
 		image: harnessImage,
 	},
 	{
@@ -184,58 +180,6 @@ export function DiscordGuidePage() {
 	return (
 		<main className="dg-section" aria-label="AI Stack on Discord">
 			<Walkthrough selected={selected} onSelect={setSelected} />
-			<section className="dg-help" aria-label="Using the Discord bot">
-				<h2>Choose what to explore</h2>
-				<p>
-					Use <code>/tokens</code> for model usage, <code>/cost</code> for
-					subscriptions and measured costs, <code>/context</code> for context
-					usage, <code>/harness</code> for your coding tools, and{" "}
-					<code>/compare</code> to compare creators.
-				</p>
-				<p>
-					Use the reply controls to change the date range, select a person, or
-					open a full list. Context and harness replies also let you choose a
-					harness. The person who requested a reply controls it. Run the command
-					again when its controls expire.
-				</p>
-				<p>
-					You can also browse stacks with <code>/stack</code>, rankings with{" "}
-					<code>/leaderboard</code>, and models with <code>/model</code>. Only
-					publicly shared readings appear. Example amounts above are synthetic
-					and are not current vendor prices.
-				</p>
-			</section>
-			<section className="dg-help" aria-label="Discord help">
-				<h2>Get connected</h2>
-				<h3>Use your own stack</h3>
-				<p>
-					Run <code>/link</code> in Discord and open its private link to connect
-					your AI Stack account. You can browse another creator without linking.
-				</p>
-				<Link className="dg-text-link" to="/link/discord">
-					Manage your Discord account
-				</Link>
-				<h3>Missing commands?</h3>
-				<p>
-					Restart Discord and try <code>/cost</code>. For a personal
-					installation, you can authorize AI Stack again and review the
-					permissions in Discord, then check the command list.
-				</p>
-				<a
-					className="dg-text-link"
-					href={DISCORD_USER_REAUTHORIZE_URL}
-					target="_blank"
-					rel="noreferrer"
-				>
-					Reauthorize your personal installation
-				</a>
-				<h3>No reading for your stack?</h3>
-				<p>
-					Check that you have published a stack and synced your usage. Costs and
-					context also depend on what you choose to share. Try a wider date
-					range or another creator.
-				</p>
-			</section>
 		</main>
 	);
 }

@@ -130,7 +130,7 @@ function answer(
 		identity: {
 			creatorId: handle,
 			stackId: handle,
-			handle: `${handle}-example`,
+			handle,
 			name: `${handle} (example)`,
 			avatarUrl: null,
 			profileUrl: "https://aistack.to",

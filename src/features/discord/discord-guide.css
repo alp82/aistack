@@ -46,7 +46,8 @@
 	display: grid;
 	grid-template-columns: 0.85fr 1.15fr;
 	gap: 52px;
-	align-items: center;
+	/* Top-aligned, so the text stays put while the example on the right changes height. */
+	align-items: start;
 }
 .dg-steps {
 	margin: 32px 0 0;
@@ -164,9 +165,3 @@
 		padding: 10px;
 	}
 }
-
-.dg-help { margin-top: 40px; border-top: 1px solid #30362d; padding-top: 32px; max-width: 800px; }
-.dg-help h2 { font-size: 24px; font-weight: 600; margin-bottom: 16px; }
-.dg-help h3 { font-family: monospace; font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 8px; }
-.dg-help p { color: #b6bdb1; font-size: 15px; line-height: 1.7; margin-bottom: 16px; }
-.dg-text-link { color: var(--accent-lime, #c5f74f); font: 13px monospace; text-decoration: underline; text-underline-offset: 4px; }
