@@ -11,9 +11,32 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-export type PulseVariantKey = "A" | "B" | "C" | "D" | "E";
+export type PulseVariantKey =
+	| "A"
+	| "B"
+	| "C"
+	| "D"
+	| "E"
+	| "F"
+	| "G"
+	| "H"
+	| "I"
+	| "J"
+	| "K";
 
-const VARIANTS: PulseVariantKey[] = ["D", "E", "A", "B", "C"];
+const VARIANTS: PulseVariantKey[] = [
+	"I",
+	"J",
+	"K",
+	"G",
+	"F",
+	"H",
+	"D",
+	"E",
+	"A",
+	"B",
+	"C",
+];
 
 function readVariant(searchStr: string): PulseVariantKey | null {
 	const params = new URLSearchParams(
@@ -38,7 +61,7 @@ export function usePulsePrototype() {
 
 	const cycle = useCallback(
 		(step: number) => {
-			const index = VARIANTS.indexOf(variant ?? "D");
+			const index = VARIANTS.indexOf(variant ?? "I");
 			setVariant(VARIANTS[(index + step + VARIANTS.length) % VARIANTS.length]);
 		},
 		[variant, setVariant],

@@ -115,7 +115,14 @@ function Chip({
 	);
 }
 
-function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
+export function TokenTrend({
+	points,
+	controls = "above",
+}: {
+	readonly points: readonly DayPoint[];
+	/** Where the range select sits. "below" is a prototype option (2026-09-15). */
+	readonly controls?: "above" | "below";
+}) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [hover, setHover] = useState<number | null>(null);
 	const [range, setRange] = useState<TrendRange>("7");
@@ -161,21 +168,31 @@ function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
 	const hideMin = hover === minIdx || minIdx === maxIdx;
 	const hideMax = hover === maxIdx;
 
+	const rangeControl = (
+		<div
+			className={`flex items-center justify-center gap-3 ${
+				controls === "below" ? "mt-4" : "mb-3"
+			}`}
+		>
+			<span className={`${MONO_LABEL} text-fg-muted`}>Usage in the</span>
+			<BrutalistSelect
+				options={RANGE_OPTIONS}
+				value={range}
+				onChange={(next) => {
+					setRange(next);
+					setHover(null);
+				}}
+				size="sm"
+				className="w-36"
+			/>
+		</div>
+	);
+
 	return (
-		<div className="mt-10 w-full max-w-2xl">
-			<div className="mb-3 flex items-center justify-center gap-3">
-				<span className={`${MONO_LABEL} text-fg-muted`}>Usage in the</span>
-				<BrutalistSelect
-					options={RANGE_OPTIONS}
-					value={range}
-					onChange={(next) => {
-						setRange(next);
-						setHover(null);
-					}}
-					size="sm"
-					className="w-36"
-				/>
-			</div>
+		<div
+			className={`w-full max-w-2xl ${controls === "below" ? "mt-16" : "mt-10"}`}
+		>
+			{controls === "above" ? rangeControl : null}
 			<div
 				ref={ref}
 				className="relative touch-none"
@@ -236,6 +253,7 @@ function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
 					</>
 				) : null}
 			</div>
+			{controls === "below" ? rangeControl : null}
 		</div>
 	);
 }

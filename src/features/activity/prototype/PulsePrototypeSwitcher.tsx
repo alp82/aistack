@@ -7,8 +7,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PulseVariantKey } from "./usePulsePrototype";
 import { VARIANT_ANNOTATED_NAME } from "./VariantAnnotated";
 import { VARIANT_GROUND_NAME } from "./VariantGround";
+import { VARIANT_LEDGER_NAME } from "./VariantLedger";
 import { VARIANT_ONE_NUMBER_NAME } from "./VariantOneNumber";
+import { VARIANT_RAIL_NAME } from "./VariantRail";
 import { VARIANT_REEL_NAME } from "./VariantReel";
+import { VARIANT_STRIP_NAME } from "./VariantStrip";
+import { VARIANT_STRIP_CELLS_NAME } from "./VariantStripCells";
+import { VARIANT_STRIP_FIGURES_NAME } from "./VariantStripFigures";
+import { VARIANT_STRIP_LINE_NAME } from "./VariantStripLine";
 import { VARIANT_TICKER_NAME } from "./VariantTicker";
 
 const NAMES: Record<PulseVariantKey, string> = {
@@ -17,6 +23,12 @@ const NAMES: Record<PulseVariantKey, string> = {
 	C: VARIANT_TICKER_NAME,
 	D: VARIANT_ONE_NUMBER_NAME,
 	E: VARIANT_REEL_NAME,
+	F: VARIANT_LEDGER_NAME,
+	G: VARIANT_STRIP_NAME,
+	H: VARIANT_RAIL_NAME,
+	I: VARIANT_STRIP_CELLS_NAME,
+	J: VARIANT_STRIP_LINE_NAME,
+	K: VARIANT_STRIP_FIGURES_NAME,
 };
 
 export function PulsePrototypeSwitcher({
@@ -53,7 +65,7 @@ export function PulsePrototypeSwitcher({
 				</button>
 			</div>
 			<p className="mt-2 text-center font-mono text-[10px] text-white/50">
-				← → to switch · pulse-band prototype
+				← → to switch · I J K: Strip variations · F G H: start-page ideas
 			</p>
 		</div>
 	);
