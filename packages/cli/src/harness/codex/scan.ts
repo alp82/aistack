@@ -10,10 +10,11 @@ import { traceError } from "../../trace.js";
 // prompt text and is NEVER opened here; read errors are swallowed rather than
 // thrown, because the error object carries the absolute path.
 
-import { type Dirent, readFileSync } from "node:fs";
-import { readdir, realpath, stat } from "node:fs/promises";
+import { type createReadStream, type Dirent, readFileSync } from "node:fs";
+import { open, readdir, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import * as zlib from "node:zlib";
 
 import { parse as parseToml } from "smol-toml";
@@ -71,14 +72,14 @@ async function* walkRollouts(dir: string): AsyncGenerator<string> {
  * so it is feature-detected. On an old runtime a `.zst` rollout counts as
  * unreadable - a visible coverage figure, never a silent skip.
  */
-const zstdDecompress: ((buf: Buffer) => Buffer) | null =
-	typeof (zlib as { zstdDecompressSync?: unknown }).zstdDecompressSync ===
-	"function"
-		? (buf) =>
-				(
-					zlib as unknown as { zstdDecompressSync: (b: Buffer) => Buffer }
-				).zstdDecompressSync(buf)
+const createZstdDecompress =
+	typeof zlib.createZstdDecompress === "function"
+		? zlib.createZstdDecompress
 		: null;
+
+// Bound even a corrupt or exceptionally large single JSONL record. Oversized
+// records count as parse failures, and the next newline resumes the reading.
+const MAX_LINE_BYTES = 64 * 1024 * 1024;
 
 export type ScanOptions = {
 	/** Only count records with a timestamp at or after this epoch ms. */
@@ -88,8 +89,11 @@ export type ScanOptions = {
 	roots?: string[];
 	/** Override the config.toml path. Tests only. */
 	configFile?: string;
-	/** Override the file reader. Tests only. */
-	readFileImpl?: (file: string) => Buffer | string;
+	/** Override the stream factory. Tests only; bytes still use the real decoder. */
+	readStreamImpl?: typeof createReadStream;
+	/** Smaller limits exercise chunk and record boundaries in tests. */
+	chunkBytes?: number;
+	maxLineBytes?: number;
 };
 
 export async function scan(
@@ -144,7 +148,7 @@ export async function scan(
 			agg.files++;
 			stats.filesRead++;
 			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
-			const outcome = ingestWithRetry(agg, file, opts);
+			const outcome = await ingestWithRetry(agg, file, opts);
 			if (!outcome.ok) {
 				// Never rethrown: the error object carries the absolute path. The
 				// stats keep a relative path and a bare error class instead (#75).
@@ -206,18 +210,18 @@ const readError = (reason: string): Error =>
  * the walk can be gone at read time. Mirror codex's own reader: on `ENOENT`,
  * try the `.zst` sibling once before counting the file unreadable.
  */
-function ingestWithRetry(
+async function ingestWithRetry(
 	agg: Aggregate,
 	file: string,
 	opts: ScanOptions,
-): IngestOutcome {
+): Promise<IngestOutcome> {
 	try {
-		return ingestFile(agg, file, opts);
+		return await ingestFile(agg, file, opts);
 	} catch (e) {
 		traceError("codex rollout read", e);
 		if (errorClass(e) === "ENOENT" && !file.endsWith(".zst")) {
 			try {
-				return ingestFile(agg, `${file}.zst`, opts);
+				return await ingestFile(agg, `${file}.zst`, opts);
 			} catch (e2) {
 				traceError("codex compressed rollout retry", e2);
 				return { ok: false, reason: errorClass(e2) };
@@ -228,60 +232,133 @@ function ingestWithRetry(
 }
 
 /**
- * Keep bytes until the fingerprint is known, decoding one line at a time.
- * Long sessions can exceed Node's string limit even when each line is small.
- * Two passes over the same bytes avoid retaining every parsed transcript and
- * ensure a foreign rollout leaves the aggregate untouched.
+ * Pin the append-only file and its length across two bounded streaming passes.
+ * The first validates the entire fingerprint before any measurements enter the
+ * aggregate. The second ingests without keeping raw bytes or parsed records.
+ * An open descriptor survives the compression worker unlinking the plain file.
  */
-function ingestFile(
+async function ingestFile(
 	agg: Aggregate,
 	file: string,
 	opts: ScanOptions,
-): IngestOutcome {
-	const readFile = opts.readFileImpl ?? readFileSync;
-	const raw = readFile(file);
-	let bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
-	if (file.endsWith(".zst")) {
-		if (zstdDecompress === null) throw readError("zstd-unsupported");
-		try {
-			bytes = zstdDecompress(bytes);
-		} catch (error) {
-			traceError("codex zstd decompression", error);
-			throw readError("zstd-corrupt");
+): Promise<IngestOutcome> {
+	const compressed = file.endsWith(".zst");
+	if (compressed && !createZstdDecompress) throw readError("zstd-unsupported");
+	const handle = await open(file, "r");
+	try {
+		const { size } = await handle.stat();
+		let nonEmptyLines = 0;
+		let parseErrors = 0;
+		async function* records(count: boolean): AsyncGenerator<unknown> {
+			if (size === 0) return;
+			async function* chunks() {
+				for (let position = 0; position < size; ) {
+					const buffer = Buffer.allocUnsafe(
+						Math.min(opts.chunkBytes ?? 64 * 1024, size - position),
+					);
+					const { bytesRead } = await handle.read(
+						buffer,
+						0,
+						buffer.length,
+						position,
+					);
+					if (bytesRead === 0) throw readError("rollout-truncated");
+					position += bytesRead;
+					yield buffer.subarray(0, bytesRead);
+				}
+			}
+			const source = opts.readStreamImpl
+				? opts.readStreamImpl(file, {
+						start: 0,
+						end: size - 1,
+						highWaterMark: opts.chunkBytes ?? 64 * 1024,
+					})
+				: Readable.from(chunks(), { objectMode: false });
+			let sourceError: unknown;
+			const decoder = compressed ? createZstdDecompress?.() : undefined;
+			source.on("error", (error: Error) => {
+				sourceError = error;
+				decoder?.destroy(error);
+			});
+			const stream: Readable = decoder ? source.pipe(decoder) : source;
+			try {
+				for await (const line of boundedLines(
+					stream,
+					opts.maxLineBytes ?? MAX_LINE_BYTES,
+				)) {
+					if (line === "") continue;
+					if (count) nonEmptyLines++;
+					let record: unknown;
+					try {
+						if (line === null) throw readError("record-too-large");
+						record = JSON.parse(line);
+					} catch (error) {
+						if (count) {
+							if (parseErrors === 0)
+								traceError("codex rollout JSON (first failure)", error, "warn");
+							parseErrors++;
+						}
+						continue;
+					}
+					yield record;
+				}
+			} catch (error) {
+				if (decoder && !sourceError) {
+					traceError("codex zstd decompression", error);
+					throw readError("zstd-corrupt");
+				}
+				throw sourceError ?? error;
+			} finally {
+				source.destroy();
+				decoder?.destroy();
+			}
 		}
+		const verdict = await classifyRollout(records(true));
+		if (!verdict.genuine) return { ok: true, ...verdict };
+		agg.lines += nonEmptyLines;
+		agg.parseErrors += parseErrors;
+		const state = createFileState();
+		for await (const rec of records(false))
+			ingestLine(agg, rec, state, opts.sinceMs);
+		return { ok: true, genuine: true };
+	} finally {
+		await handle.close();
 	}
+}
 
-	let nonEmptyLines = 0;
-	let parseErrors = 0;
-	function* records(): Generator<unknown> {
-		for (let start = 0; start < bytes.length; ) {
+/** Decode only complete lines so UTF-8 characters may span stream chunks. */
+async function* boundedLines(
+	stream: Readable,
+	limit: number,
+): AsyncGenerator<string | null> {
+	let parts: Buffer[] = [];
+	let length = 0;
+	let oversized = false;
+	for await (const chunk of stream) {
+		const bytes: Buffer = chunk;
+		let start = 0;
+		while (start < bytes.length) {
 			const newline = bytes.indexOf(10, start);
 			const end = newline < 0 ? bytes.length : newline;
-			const line = bytes.subarray(start, end).toString("utf8");
-			start = end + 1;
-			if (!line) continue;
-			nonEmptyLines++;
-			let record: unknown;
-			try {
-				record = JSON.parse(line);
-			} catch (error) {
-				if (parseErrors === 0)
-					traceError("codex rollout JSON (first failure)", error, "warn");
-				parseErrors++;
-				continue;
+			const part = bytes.subarray(start, end);
+			if (!oversized) {
+				length += part.length;
+				if (length > limit) {
+					oversized = true;
+					parts = [];
+				} else parts.push(part);
 			}
-			yield record;
+			if (newline >= 0) {
+				yield oversized ? null : Buffer.concat(parts, length).toString("utf8");
+				parts = [];
+				length = 0;
+				oversized = false;
+			}
+			start = end + 1;
 		}
 	}
-
-	const verdict = classifyRollout(records());
-	if (!verdict.genuine) return { ok: true, ...verdict };
-
-	agg.lines += nonEmptyLines;
-	agg.parseErrors += parseErrors;
-	const state = createFileState();
-	for (const rec of records()) ingestLine(agg, rec, state, opts.sinceMs);
-	return { ok: true, genuine: true };
+	if (oversized || length > 0)
+		yield oversized ? null : Buffer.concat(parts, length).toString("utf8");
 }
 
 /**
@@ -296,15 +373,15 @@ function ingestFile(
  * CLI. Negative by construction - it detects "not genuine", never "written by
  * tool X"; the originator label is diagnostic only.
  */
-function classifyRollout(
-	records: Iterable<unknown>,
-): { genuine: true } | { genuine: false; originator: string } {
+async function classifyRollout(
+	records: AsyncIterable<unknown>,
+): Promise<{ genuine: true } | { genuine: false; originator: string }> {
 	let originator: string | null = null;
 	let sawTurnContext = false;
 	let sawTokenCount = false;
 	let genuine = true;
 	let count = 0;
-	for (const raw of records) {
+	for await (const raw of records) {
 		const rec = asObj(raw);
 		const type = rec ? asStr(rec.type) : null;
 		const payload = rec ? asObj(rec.payload) : null;
