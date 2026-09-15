@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.10](https://github.com/alp82/aistack/compare/cli-v0.16.9...cli-v0.16.10) (2026-09-15)
+
+
+### Bug Fixes
+
+* **cli:** read Cursor history in bounded memory, off the bubble range, and only when changed ([#450](https://github.com/alp82/aistack/issues/450)) ([d15f61b](https://github.com/alp82/aistack/commit/d15f61b07b910b8b13aefacd81cd7c5147f1f20c))
+
 ## [0.16.9](https://github.com/alp82/aistack/compare/cli-v0.16.8...cli-v0.16.9) (2026-09-15)
 
 
