@@ -202,6 +202,27 @@ describe("production Discord renderer", () => {
 		expect(svg).toContain("Real tool 7");
 		expect((await renderStatsPng(p)).length).toBeGreaterThan(1000);
 	});
+	test("a comparison drops subscriptions under $5 on both sides, sponsored counting as paid", () => {
+		const p = payload("cost", true);
+		const b = p.comparison as RenderAnswer;
+		// Row 0: $20 vs $20 stays. Row 1: sponsored $0 both sides stays.
+		// Row 2: $200 vs $0 stays and prints the $0. Row 3: $0 vs $4 goes.
+		p.subject.subscriptions.preview[2].monthlyUSD = 200;
+		p.subject.subscriptions.preview[2].state = "paid";
+		b.subscriptions.preview[2].state = "free";
+		p.subject.subscriptions.preview[3].state = "free";
+		b.subscriptions.preview[3].monthlyUSD = 4;
+		b.subscriptions.preview[3].state = "paid";
+		const svg = discordStatsSvg(p).svg;
+		expect(svg).toContain("Real tool 0");
+		expect(svg).toContain("Real tool 1");
+		expect(svg).toContain("Real tool 2");
+		expect(svg).toContain(">free</text>");
+		expect(svg).toContain(">sponsored</text>");
+		expect(svg).not.toContain("Real tool 3");
+		// Row 4 is sponsored on both sides, so it stays at $0.
+		expect(svg).toContain("Real tool 4");
+	});
 	test("context honors selected harness, actual window and evidence flags", async () => {
 		const p = payload("context", true);
 		p.subject.current.context.push({

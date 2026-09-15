@@ -312,6 +312,9 @@ type Pair = {
 	icon: string | null | undefined;
 	left: number | null;
 	right: number | null;
+	/** A word that replaces the formatted value on that side, like a subscription state. */
+	leftLabel?: string;
+	rightLabel?: string;
 	color: string;
 };
 type Row = {
@@ -319,6 +322,7 @@ type Row = {
 	name: string;
 	icon: string | null | undefined;
 	value: number;
+	label?: string;
 };
 /** Union of both sides' rows, the larger value first, a stable color per row. */
 function union(
@@ -331,13 +335,17 @@ function union(
 	const ids = [...new Set([...ra, ...rb].map((r) => r.id))];
 	return ids
 		.map((id) => {
-			const m = ra.find((r) => r.id === id) ?? rb.find((r) => r.id === id);
+			const l = ra.find((r) => r.id === id),
+				r = rb.find((r) => r.id === id),
+				m = l ?? r;
 			return {
 				id,
 				name: m?.name ?? id,
 				icon: m?.icon,
-				left: ra.find((r) => r.id === id)?.value ?? null,
-				right: rb.find((r) => r.id === id)?.value ?? null,
+				left: l?.value ?? null,
+				right: r?.value ?? null,
+				leftLabel: l?.label,
+				rightLabel: r?.label,
 			};
 		})
 		.sort(
@@ -376,17 +384,17 @@ function butterfly(
 		svg += bold(
 			C - GAP - lw - 14,
 			y + 24,
-			fmt(m.left),
+			m.leftLabel ?? fmt(m.left),
 			26,
-			m.left ? INK : "#3b4450",
+			m.left || m.leftLabel ? INK : "#3b4450",
 			"end",
 		);
 		svg += bold(
 			C + GAP + rw + 14,
 			y + 24,
-			fmt(m.right),
+			m.rightLabel ?? fmt(m.right),
 			26,
-			m.right ? INK : "#3b4450",
+			m.right || m.rightLabel ? INK : "#3b4450",
 		);
 		svg += mono(C, y + 56, cut(m.name, 24), 15, MUTED, "middle");
 		y += 84;
@@ -633,7 +641,12 @@ const subRows = (x: RenderAnswer, full: boolean) =>
 		icon: r.iconUrl,
 		value: r.monthlyUSD,
 		state: r.state,
+		label: r.state === "paid" ? undefined : r.state,
 	}));
+/** A comparison subscription row earns its place at $5 a month; a sponsored plan counts as paid. */
+const COMPARE_SUB_FLOOR = 5;
+const earnsRow = (r: { value: number; state: string }) =>
+	r.value >= COMPARE_SUB_FLOOR || r.state === "sponsored";
 const costOf = (x: RenderAnswer) =>
 	x.publishCost ? x.current.usage?.cost?.usd : null;
 
@@ -709,7 +722,15 @@ export function discordStatsSvg(
 					money,
 				),
 			);
-			const pairs = union(a, b, (x) => subRows(x, full));
+			// Neither side reaching the floor drops the row, sponsored counting as reached.
+			const earned = new Set(
+				[...subRows(a, full), ...subRows(b, full)]
+					.filter(earnsRow)
+					.map((r) => r.id),
+			);
+			const pairs = union(a, b, (x) => subRows(x, full)).filter((p) =>
+				earned.has(p.id),
+			);
 			const max = Math.max(
 				1,
 				...pairs.flatMap((s) => [s.left ?? 0, s.right ?? 0]),

@@ -51,10 +51,10 @@ storage-backed avatar resolves to the Convex storage origin and renders; an
 avatar that still points at a third-party origin renders the handle's first
 letter instead, unless that origin is trusted here.
 
-The card prints bare dollar figures. The price-table ids, the priced share and
-the lower-bound status for each figure go in the embed footer, built by
-`convex/lib/discordPriceFooter.ts`, so every dollar figure still cites its
-source.
+The card prints bare dollar figures and the message carries no citation text.
+This is the owner's deliberate exception to the pricing rule that every dollar
+figure cites its price table (decided 2026-09-15): the Discord card is a
+glanceable summary, and the stack page remains the cited surface.
 
 ## Bounds and failures
 
