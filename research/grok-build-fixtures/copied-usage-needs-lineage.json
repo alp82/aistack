@@ -1,0 +1,138 @@
+{
+  "name": "copied-usage-needs-lineage",
+  "provenance": "constructed from pinned source; not released-client output",
+  "records": {
+    "source/usage.json": {
+      "sessionId": "fixture-main",
+      "updatedAt": "2026-09-08T00:01:00Z",
+      "session": {
+        "inputTokens": 140,
+        "outputTokens": 30,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 170,
+        "modelCalls": 2,
+        "turnCount": 2,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 140,
+            "outputTokens": 30,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 170,
+            "modelCalls": 2
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        },
+        {
+          "turnNumber": 2,
+          "endedAt": "2026-09-08T00:01:00Z",
+          "inputTokens": 40,
+          "outputTokens": 10,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 50,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 40,
+              "outputTokens": 10,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 50,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    },
+    "copy/usage.json": {
+      "sessionId": "fixture-copy",
+      "updatedAt": "2026-09-07T23:59:59Z",
+      "session": {
+        "inputTokens": 100,
+        "outputTokens": 20,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 120,
+        "modelCalls": 1,
+        "turnCount": 1,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 100,
+            "outputTokens": 20,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 120,
+            "modelCalls": 1
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "note": "Copied row is identical except file session identity. These usage files alone cannot prove ancestry; no dedup heuristic is qualified by this case. Add observed lineage before asserting a deduplicated total."
+  },
+  "sourceTests": [
+    "fork_restamps_usage_session_id",
+    "truncating_fork_drops_later_usage_turns"
+  ]
+}

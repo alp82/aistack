@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discord command flow prototype</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #17191c; color: #edf0f2; --chart-1:#69a621; --chart-2:#9e71fd; --chart-3:#c21977; --chart-4:#4278d2; --chart-5:#00a99b; --chart-6:#e66700; }
+  * { box-sizing: border-box; }
+  body { max-width: 960px; margin: auto; padding: 28px 20px 60px; }
+  h1 { font-size: 25px; } h2 { font-size: 20px; margin-top: 0; } h3 { font-size: 15px; }
+  p { line-height: 1.5; } small, .muted { color: #aeb4bd; }
+  button, select, input, label, .tag { font: 13px monospace; }
+  button, select, input { background: #292d33; color: inherit; border: 1px solid #505660; padding: 10px; }
+  button { cursor: pointer; } button:hover, button.active { border-color: #c5f442; color: #c5f442; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #c5f442; }
+  input { width: 150px; } .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  section { margin-top: 24px; padding: 20px; border: 1px solid #3d424a; }
+  .message { border-left: 3px solid #c5f442; background: #202329; }
+  .big { font-size: 34px; font-weight: 650; margin: 12px 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 18px; }
+  .bar { height: 12px; background: var(--chart-1); margin: 6px 0 10px; }
+  .bar.second { background: var(--chart-2); }
+  .delta { font: 13px monospace; color: #b8c1ce; white-space: nowrap; }
+  .headline { display:flex; align-items:baseline; flex-wrap:wrap; gap:16px; }
+  .vs-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:24px 0; }
+  .player { font: 22px monospace; } .player.you { color:var(--chart-1); } .player.them { color:var(--chart-2); }
+  .comparison-card { padding:20px; background:#17191c; border:1px solid #3d424a; }
+  .comparison-card h3 { margin:0 0 18px; color:#c1c7d0; font:13px monospace; }
+  .duel-values { display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:30px; font-weight:650; }
+  .duel-values .you { color:var(--chart-1); } .duel-values .them { color:var(--chart-2); }
+  .comparison-card .delta { display:block; margin-top:14px; }
+  .mix { display:flex; height:24px; gap:2px; margin:8px 0 16px; }
+  .mix span { min-width:0; }
+  .model-row { display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center; padding:12px 0; border-bottom:1px solid #34383f; }
+  .rank { color:#838d9b; font:13px monospace; } .model-row small { display:block; margin-top:4px; }
+  .context-layout { display:grid; grid-template-columns:minmax(0,320px) minmax(180px,1fr); gap:24px; margin:20px 0; }
+  .waffle { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; align-self:start; }
+  .cell { aspect-ratio:1; background:#2d3138; }
+  .cell.harness, .swatch.harness { background:var(--chart-4); }
+  .cell.instructions, .swatch.instructions { background:var(--chart-2); }
+  .cell.usualChat, .swatch.usualChat { background:var(--chart-1); }
+  .cell.longChat, .swatch.longChat { background:transparent; box-shadow:inset 0 0 0 1px #8793a2; }
+  .legend-row { display:grid; grid-template-columns:10px 1fr auto auto; align-items:center; gap:10px; padding:7px 0; font:12px monospace; }
+  .swatch { width:9px; height:9px; background:#2d3138; }
+  .person-option { min-width:150px; text-align:left; }
+  .person-panel { margin:16px 0; padding:18px; background:#17191c; border:1px solid #505660; }
+  #controls { margin-top:24px; }
+  @media(max-width:600px) { .context-layout { grid-template-columns:1fr; } .waffle { width:100%;max-width:320px; } .duel-values { font-size:25px; } .cards { grid-template-columns:1fr; } section { padding:16px; } }
+  .line { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; }
+  #private { border: 1px solid #e1ae71; padding: 12px; margin-top: 16px; }
+  .state { display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 13px; }
+  .state dt { color: #aeb4bd; } .state dd { margin: 0; }
+</style>
+<h1>Discord command flows <span class="tag">THROWAWAY PROTOTYPE</span></h1>
+<p>Five starter commands. Immediate breakdowns, context matrices, and comparisons between people. All people, subscription prices, and measurements are synthetic fixtures. This simulates interactions; it does not connect to Discord.</p>
+<section>
+  <h2>Try a command</h2>
+  <div class="row" id="commands"></div>
+  <p><label for="person">Optional person for /compare</label> <input id="person" list="people" placeholder="Search username"><datalist id="people"><option value="alice"><option value="bob"></datalist></p>
+  <small>The local suggestion list stands in for Discord creator-handle autocomplete. Other commands use the linked requester in this draft.</small>
+</section>
+<section>
+  <h2>Guided walkthroughs</h2>
+  <div class="row" id="scenarios"></div>
+  <p id="scenario"></p>
+  <div class="row" id="steps"></div>
+</section>
+<section class="message">
+  <small>AI Stack · public answer · requested by you</small>
+  <p id="invocation" class="tag"></p>
+  <h2 id="title"></h2>
+  <p id="dates" class="muted"></p>
+  <div id="answer"></div>
+  <div class="row" id="controls"></div>
+  <div id="extra"></div>
+  <div id="private" hidden role="status"></div>
+</section>
+<section>
+  <h2>Prototype inspection</h2>
+  <p><label for="actor">Who clicks the reply controls?</label> <select id="actor"><option value="owner">You, the requester</option><option value="other">Another person</option></select></p>
+  <dl id="state" class="state"></dl>
+  <small>Compare opens person selection directly. Bare /compare asks for a person; its answer shows tokens, measured usage cost, and model mix. Previous-period changes are compact indicators. The person search and custom range forms simulate flows; their precise Discord interaction design remains open.</small>
+</section>
+<script>
+  const commands = ['tokens', 'cost', 'context', 'harness', 'compare'];
+  const initial = () => ({command:'tokens', days:7, comparison:false, person:'', full:false, actor:'owner', panel:'', notice:''});
+  let state = initial();
+  const reduce = (s, action) => {
+    if (action.type === 'run') return {...initial(), command:action.command, comparison:action.command === 'compare' && Boolean(action.person), person:action.person || '', panel:action.command === 'compare' && !action.person ? 'person' : ''};
+    if (action.type === 'actor') return {...s, actor:action.value, notice:''};
+    if (s.actor !== 'owner') return {...s, notice:`Only the person who ran this command can change this answer. Run /${s.command} to explore your own.`};
+    if (action.type === 'range') return {...s, days:action.days, panel:'', notice:''};
+    if (action.type === 'compare') return {...s, panel:'person', notice:''};
+    if (action.type === 'person') return {...s, comparison:true, person:action.person, panel:'', notice:''};
+    if (action.type === 'full') return {...s, full:!s.full, notice:''};
+    if (action.type === 'panel') return {...s, panel:s.panel === action.panel ? '' : action.panel, notice:''};
+    return s;
+  };
+  const $ = id => document.getElementById(id);
+  const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  function dispatch(action) { state = reduce(state, action); render(); }
+  function button(parent, label, action) {
+    const el = document.createElement('button'); el.textContent = label;
+    el.onclick = () => dispatch(action); parent.append(el); return el;
+  }
+  const models = [['Model A',45],['Model B',25],['Model C',12],['Model D',8],['Model E',5],['Model F',3],['Model G',2]];
+  const modelRows = full => (full ? models : models.slice(0,3)).map(([name,value],index) => `<div class="model-row"><span class="rank">0${index+1}</span><span>${name}<small>${(12.4*state.days/7*value/100).toFixed(2)}M tokens</small></span><strong>${value}%</strong></div>`).join('');
+  const rangeLabel = (days, previous = false) => {
+    const end = new Date('2026-09-11T00:00:00Z'); if (previous) end.setUTCDate(end.getUTCDate()-days);
+    const start = new Date(end); start.setUTCDate(start.getUTCDate()-days+1);
+    const fmt = date => date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+    return `${fmt(start)} to ${fmt(end)}`;
+  };
+  const personData = () => state.person === 'bob' ? {tokens:15.8,cost:58,monthly:200,mix:[60,15,10,15],context:80000,harness:50} : {tokens:9.1,cost:34,monthly:95,mix:[30,40,20,10],context:48000,harness:55};
+  const delta = (value,previous) => `<span class="delta" title="Compared with the preceding equal-length date range">${Math.round(Math.abs(value/previous-1)*100)}% ${value>=previous?'↑':'↓'}</span>`;
+  function pair(title, current, other, format, unit = '', differenceFormat = format) {
+    const max=Math.max(current,other);
+    const change=other===0 ? 'n/a' : `${Math.round(Math.abs(current/other-1)*100)}% ${current>=other?'more':'less'}`;
+    return `<div class="comparison-card"><h3>${title}</h3><div class="duel-values"><span class="you">${format(current)}</span><span class="them">${format(other)}</span></div><small>${unit}</small><div class="bar" style="width:${current/max*100}%"></div><div class="bar second" style="width:${other/max*100}%"></div><span class="delta">${change} · ${differenceFormat(Math.abs(current-other))} difference</span></div>`;
+  }
+  function mix() {
+    const other=personData().mix, mine=[45,25,12,18];
+    const colors=['var(--chart-1)','var(--chart-2)','var(--chart-4)','var(--chart-6)'];
+    const strip=shares=>`<div class="mix">${shares.map((share,index)=>`<span style="width:${share}%;background:${colors[index]}" title="${['Model A','Model B','Model C','Other'][index]} ${share}%"></span>`).join('')}</div>`;
+    return `<div class="comparison-card" style="margin-top:18px"><h3>MODEL MIX · share of tokens</h3><small>You</small>${strip(mine)}<small>${escape(state.person)}</small>${strip(other)}${['Model A','Model B','Model C','Other'].map((name,i)=>`<div class="line"><span><span class="swatch" style="display:inline-block;background:${colors[i]}"></span> ${name}</span><span>${mine[i]}% / ${other[i]}% <small>(${mine[i]-other[i]>0?'+':''}${mine[i]-other[i]} pp)</small></span></div>`).join('')}</div>`;
+  }
+  function contextMatrix(name,median=64000,p90=120000) {
+    // Mirrors ContextRow's 200-cell layout and context.ts waffle boundaries.
+    const window=200000,harness=12000,instructions=8000,usualChat=median-harness-instructions;
+    const cells=Array.from({length:200},(_,i)=>i<12?'harness':i<20?'instructions':i<Math.round(median/1000)?'usualChat':i<Math.round(p90/1000)?'longChat':'free');
+    const legend=[['harness',harness,'harness'],['instructions',instructions,'instructions'],['usual chat',usualChat,'usualChat'],['long chat',p90-harness-instructions,'longChat'],['free',window-median,'free']];
+    return `<div><h3>${escape(name)} · Claude Code</h3><div class="headline"><b style="font-size:28px">${median/1000}K</b><span class="muted">median call · ${Math.round(median/window*100)}% of 200K window</span></div><div class="context-layout"><div class="waffle" role="img" aria-label="${escape(name)}: ${median/1000}K median call in a 200K window; 200 cells, each 0.5% of the window">${cells.map(type=>`<span class="cell ${type}"></span>`).join('')}</div><div>${legend.map(([label,tokens,type])=>`<div class="legend-row"><span class="swatch ${type}"></span><span>${label}</span><b>${tokens/1000}K</b><span class="muted">${Math.round(tokens/window*100)}%</span></div>`).join('')}<p><small>Outline reaches the p90 call.<br>Each cell is 0.5% of the window.</small></p></div></div><small>Desktop · ${Math.round(1000*state.days/7).toLocaleString()} calls</small></div>`;
+  }
+  function toolRows() {
+    const tools=state.full ? [['Tool A',120],['Tool B',20],['Tool C',10],['Tool D',5]] : [['Tool A',120],['Tool B',20],['Tool C',10]];
+    return tools.map(([name,cost],i)=>`<div class="model-row"><span class="rank">0${i+1}</span><span>${name}</span><strong>$${cost}<small>/ month</small></strong></div>`).join('');
+  }
+  function render() {
+    const factor = state.days / 7;
+    const tokens = `${(12.4*factor).toFixed(1)}M`, cost = `$${(42*factor).toFixed(2)}`;
+    $('invocation').textContent = `/${state.command}${state.command === 'compare' && state.person ? ` person:${state.person}` : ''}`;
+    $('title').textContent = state.comparison ? 'Your stacks, side by side' : state.command==='compare' ? 'Who do you want to compare with?' : `Your ${state.command}`;
+    $('dates').textContent = `${rangeLabel(state.days)}`;
+    let answer = '';
+    if (state.comparison) {
+      const parts = [], other=personData();
+      if (['compare','tokens'].includes(state.command)) parts.push(pair('TOKENS',12.4*factor,other.tokens*factor,n=>`${n.toFixed(1)}M`));
+      if (state.command==='compare') parts.push(pair('MEASURED USAGE COST',42*factor,other.cost*factor,n=>`$${n.toFixed(2)}`));
+      if (state.command==='cost') parts.push(pair('MONTHLY SUBSCRIPTIONS',155,other.monthly,n=>`$${n.toFixed(0)}`,'per month · current plans'));
+      if (state.command === 'harness') parts.push(pair('HARNESS A TOKEN SHARE',70,other.harness,n=>`${n.toFixed(0)}%`,'',n=>`${n.toFixed(0)} pp`));
+      answer = `<div class="vs-head"><span class="player you">YOU</span><span class="muted tag">VS</span><span class="player them">${escape(state.person.toUpperCase())}</span></div><div class="cards">${parts.join('')}</div>`;
+      if (['compare','tokens'].includes(state.command)) answer+=mix();
+      if (state.command==='context') answer+=`${contextMatrix('You')}${contextMatrix(state.person,other.context,other.context+56000)}`;
+    } else if (state.command === 'tokens') answer = `<div class="headline"><div class="big">${tokens} tokens</div>${delta(12.4,11.07)}</div>${modelRows(state.full)}`;
+    else if (state.command === 'cost') answer = `<div class="big">$155 <span style="font-size:18px;font-weight:400">/ month</span></div><small>Current subscriptions</small>${toolRows()}<p>Measured usage ${cost} ${delta(42,37.5)}</p>`;
+    else if (state.command === 'harness') answer = '<div class="line">Harness A <strong>70%</strong></div><div class="line">Harness B <strong>30%</strong></div>';
+    else if (state.command==='context') answer = contextMatrix('You');
+    if ((!state.comparison && state.command === 'cost') || (state.comparison && state.command === 'compare')) answer += `<p><small>Usage pricing: 100% of tokens priced${state.comparison?' on both sides':''} · synthetic-price-table (illustrative)</small></p>`;
+    $('answer').innerHTML = answer;
+    $('controls').replaceChildren();
+    button($('controls'),`${state.days} days ▾`,{type:'panel',panel:'range'});
+    button($('controls'),state.comparison?'Change person':'Compare',{type:'compare'});
+    if (!state.comparison && ['tokens','cost'].includes(state.command)) button($('controls'),state.full ? 'Top three' : 'Full list',{type:'full'});
+    $('extra').replaceChildren();
+    if (state.panel === 'range') {
+      const row = document.createElement('p'); row.className = 'row'; $('extra').append(row);
+      for (const days of [1,7,30]) button(row,`${days} days`,{type:'range',days});
+      const input = document.createElement('input'); input.type='number'; input.min='1'; input.placeholder='Custom days'; input.setAttribute('aria-label','Custom days'); row.append(input);
+      const apply = document.createElement('button'); apply.textContent='Apply'; apply.onclick=()=>{const days=Number(input.value); if(Number.isInteger(days)&&days>0&&days<=400) dispatch({type:'range',days}); else {state.notice='Prototype accepts 1 to 400 whole days. Production limit is undecided.';render();}};row.append(apply);
+    }
+    if (state.panel === 'person') {
+      const panel=document.createElement('div');panel.className='person-panel';$('extra').append(panel);
+      const title=document.createElement('h3');title.textContent='Choose a person';panel.append(title);
+      const search=document.createElement('input');search.placeholder='Search username';search.setAttribute('aria-label','Search username for comparison');panel.append(search);
+      const row = document.createElement('p'); row.className='row'; panel.append(row);
+      const choices=()=>{row.replaceChildren();for(const person of ['alice','bob'].filter(name=>name.includes(search.value.toLowerCase()))) button(row,person,{type:'person',person}).className='person-option';if(!row.children.length)row.textContent='No matching creators.';};
+      search.oninput=choices;choices();
+    }
+    $('private').hidden=!state.notice; $('private').textContent=`Only visible to ${state.actor === 'other' ? 'the person who clicked' : 'you'}: ${state.notice}`;
+    $('actor').value=state.actor;
+    const fields = {Command:`/${state.command}`,Subject:'You',Range:`${state.days} UTC days`,Comparison:state.comparison ? state.person : state.command==='compare' ? 'Awaiting person' : 'Off',List:state.full ? 'Full' : 'Top three',Requester:'You',Clicker:state.actor === 'owner' ? 'You' : 'Another person',Panel:state.panel || 'Closed'};
+    $('state').innerHTML=Object.entries(fields).map(([key,value])=>`<dt>${escape(key)}</dt><dd>${escape(value)}</dd>`).join('');
+  }
+  for (const command of commands) {
+    const el=document.createElement('button');el.textContent=`/${command}`;el.onclick=()=>dispatch({type:'run',command,person:command==='compare' ? $('person').value.trim() : ''});$('commands').append(el);
+  }
+  $('actor').onchange=event=>dispatch({type:'actor',value:event.target.value});
+  const scenarios = [
+    {name:'Instant answer',description:'Run a command with no arguments, then change its range.',steps:[['Run /tokens',{type:'run',command:'tokens'}],['Show 30 days',{type:'range',days:30}]]},
+    {name:'Comparison',description:'Bare /compare opens person selection. Supplying person:alice skips selection. Tokens, usage cost, and model mix compare the two people.',steps:[['Run /compare',{type:'run',command:'compare'}],['Choose alice',{type:'person',person:'alice'}],['Show 30 days',{type:'range',days:30}]]},
+    {name:'Context matrices',description:'Context uses the existing 200-cell matrix design. Compare opens person selection directly, then shows both people.',steps:[['Run /context',{type:'run',command:'context'}],['Open person selection',{type:'compare'}],['Choose alice',{type:'person',person:'alice'}]]},
+    {name:'Someone else clicks',description:'A rejected click shows a private explanation. The public answer and its range stay unchanged.',steps:[['Run /tokens',{type:'run',command:'tokens'}],['Become another person',{type:'actor',value:'other'}],['Try 30 days',{type:'range',days:30}],['Try Compare',{type:'compare'}]]}
+  ];
+  function scenario(index) {
+    state=initial();$('scenario').textContent=scenarios[index].description;$('steps').replaceChildren();
+    scenarios[index].steps.forEach(([label,action],i)=>button($('steps'),`${i+1}. ${label}`,action));
+    Array.from($('scenarios').children).forEach((el,i)=>el.classList.toggle('active',index===i));render();
+  }
+  scenarios.forEach((item,index)=>{const el=document.createElement('button');el.textContent=item.name;el.onclick=()=>scenario(index);$('scenarios').append(el);});
+  scenario(0);
+</script>
+</html>

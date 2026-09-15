@@ -1,0 +1,86 @@
+{
+  "name": "malformed-contribution",
+  "provenance": "constructed from pinned source; not released-client output",
+  "records": {
+    "usage.json": {
+      "sessionId": "fixture-main",
+      "updatedAt": "2026-09-08T00:01:00Z",
+      "session": {
+        "inputTokens": 140,
+        "outputTokens": 30,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 170,
+        "modelCalls": 2,
+        "turnCount": 2,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 140,
+            "outputTokens": 30,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 170,
+            "modelCalls": 2
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        },
+        {
+          "turnNumber": 2,
+          "endedAt": "2026-09-08T00:01:00Z",
+          "inputTokens": "broken-fixture",
+          "outputTokens": 10,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 50,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 40,
+              "outputTokens": 10,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 50,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "note": "Constructed corrupt field. Contract calls for valid contribution salvage, but reader completeness must distinguish corruption from transient bytes before replacement. This is not proof upstream accepts it."
+  },
+  "sourceTests": [
+    "Collection contract; deliberate fault injection"
+  ]
+}

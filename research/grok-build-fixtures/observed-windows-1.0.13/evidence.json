@@ -1,0 +1,561 @@
+{
+  "provenance": {
+    "kind": "Donor-sanitized observation, further reduced locally; exporter claims independently checked where possible.",
+    "clientVersionReported": "grok 1.0.13 (5e9a58528b76) [stable]",
+    "platformReported": "Windows 11 10.0.26200 (AMD64)",
+    "sourceSha256": "cfb255097cc5e7ea6ba5fdd67552b663d1c8b285c1ce717caa89f16a304c0ff8",
+    "sourceBytes": 12294116,
+    "usageSidecarReportedPresent": false,
+    "originalPreserved": true,
+    "retainedTransforms": [
+      "Keep numerical usage and selected measurement fields only.",
+      "Remove reported costs, free text, raw tool inputs/outputs, paths and account metadata.",
+      "Replace session identifier; retain already-collapsed prompt_id to expose the export defect.",
+      "Shift retained numeric update timestamps by one common whole-day offset.",
+      "Store counts instead of full event/tool streams."
+    ]
+  },
+  "records": [
+    {
+      "ordinal": 0,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 0,
+        "modelId": "grok-4.6",
+        "loopStarted": 31,
+        "firstToken": 31,
+        "toolsStarted": 96,
+        "toolsCompleted": 96
+      },
+      "terminalUpdate": {
+        "timestamp": 1767248893,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 862621,
+            "usage": {
+              "inputTokens": 2137370,
+              "outputTokens": 20424,
+              "totalTokens": 2157794,
+              "cachedReadTokens": 2044160,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 17849,
+              "modelCalls": 31,
+              "apiDurationMs": 454689,
+              "numTurns": 31,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 2137370,
+                  "outputTokens": 20424,
+                  "totalTokens": 2157794,
+                  "cachedReadTokens": 2044160,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 17849,
+                  "modelCalls": 31,
+                  "apiDurationMs": 454689
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 1,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 1,
+        "modelId": "grok-4.6",
+        "loopStarted": 31,
+        "firstToken": 31,
+        "toolsStarted": 92,
+        "toolsCompleted": 92
+      },
+      "terminalUpdate": {
+        "timestamp": 1767249670,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 777012,
+            "usage": {
+              "inputTokens": 5319375,
+              "outputTokens": 35760,
+              "totalTokens": 5355135,
+              "cachedReadTokens": 5074560,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 29330,
+              "modelCalls": 31,
+              "apiDurationMs": 673201,
+              "numTurns": 31,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 5319375,
+                  "outputTokens": 35760,
+                  "totalTokens": 5355135,
+                  "cachedReadTokens": 5074560,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 29330,
+                  "modelCalls": 31,
+                  "apiDurationMs": 673201
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 2,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 2,
+        "modelId": "grok-4.6",
+        "loopStarted": 6,
+        "firstToken": 6,
+        "toolsStarted": 11,
+        "toolsCompleted": 11
+      },
+      "terminalUpdate": {
+        "timestamp": 1767249744,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 73493,
+            "usage": {
+              "inputTokens": 1341070,
+              "outputTokens": 2615,
+              "totalTokens": 1343685,
+              "cachedReadTokens": 1322496,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 1624,
+              "modelCalls": 6,
+              "apiDurationMs": 60919,
+              "numTurns": 6,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1341070,
+                  "outputTokens": 2615,
+                  "totalTokens": 1343685,
+                  "cachedReadTokens": 1322496,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 1624,
+                  "modelCalls": 6,
+                  "apiDurationMs": 60919
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 3,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 3,
+        "modelId": "grok-4.6",
+        "loopStarted": 5,
+        "firstToken": 5,
+        "toolsStarted": 6,
+        "toolsCompleted": 6
+      },
+      "terminalUpdate": {
+        "timestamp": 1767249914,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 49366,
+            "usage": {
+              "inputTokens": 1169685,
+              "outputTokens": 1270,
+              "totalTokens": 1170955,
+              "cachedReadTokens": 1164800,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 1129,
+              "modelCalls": 5,
+              "apiDurationMs": 36861,
+              "numTurns": 5,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1169685,
+                  "outputTokens": 1270,
+                  "totalTokens": 1170955,
+                  "cachedReadTokens": 1164800,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 1129,
+                  "modelCalls": 5,
+                  "apiDurationMs": 36861
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 4,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 4,
+        "modelId": "grok-4.6",
+        "loopStarted": 8,
+        "firstToken": 8,
+        "toolsStarted": 20,
+        "toolsCompleted": 20
+      },
+      "terminalUpdate": {
+        "timestamp": 1767250042,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 127827,
+            "usage": {
+              "inputTokens": 1967951,
+              "outputTokens": 5522,
+              "totalTokens": 1973473,
+              "cachedReadTokens": 1952256,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 3777,
+              "modelCalls": 8,
+              "apiDurationMs": 107308,
+              "numTurns": 8,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1967951,
+                  "outputTokens": 5522,
+                  "totalTokens": 1973473,
+                  "cachedReadTokens": 1952256,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 3777,
+                  "modelCalls": 8,
+                  "apiDurationMs": 107308
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 5,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 5,
+        "modelId": "grok-4.6",
+        "loopStarted": 5,
+        "firstToken": 5,
+        "toolsStarted": 5,
+        "toolsCompleted": 5
+      },
+      "terminalUpdate": {
+        "timestamp": 1767250117,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 47789,
+            "usage": {
+              "inputTokens": 1266142,
+              "outputTokens": 1302,
+              "totalTokens": 1267444,
+              "cachedReadTokens": 1261696,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 947,
+              "modelCalls": 5,
+              "apiDurationMs": 35628,
+              "numTurns": 5,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1266142,
+                  "outputTokens": 1302,
+                  "totalTokens": 1267444,
+                  "cachedReadTokens": 1261696,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 947,
+                  "modelCalls": 5,
+                  "apiDurationMs": 35628
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 6,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 6,
+        "modelId": "grok-4.6",
+        "loopStarted": 7,
+        "firstToken": 7,
+        "toolsStarted": 8,
+        "toolsCompleted": 8
+      },
+      "terminalUpdate": {
+        "timestamp": 1767250261,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 68549,
+            "usage": {
+              "inputTokens": 1829460,
+              "outputTokens": 2174,
+              "totalTokens": 1831634,
+              "cachedReadTokens": 1819904,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 1742,
+              "modelCalls": 7,
+              "apiDurationMs": 61115,
+              "numTurns": 7,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1829460,
+                  "outputTokens": 2174,
+                  "totalTokens": 1831634,
+                  "cachedReadTokens": 1819904,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 1742,
+                  "modelCalls": 7,
+                  "apiDurationMs": 61115
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 7,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 7,
+        "modelId": "grok-4.6",
+        "loopStarted": 5,
+        "firstToken": 5,
+        "toolsStarted": 7,
+        "toolsCompleted": 7
+      },
+      "terminalUpdate": {
+        "timestamp": 1767250798,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 144688,
+            "usage": {
+              "inputTokens": 1352794,
+              "outputTokens": 6472,
+              "totalTokens": 1359266,
+              "cachedReadTokens": 1342464,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 4975,
+              "modelCalls": 5,
+              "apiDurationMs": 132433,
+              "numTurns": 5,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1352794,
+                  "outputTokens": 6472,
+                  "totalTokens": 1359266,
+                  "cachedReadTokens": 1342464,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 4975,
+                  "modelCalls": 5,
+                  "apiDurationMs": 132433
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 8,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 8,
+        "modelId": "grok-4.6",
+        "loopStarted": 4,
+        "firstToken": 4,
+        "toolsStarted": 10,
+        "toolsCompleted": 10
+      },
+      "terminalUpdate": {
+        "timestamp": 1767250987,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 155337,
+            "usage": {
+              "inputTokens": 1130046,
+              "outputTokens": 8212,
+              "totalTokens": 1138258,
+              "cachedReadTokens": 1115904,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 2572,
+              "modelCalls": 4,
+              "apiDurationMs": 148896,
+              "numTurns": 4,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1130046,
+                  "outputTokens": 8212,
+                  "totalTokens": 1138258,
+                  "cachedReadTokens": 1115904,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 2572,
+                  "modelCalls": 4,
+                  "apiDurationMs": 148896
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 9,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 9,
+        "modelId": "grok-4.6",
+        "loopStarted": 6,
+        "firstToken": 6,
+        "toolsStarted": 18,
+        "toolsCompleted": 18
+      },
+      "terminalUpdate": {
+        "timestamp": 1767251208,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "end_turn",
+            "elapsed_ms": 179033,
+            "usage": {
+              "inputTokens": 1801998,
+              "outputTokens": 9975,
+              "totalTokens": 1811973,
+              "cachedReadTokens": 1783552,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 4488,
+              "modelCalls": 6,
+              "apiDurationMs": 165087,
+              "numTurns": 6,
+              "modelUsage": {
+                "grok-4.6-build": {
+                  "inputTokens": 1801998,
+                  "outputTokens": 9975,
+                  "totalTokens": 1811973,
+                  "cachedReadTokens": 1783552,
+                  "cacheCreationTokens": 0,
+                  "reasoningTokens": 4488,
+                  "modelCalls": 6,
+                  "apiDurationMs": 165087
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "ordinal": 10,
+      "matchingBasis": "Ordinal position in complete nonoverlapping event turn windows and terminal update sequence; not an identity or cross-log timestamp join.",
+      "eventWindowCounts": {
+        "turnNumber": 10,
+        "modelId": "grok-4.6",
+        "loopStarted": 1,
+        "firstToken": 0,
+        "toolsStarted": 0,
+        "toolsCompleted": 0
+      },
+      "terminalUpdate": {
+        "timestamp": 1767251243,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": "fixture-donor-session-a",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "00000000-0000-0000-0000-000000000000",
+            "stop_reason": "error",
+            "elapsed_ms": 1014
+          }
+        }
+      }
+    }
+  ],
+  "checks": {
+    "successfulUsageBearingTerminals": 10,
+    "usageAbsentErrorTerminals": 1,
+    "inputModelKeys": [
+      "grok-4.6-build"
+    ],
+    "turnStartModelKeys": [
+      "grok-4.6"
+    ],
+    "terminalPromptIdDistinct": 1,
+    "updateToolIdsDistinct": 273,
+    "completionEventToolIdsDistinct": 1,
+    "updateToolChangesPerCall": 2,
+    "eventTimestampsInvalid": 7512,
+    "eventTimestampDistinct": 1,
+    "eventTimestampExample": "0000-00-00X00:00:00.000X",
+    "sessionBUpdateRecords": 0,
+    "sessionBEventRecords": 0,
+    "backgroundCompletionsByKind": {
+      "bash": 3
+    },
+    "updateKinds": {
+      "user_message_chunk": 11,
+      "agent_thought_chunk": 109,
+      "agent_message_chunk": 38,
+      "tool_call": 273,
+      "tool_call_update": 546,
+      "task_backgrounded": 7,
+      "plan": 4,
+      "task_completed": 3,
+      "turn_completed": 11,
+      "retry_state": 1
+    },
+    "loops": 109,
+    "modelCalls": 108
+  }
+}

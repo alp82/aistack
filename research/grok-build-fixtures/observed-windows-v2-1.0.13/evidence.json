@@ -1,0 +1,173 @@
+{
+  "provenance": {
+    "sourceSha256": "3900285145bf5ebecfdae4e50a7c3c65e26e8bb2d82acfea33cf04c28da46fd9",
+    "sourceBytes": 12300716,
+    "clientVersionReported": "grok 1.0.13 (5e9a58528b76) [stable]",
+    "platformReported": "Windows 11 10.0.26200 (AMD64)",
+    "kind": "Derived checks against complete donor v2 export; safe timing projection only.",
+    "transformations": [
+      "Timestamps shifted by one common whole-day offset in each field's proper unit.",
+      "Only numerical timing, stop reasons and already-masked terminal IDs retained.",
+      "No free text, raw tool inputs/outputs, private paths, manifest commands or account data retained."
+    ]
+  },
+  "turnTiming": [
+    {
+      "ordinal": 0,
+      "eventStart": "2026-01-01T06:13:50.906000+00:00",
+      "eventEnd": "2026-01-01T06:28:13.473000+00:00",
+      "terminalTimestampSeconds": 1767248893,
+      "terminalAgentTimestampMs": 1767248893514,
+      "elapsedMs": 862621,
+      "eventSpanMinusElapsedMs": -54.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 1,
+      "eventStart": "2026-01-01T06:28:13.534000+00:00",
+      "eventEnd": "2026-01-01T06:41:10.491000+00:00",
+      "terminalTimestampSeconds": 1767249670,
+      "terminalAgentTimestampMs": 1767249670534,
+      "elapsedMs": 777012,
+      "eventSpanMinusElapsedMs": -55.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 2,
+      "eventStart": "2026-01-01T06:41:10.566000+00:00",
+      "eventEnd": "2026-01-01T06:42:24.005000+00:00",
+      "terminalTimestampSeconds": 1767249744,
+      "terminalAgentTimestampMs": 1767249744044,
+      "elapsedMs": 73493,
+      "eventSpanMinusElapsedMs": -54.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 3,
+      "eventStart": "2026-01-01T06:44:25.441000+00:00",
+      "eventEnd": "2026-01-01T06:45:14.752000+00:00",
+      "terminalTimestampSeconds": 1767249914,
+      "terminalAgentTimestampMs": 1767249914795,
+      "elapsedMs": 49366,
+      "eventSpanMinusElapsedMs": -55.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 4,
+      "eventStart": "2026-01-01T06:45:14.822000+00:00",
+      "eventEnd": "2026-01-01T06:47:22.588000+00:00",
+      "terminalTimestampSeconds": 1767250042,
+      "terminalAgentTimestampMs": 1767250042631,
+      "elapsedMs": 127827,
+      "eventSpanMinusElapsedMs": -61.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 5,
+      "eventStart": "2026-01-01T06:47:49.900000+00:00",
+      "eventEnd": "2026-01-01T06:48:37.636000+00:00",
+      "terminalTimestampSeconds": 1767250117,
+      "terminalAgentTimestampMs": 1767250117678,
+      "elapsedMs": 47789,
+      "eventSpanMinusElapsedMs": -53.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 6,
+      "eventStart": "2026-01-01T06:49:52.553000+00:00",
+      "eventEnd": "2026-01-01T06:51:01.051000+00:00",
+      "terminalTimestampSeconds": 1767250261,
+      "terminalAgentTimestampMs": 1767250261091,
+      "elapsedMs": 68549,
+      "eventSpanMinusElapsedMs": -51.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 7,
+      "eventStart": "2026-01-01T06:57:33.983000+00:00",
+      "eventEnd": "2026-01-01T06:59:58.616000+00:00",
+      "terminalTimestampSeconds": 1767250798,
+      "terminalAgentTimestampMs": 1767250798658,
+      "elapsedMs": 144688,
+      "eventSpanMinusElapsedMs": -55.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 8,
+      "eventStart": "2026-01-01T07:00:32.491000+00:00",
+      "eventEnd": "2026-01-01T07:03:07.774000+00:00",
+      "terminalTimestampSeconds": 1767250987,
+      "terminalAgentTimestampMs": 1767250987813,
+      "elapsedMs": 155337,
+      "eventSpanMinusElapsedMs": -54.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 9,
+      "eventStart": "2026-01-01T07:03:49.920000+00:00",
+      "eventEnd": "2026-01-01T07:06:48.900000+00:00",
+      "terminalTimestampSeconds": 1767251208,
+      "terminalAgentTimestampMs": 1767251208941,
+      "elapsedMs": 179033,
+      "eventSpanMinusElapsedMs": -53.0,
+      "prompt_id": "00000000-0000-0000-0000-000000000000",
+      "stop_reason": "end_turn",
+      "usagePresent": true
+    },
+    {
+      "ordinal": 10,
+      "eventStart": "2026-01-01T07:07:22.783000+00:00",
+      "eventEnd": "2026-01-01T07:07:23.733000+00:00",
+      "terminalTimestampSeconds": 1767251243,
+      "terminalAgentTimestampMs": 1767251243783,
+      "elapsedMs": 1014,
+      "eventSpanMinusElapsedMs": -64.0,
+      "prompt_id": "00000xxx-xx00-000x-0000-00000xx00xxx",
+      "stop_reason": "error",
+      "usagePresent": false
+    }
+  ],
+  "checks": {
+    "eventTimestampParseable": 7512,
+    "eventTimestampDistinct": 2519,
+    "phaseCounts": {
+      "waiting_for_model": 109,
+      "streaming_reasoning": 3398,
+      "streaming_text": 2029,
+      "tool_execution": 371,
+      "permission_prompt": 273
+    },
+    "metaPromptIdDistinct": 10,
+    "successfulTerminalPromptIdDistinct": 1,
+    "completionEventToolIdDistinct": 1,
+    "updateToolIdDistinct": 273,
+    "updatesPerTool": 2,
+    "usageMatchesV1": true,
+    "manifestKinds": {
+      "monitor": 2,
+      "bash": 2
+    },
+    "taskTypeCensusReported": {
+      "bash": 5
+    },
+    "sessionBHistoryEmpty": true
+  }
+}
