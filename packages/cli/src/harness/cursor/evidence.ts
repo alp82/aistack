@@ -1,4 +1,4 @@
-import type { Message, Session } from "cursor-history";
+import type { Message, Session, ToolCall } from "cursor-history";
 import { asObj, asStr } from "../shared/aggregate.js";
 
 export type Buckets = {
@@ -21,11 +21,120 @@ export type Contribution = {
 	source: "api" | "local";
 	sidechain?: boolean;
 };
+/**
+ * The fields of a tool call the scan reads: its identity, its name, and the
+ * few params that name a command, a skill or a subagent. Never the result.
+ */
+export type LocalToolCall = Pick<
+	ToolCall,
+	"id" | "identityOrigin" | "name" | "params"
+>;
+/**
+ * A message with its text replaced by its length. The scan estimates tokens
+ * from the length when a bubble reports none, and reads nothing else from the
+ * text (thinking, tool results, raw bubbles are dropped at the read).
+ */
+export type LocalMessage = Pick<
+	Message,
+	| "id"
+	| "identityOrigin"
+	| "parentMessageId"
+	| "isSidechain"
+	| "role"
+	| "timestamp"
+	| "timestampSource"
+	| "model"
+> & {
+	contentLength: number;
+	toolCalls?: LocalToolCall[];
+	metadata?: { corrupted?: boolean };
+};
+/** The session fields the scan reads, with slim messages. */
+export type LocalSessionData = Pick<
+	Session,
+	| "id"
+	| "timestamp"
+	| "createdAtSource"
+	| "lastUpdatedAtSource"
+	| "resolutionState"
+	| "canonicalWorkspacePath"
+	| "metadata"
+> & { messages: LocalMessage[] };
 export type LocalSession = {
-	session: Session;
+	session: LocalSessionData;
 	/** Keyed raw token scalars only. The reader's flattened pair loses zero/presence. */
 	tokens: Map<string, TokenEvidence>;
 };
+
+/** The params the workflow reducer reads off a tool call (workflow.ts). */
+const TOOL_PARAM_KEYS = ["command", "cmd", "skill", "subagent_type"] as const;
+
+/**
+ * Keep what the scan reads and drop the rest, at the read. A cursor-history
+ * session carries every message's text, thinking and tool results, and a
+ * `write_file` call's params carry the whole file. Held for 721 sessions, one
+ * of them 77k messages, that is several gigabytes: the worker ran out of heap
+ * and the inline retry took the process down with it (#449). Nothing after the
+ * read touches the dropped fields.
+ */
+export function slimSession(session: Session): LocalSessionData {
+	const messages: LocalMessage[] = session.messages.map((message) => {
+		const slim: LocalMessage = {
+			role: message.role,
+			contentLength: message.content?.length ?? 0,
+			timestamp: message.timestamp,
+		};
+		if (message.id !== undefined) slim.id = message.id;
+		if (message.identityOrigin !== undefined)
+			slim.identityOrigin = message.identityOrigin;
+		if (message.parentMessageId !== undefined)
+			slim.parentMessageId = message.parentMessageId;
+		if (message.isSidechain !== undefined)
+			slim.isSidechain = message.isSidechain;
+		if (message.timestampSource !== undefined)
+			slim.timestampSource = message.timestampSource;
+		if (message.model !== undefined) slim.model = message.model;
+		if (message.metadata?.corrupted !== undefined)
+			slim.metadata = { corrupted: message.metadata.corrupted };
+		if (message.toolCalls)
+			slim.toolCalls = message.toolCalls.map((call) => {
+				const out: LocalToolCall = { name: call.name };
+				if (call.id !== undefined) out.id = call.id;
+				if (call.identityOrigin !== undefined)
+					out.identityOrigin = call.identityOrigin;
+				if (call.params)
+					for (const key of TOOL_PARAM_KEYS) {
+						const value = call.params[key];
+						if (typeof value !== "string") continue;
+						out.params ??= {};
+						out.params[key] = value;
+					}
+				return out;
+			});
+		return slim;
+	});
+	const out: LocalSessionData = {
+		id: session.id,
+		timestamp: session.timestamp,
+		messages,
+	};
+	if (session.createdAtSource !== undefined)
+		out.createdAtSource = session.createdAtSource;
+	if (session.lastUpdatedAtSource !== undefined)
+		out.lastUpdatedAtSource = session.lastUpdatedAtSource;
+	if (session.resolutionState !== undefined)
+		out.resolutionState = session.resolutionState;
+	if (session.canonicalWorkspacePath !== undefined)
+		out.canonicalWorkspacePath = session.canonicalWorkspacePath;
+	if (session.metadata) {
+		out.metadata = {};
+		if (session.metadata.cursorVersion !== undefined)
+			out.metadata.cursorVersion = session.metadata.cursorVersion;
+		if (session.metadata.lastModified !== undefined)
+			out.metadata.lastModified = session.metadata.lastModified;
+	}
+	return out;
+}
 
 export function timestamp(value: unknown): number | null {
 	const n =
@@ -108,7 +217,7 @@ const directTimes = new Set([
 ]);
 /** Interpolate only date attribution. This does not establish call latency. */
 export function messageTimes(
-	session: Session,
+	session: LocalSessionData,
 	api: Contribution[] = [],
 ): Array<number | null> {
 	const times = session.messages.map((m) =>
@@ -159,7 +268,7 @@ export function localContributions(
 	const { session, tokens } = local;
 	const times = messageTimes(session, api);
 	const out: Contribution[] = [];
-	let pending: Message | undefined;
+	let pending: LocalMessage | undefined;
 	const seen = new Set<string>();
 	for (const [i, message] of session.messages.entries()) {
 		if (message.id && seen.has(message.id)) continue;
@@ -175,9 +284,9 @@ export function localContributions(
 			...own,
 			input:
 				input.input ??
-				(pending ? Math.ceil(pending.content.length / 4) : undefined),
+				(pending ? Math.ceil(pending.contentLength / 4) : undefined),
 			inputSource: input.inputSource ?? (pending ? "text" : undefined),
-			output: own.output ?? Math.ceil(message.content.length / 4),
+			output: own.output ?? Math.ceil(message.contentLength / 4),
 			outputSource: own.outputSource ?? "text",
 		};
 		pending = undefined;

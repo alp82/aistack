@@ -22,10 +22,27 @@ import {
 import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
+	type ComposerDb,
+	hasComposerHalf,
+	readComposerSession,
+} from "./composer.js";
+import {
 	type LocalSession,
+	slimSession,
 	type TokenEvidence,
 	tokenEvidence,
 } from "./evidence.js";
+import {
+	cacheable,
+	defaultSessionCacheDir,
+	fromEntry,
+	loadSessionCache,
+	type SessionCache,
+	saveSessionCache,
+	sessionCacheFile,
+	sessionStamp,
+	toEntry,
+} from "./sessionCache.js";
 
 /** Cursor's user-data override is a workspaceStorage path, as in cursor-history. */
 export function dataPath(
@@ -77,9 +94,8 @@ type Statement = import("node:sqlite").StatementSync;
  * (#445). The two statements are prepared once and the read transaction is
  * held open so every session sees the same snapshot. `close` ends it.
  */
-export type EvidenceDb = {
+export type EvidenceDb = ComposerDb & {
 	bubble: Statement;
-	header: Statement;
 	close(): void;
 };
 export async function openEvidenceDb(root: string): Promise<EvidenceDb | null> {
@@ -108,6 +124,16 @@ export async function openEvidenceDb(root: string): Promise<EvidenceDb | null> {
 			header: db.prepare(
 				"SELECT json_extract(value, '$.conversation') AS conversation FROM cursorDiskKV WHERE key = ?",
 			),
+			// One session's bubbles are one key range; insertion order is the
+			// conversation order, as cursor-history reads them.
+			bubbles: db.prepare(
+				"SELECT key, value FROM cursorDiskKV WHERE key >= ? AND key < ? ORDER BY rowid",
+			),
+			composer: db.prepare(`SELECT
+				json_extract(value, '$.createdAt') AS createdAt,
+				json_extract(value, '$.lastUpdatedAt') AS lastUpdatedAt,
+				json_extract(value, '$.updatedAt') AS updatedAt
+				FROM cursorDiskKV WHERE key = ?`),
 			close: () => db.close(),
 		};
 	} catch (error) {
@@ -200,6 +226,24 @@ function covers(held: number | undefined, wanted: number | undefined): boolean {
 	return held === undefined || (wanted !== undefined && held <= wanted);
 }
 
+/**
+ * Where the session cache lives (see sessionCache.ts); undefined is the
+ * default under `~/.config/aistack/cursor`, null disables it. Tests point it
+ * at a temporary directory. The worker receives it with its job.
+ */
+let sessionCacheDir: string | null | undefined;
+export function setCursorSessionCacheDir(dir: string | null | undefined): void {
+	sessionCacheDir = dir;
+}
+function sessionCachePath(root: string): string | null {
+	if (sessionCacheDir === null) return null;
+	return sessionCacheFile(
+		sessionCacheDir ?? defaultSessionCacheDir(),
+		root,
+		storeRoot(),
+	);
+}
+
 /** Tests only: forget the reads this process made. */
 export function forgetLocalReads(): void {
 	localReads.clear();
@@ -257,6 +301,19 @@ async function readLocalOffThread(
 	if (!file) return readLocalOnce(root, before, onProgress);
 	return new Promise<LocalRead>((resolve) => {
 		const fallback = () => resolve(readLocalOnce(root, before, onProgress));
+		// A worker that ran out of heap read the same database the main thread
+		// would: retrying inline runs out too, and that takes the whole sync
+		// down instead of one harness (#449). Report the read unreadable.
+		const outOfMemory = () => {
+			trace(
+				"cursor worker out of memory · Cursor history not read this sync",
+				"warn",
+			);
+			const stats = emptyScanStats();
+			stats.filesUnreadable++;
+			stats.unreadableFiles.push({ path: "history", reason: "OUT_OF_MEMORY" });
+			resolve({ sessions: [], complete: false, stats });
+		};
 		let settled = false;
 		const settle = (fn: () => void) => {
 			if (settled) return;
@@ -268,6 +325,7 @@ async function readLocalOffThread(
 				root,
 				before,
 				sinceMs: readWindowSinceMs,
+				sessionCacheDir,
 				trace: traceEnabled(),
 				traceStartedAt: traceStartedAt(),
 				traceColor: traceRenderOptions().color,
@@ -288,7 +346,8 @@ async function readLocalOffThread(
 		worker.on("error", (error) =>
 			settle(() => {
 				traceError("cursor worker", error);
-				fallback();
+				if (traceErrorCode(error) === "ERR_WORKER_OUT_OF_MEMORY") outOfMemory();
+				else fallback();
 			}),
 		);
 		worker.on("exit", (code) => {
@@ -379,8 +438,10 @@ export async function readLocalOnce(
 	sourceReadLimits?: SourceReadLimitsOverride,
 	stallMs = STALL_MS,
 	sinceMs: number | undefined = readWindowSinceMs,
+	cacheDir: string | null | undefined = sessionCacheDir,
 ): Promise<LocalRead> {
 	before ??= await sourceStamp(root);
+	sessionCacheDir = cacheDir;
 	const stats = emptyScanStats();
 	const out: LocalRead = { sessions: [], complete: true, stats };
 	if (!(await hasLocalSource(root))) {
@@ -398,6 +459,19 @@ export async function readLocalOnce(
 	let encodingInvalid = 0;
 	let total: number | undefined;
 	let stage = "reader setup";
+	// Sessions the listing dates and counts as the last run did are served
+	// from the session cache and never opened (#452). The rest are read
+	// directly off their bubble range when they have a Composer half, and
+	// through cursor-history otherwise.
+	const cacheFile = sessionCachePath(root);
+	const cache: SessionCache = cacheFile
+		? await loadSessionCache(cacheFile)
+		: new Map();
+	const listed = new Set<string>();
+	let listingComplete = false;
+	let fromCache = 0;
+	let direct = 0;
+	let viaLibrary = 0;
 	// The stall detector. Every completed session and every listing page
 	// re-arms the timer; only silence for `stallMs` aborts. cursor-history
 	// reads synchronously, so the timer cannot fire during a read: it fires
@@ -463,32 +537,65 @@ export async function readLocalOnce(
 					continue;
 				}
 				stats.filesFound++;
+				listed.add(summary.id);
 				if (summary.resolutionState === "ambiguous") {
 					out.complete = false;
 				}
 				const position = `${stats.filesRead + stats.filesUnreadable + stats.filesSkippedByMtime + 1} of ${total}`;
 				const sessionStartedMs = Date.now();
+				const stamp = sessionStamp(summary, summaryNewestMs(summary));
+				const held = stamp === null ? undefined : cache.get(summary.id);
+				if (held && held.stamp === stamp) {
+					out.sessions.push(fromEntry(held));
+					stats.filesRead++;
+					fromCache++;
+					onProgress?.(stats.filesRead + stats.filesSkippedByMtime, total);
+					progressed();
+					continue;
+				}
 				try {
-					stage = "session read";
-					const session = await reader.getSession(summary.id, config);
-					if (
-						session.resolutionState !== "complete" ||
-						session.messages.some((m) => m.metadata?.corrupted)
-					) {
-						if (session.resolutionState !== "complete") unresolved++;
-						if (session.messages.some((m) => m.metadata?.corrupted))
-							corrupted++;
-						out.complete = false;
+					let local: LocalSession | null = null;
+					if (hasComposerHalf(summary)) {
+						stage = "composer read";
+						if (evidence === undefined) evidence = await openEvidenceDb(root);
+						if (evidence)
+							local = readComposerSession(evidence, summary, signal);
 					}
-					stage = "token evidence";
-					if (evidence === undefined) evidence = await openEvidenceDb(root);
-					const tokens = readTokenEvidence(session, evidence);
-					out.sessions.push({ session, tokens });
+					if (local) {
+						direct++;
+						if (local.session.messages.some((m) => m.metadata?.corrupted)) {
+							corrupted++;
+							out.complete = false;
+						}
+					} else {
+						stage = "session read";
+						const session = await reader.getSession(summary.id, config);
+						if (
+							session.resolutionState !== "complete" ||
+							session.messages.some((m) => m.metadata?.corrupted)
+						) {
+							if (session.resolutionState !== "complete") unresolved++;
+							if (session.messages.some((m) => m.metadata?.corrupted))
+								corrupted++;
+							out.complete = false;
+						}
+						stage = "token evidence";
+						if (evidence === undefined) evidence = await openEvidenceDb(root);
+						const tokens = readTokenEvidence(session, evidence);
+						// Slim before holding: the full session (text, thinking, tool
+						// results) is released with `releaseSession` below.
+						local = { session: slimSession(session), tokens };
+						viaLibrary++;
+					}
+					out.sessions.push(local);
+					if (stamp !== null && cacheable(local))
+						cache.set(summary.id, toEntry(stamp, local));
+					else cache.delete(summary.id);
 					stats.filesRead++;
 					const elapsedMs = Date.now() - sessionStartedMs;
 					if (elapsedMs >= SLOW_SESSION_MS)
 						trace(
-							`cursor slow session · ${position} · ${elapsedMs} ms · ${session.messages.length} messages, ${tokens.size} bubbles with token evidence`,
+							`cursor slow session · ${position} · ${elapsedMs} ms · ${local.session.messages.length} messages, ${local.tokens.size} bubbles with token evidence`,
 							"warn",
 						);
 					onProgress?.(stats.filesRead + stats.filesSkippedByMtime, total);
@@ -509,7 +616,10 @@ export async function readLocalOnce(
 					progressed();
 				}
 			}
-			if (!page.pagination.hasMore) break;
+			if (!page.pagination.hasMore) {
+				listingComplete = true;
+				break;
+			}
 			if (page.data.length === 0 || offset >= 100_000) {
 				trace(
 					"cursor listing incomplete · empty page or pagination limit",
@@ -551,6 +661,22 @@ export async function readLocalOnce(
 		stats.filesUnreadable++;
 	} finally {
 		clearTimeout(stallTimer);
+		if (cacheFile && !retrySmallPage) {
+			// A session the complete listing no longer names is gone; with a
+			// partial listing every entry is kept for the next run.
+			if (listingComplete)
+				for (const id of [...cache.keys()])
+					if (!listed.has(id)) cache.delete(id);
+			try {
+				await saveSessionCache(cacheFile, cache);
+			} catch (error) {
+				traceError("cursor session cache save", error, "warn");
+			}
+		}
+		if (fromCache || direct || viaLibrary)
+			trace(
+				`cursor · ${fromCache} sessions from cache, ${direct} read directly, ${viaLibrary} through cursor-history`,
+			);
 		try {
 			evidence?.close();
 		} catch (error) {
@@ -577,6 +703,7 @@ export async function readLocalOnce(
 			{ ...sourceReadLimits, sqlitePageRows: 1 },
 			stallMs,
 			sinceMs,
+			cacheDir,
 		);
 	}
 	if (stats.filesSkippedByMtime)
