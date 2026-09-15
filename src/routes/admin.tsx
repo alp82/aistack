@@ -15,20 +15,50 @@ import {
 	Mail,
 	Newspaper,
 } from "lucide-react";
-import { useMemo } from "react";
-import {
-	AdminEmailTab,
-	type EmailSubTab,
-} from "@/components/admin/AdminEmailTab";
-import { AdminImportTab } from "@/components/admin/AdminImportTab";
-import { AdminNewsTab, type NewsSubTab } from "@/components/admin/AdminNewsTab";
-import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
-import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
-import { AdminSyncedUsersTab } from "@/components/admin/AdminSyncedUsersTab";
-import { AdminViewsTab } from "@/components/admin/AdminViewsTab";
+import { lazy, Suspense, useMemo } from "react";
+import type { EmailSubTab } from "@/components/admin/AdminEmailTab";
+import type { NewsSubTab } from "@/components/admin/AdminNewsTab";
 import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
+
+// Each tab is its own chunk, so the Review tab paints without loading the
+// email templates, the news sections, or the charts.
+const AdminEmailTab = lazy(() =>
+	import("@/components/admin/AdminEmailTab").then((m) => ({
+		default: m.AdminEmailTab,
+	})),
+);
+const AdminImportTab = lazy(() =>
+	import("@/components/admin/AdminImportTab").then((m) => ({
+		default: m.AdminImportTab,
+	})),
+);
+const AdminNewsTab = lazy(() =>
+	import("@/components/admin/AdminNewsTab").then((m) => ({
+		default: m.AdminNewsTab,
+	})),
+);
+const AdminQualityTab = lazy(() =>
+	import("@/components/admin/AdminQualityTab").then((m) => ({
+		default: m.AdminQualityTab,
+	})),
+);
+const AdminReviewTab = lazy(() =>
+	import("@/components/admin/AdminReviewTab").then((m) => ({
+		default: m.AdminReviewTab,
+	})),
+);
+const AdminSyncedUsersTab = lazy(() =>
+	import("@/components/admin/AdminSyncedUsersTab").then((m) => ({
+		default: m.AdminSyncedUsersTab,
+	})),
+);
+const AdminViewsTab = lazy(() =>
+	import("@/components/admin/AdminViewsTab").then((m) => ({
+		default: m.AdminViewsTab,
+	})),
+);
 
 type AdminTab =
 	| "review"
@@ -220,23 +250,31 @@ function AdminPage() {
 			</div>
 
 			{/* Tab Content */}
-			{tab === "review" && <AdminReviewTab />}
-			{tab === "quality" && <AdminQualityTab />}
-			{tab === "email" && (
-				<AdminEmailTab
-					view={view}
-					onViewChange={(v) => setSearch({ view: v })}
-				/>
-			)}
-			{tab === "views" && <AdminViewsTab />}
-			{tab === "import" && <AdminImportTab />}
-			{tab === "news" && (
-				<AdminNewsTab
-					view={news}
-					onViewChange={(v) => setSearch({ news: v })}
-				/>
-			)}
-			{tab === "syncs" && <AdminSyncedUsersTab />}
+			<Suspense
+				fallback={
+					<div className="mx-auto max-w-6xl px-4 py-12 font-mono text-sm text-fg-muted sm:px-6">
+						Loading...
+					</div>
+				}
+			>
+				{tab === "review" && <AdminReviewTab />}
+				{tab === "quality" && <AdminQualityTab />}
+				{tab === "email" && (
+					<AdminEmailTab
+						view={view}
+						onViewChange={(v) => setSearch({ view: v })}
+					/>
+				)}
+				{tab === "views" && <AdminViewsTab />}
+				{tab === "import" && <AdminImportTab />}
+				{tab === "news" && (
+					<AdminNewsTab
+						view={news}
+						onViewChange={(v) => setSearch({ news: v })}
+					/>
+				)}
+				{tab === "syncs" && <AdminSyncedUsersTab />}
+			</Suspense>
 		</div>
 	);
 }
