@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.9](https://github.com/alp82/aistack/compare/cli-v0.16.8...cli-v0.16.9) (2026-09-15)
+
+
+### Bug Fixes
+
+* **cli:** read a large Cursor database to the end ([#446](https://github.com/alp82/aistack/issues/446)) ([cb643ce](https://github.com/alp82/aistack/commit/cb643ceea1b8326461d02b8d8585a27bc3545da0))
+
 ## [0.16.8](https://github.com/alp82/aistack/compare/cli-v0.16.7...cli-v0.16.8) (2026-09-15)
 
 
