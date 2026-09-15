@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { traceError } from "../../trace.js";
+import { trace, traceError, traceErrorCode } from "../../trace.js";
 import { asObj, asStr } from "../shared/aggregate.js";
 import { type Contribution, count, timestamp } from "./evidence.js";
 import { globalDb } from "./local.js";
@@ -85,12 +85,38 @@ export function apiContribution(value: unknown): Contribution | null {
 	};
 }
 
-/** A capped, repeated, malformed or failed page rejects the entire fixed query window. */
+/** Split capped windows into disjoint millisecond ranges. Only a complete query
+ * escapes; a failed child cannot replace previously cached evidence.
+ */
 export async function fetchWindow(
 	account: Account,
 	from: number,
 	to: number,
 	fetchImpl: typeof fetch = fetch,
+): Promise<Contribution[]> {
+	const budget = { requests: 0, signal: AbortSignal.timeout(300_000) };
+	async function read(start: number, end: number): Promise<Contribution[]> {
+		try {
+			return await fetchPages(account, start, end, fetchImpl, budget);
+		} catch (error) {
+			if (traceErrorCode(error) !== "CURSOR_PAGE_LIMIT" || end - start <= 1)
+				throw error;
+			const middle = start + Math.floor((end - start) / 2);
+			trace("cursor account usage · splitting capped date window");
+			const left = await read(start, middle);
+			const right = await read(middle, end);
+			return [...left, ...right];
+		}
+	}
+	return read(from, to);
+}
+
+async function fetchPages(
+	account: Account,
+	from: number,
+	to: number,
+	fetchImpl: typeof fetch,
+	budget: { requests: number; signal: AbortSignal },
 ): Promise<Contribution[]> {
 	const out: Contribution[] = [];
 	const pages = new Set<string>();
@@ -99,12 +125,17 @@ export async function fetchWindow(
 	let retrieved = 0;
 	const pageSize = 100;
 	for (let page = 1; page <= 100; page++) {
+		budget.signal.throwIfAborted();
+		if (++budget.requests > 1000)
+			throw Object.assign(new Error("Cursor request budget"), {
+				code: "CURSOR_REQUEST_LIMIT",
+			});
 		const response = await fetchImpl(
 			"https://cursor.com/api/dashboard/get-filtered-usage-events",
 			{
 				method: "POST",
 				redirect: "error",
-				signal: AbortSignal.timeout(15_000),
+				signal: AbortSignal.any([budget.signal, AbortSignal.timeout(15_000)]),
 				headers: {
 					"Content-Type": "application/json",
 					Origin: "https://cursor.com",
@@ -143,6 +174,11 @@ export async function fetchWindow(
 					code: "CURSOR_PAGE_COUNT_CHANGED",
 				});
 			total = reported;
+			// Avoid downloading 100 doomed pages when the first already proves the cap.
+			if (total > 100 * pageSize)
+				throw Object.assign(new Error("Cursor page limit"), {
+					code: "CURSOR_PAGE_LIMIT",
+				});
 		}
 		if (events.length) {
 			const key = digest(JSON.stringify(events));

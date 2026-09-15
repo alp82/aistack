@@ -277,6 +277,8 @@ export async function readLocalOnce(
 	let unresolved = 0;
 	let corrupted = 0;
 	let ambiguous = 0;
+	let stage = "reader setup";
+	const signal = AbortSignal.timeout(120_000);
 	try {
 		const reader = await import("cursor-history");
 		const options = {
@@ -286,7 +288,7 @@ export async function readLocalOnce(
 				traceError("cursor source diagnostic", diagnostic, "warn");
 				out.complete = false;
 			},
-			signal: AbortSignal.timeout(120_000),
+			signal,
 		};
 		context = reader.createSessionReadContext({ ...options, sourceReadLimits });
 		const config = { ...options, readContext: context };
@@ -297,6 +299,7 @@ export async function readLocalOnce(
 			const pageDone = traceTimer(
 				offset === 0 ? "cursor session listing" : "cursor session page",
 			);
+			stage = "session listing";
 			const page = await reader.listSessionSummaries({
 				...config,
 				offset,
@@ -310,6 +313,7 @@ export async function readLocalOnce(
 					out.complete = false;
 				}
 				try {
+					stage = "session read";
 					const session = await reader.getSession(summary.id, config);
 					if (
 						session.resolutionState !== "complete" ||
@@ -320,6 +324,7 @@ export async function readLocalOnce(
 							corrupted++;
 						out.complete = false;
 					}
+					stage = "token evidence";
 					const tokens = await readTokenEvidence(root, session);
 					out.sessions.push({ session, tokens });
 					stats.filesRead++;
@@ -327,7 +332,7 @@ export async function readLocalOnce(
 				} catch (error) {
 					if (isPageByteLimit(error)) throw error;
 					if (traceErrorCode(error) === "SESSION_AMBIGUOUS") ambiguous++;
-					else traceError("cursor session skipped", error, "warn");
+					else traceError(`cursor ${stage}`, error, "warn");
 					out.complete = false;
 					stats.filesUnreadable++;
 				} finally {
@@ -346,7 +351,9 @@ export async function readLocalOnce(
 			offset += page.data.length;
 		}
 	} catch (error) {
-		traceError("cursor history", error);
+		traceError(`cursor ${stage}`, error);
+		if (signal.aborted)
+			traceError("cursor read deadline", signal.reason, "warn");
 		retrySmallPage =
 			isPageByteLimit(error) && sourceReadLimits?.sqlitePageRows !== 1;
 		stats.unreadableFiles.push({

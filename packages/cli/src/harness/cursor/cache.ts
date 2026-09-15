@@ -103,6 +103,12 @@ export async function saveCache(
 	await rename(temporary, file);
 }
 
+export type AccountRefreshState = {
+	account?: string;
+	windows?: CursorCache["windows"];
+	failedAt?: number;
+};
+const REFRESH_MS = 300_000;
 const WINDOW_MS = 30 * 86_400_000;
 /** Complete normalized windows replace atomically. ID-less multiplicity is never hashed away. */
 export async function refreshAccount(input: {
@@ -112,15 +118,24 @@ export async function refreshAccount(input: {
 	now: number;
 	sessionIds: Set<string>;
 	fetchImpl?: typeof fetch;
+	state?: AccountRefreshState;
 }): Promise<CursorCache> {
 	const { cache, account, now, sessionIds } = input;
-	if (!account) return cache;
+	if (!account || !sessionIds.size) return cache;
+	const state = input.state;
+	if (state && state.account !== account.scope) {
+		state.account = account.scope;
+		state.windows = {};
+		state.failedAt = undefined;
+	}
 	const changed = cache.account !== account.scope;
 	const next: CursorCache = {
 		...cache,
 		account: account.scope,
-		windows: changed ? {} : { ...cache.windows },
+		windows: { ...(changed ? {} : cache.windows), ...state?.windows },
 	};
+	if (state?.failedAt !== undefined && now - state.failedAt < REFRESH_MS)
+		return next;
 	// A complete query can still omit activity older than the service's retention.
 	// Preserve empty historical windows previously populated; refresh today's window normally.
 	for (
@@ -131,7 +146,7 @@ export async function refreshAccount(input: {
 		const to = Math.min(from + WINDOW_MS, now + 1);
 		const key = String(from);
 		const previous = next.windows[key];
-		if (previous && now - previous.fetchedAt < 300_000) continue;
+		if (previous && now - previous.fetchedAt < REFRESH_MS) continue;
 		try {
 			const events = (
 				await fetchWindow(account, from, to, input.fetchImpl)
@@ -139,6 +154,7 @@ export async function refreshAccount(input: {
 			if (previous?.events.length && events.length === 0 && to <= now) continue;
 			next.windows[key] = { from, to, fetchedAt: now, events };
 		} catch (error) {
+			if (state) state.failedAt = now;
 			traceError(
 				"cursor account usage refresh (using local and previously cached usage)",
 				error,
@@ -149,6 +165,7 @@ export async function refreshAccount(input: {
 			break;
 		}
 	}
+	if (state) state.windows = next.windows;
 	return next;
 }
 export function cachedEvents(

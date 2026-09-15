@@ -2,14 +2,38 @@
 // fingerprint from #73, the compression-race retry, the `.zst`/`.jsonl`
 // double-count guard, and named-not-swallowed read failures.
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	createReadStream,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import * as zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { finalize } from "../shared/aggregate.js";
 import { createAggregate } from "./analyzer.js";
 import { scan } from "./scan.js";
+
+vi.mock("node:fs", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:fs")>();
+	return {
+		...actual,
+		readFileSync: (...args: Parameters<typeof actual.readFileSync>) => {
+			if (String(args[0]).endsWith("rollout-limited.jsonl")) {
+				throw Object.assign(
+					new RangeError("File size exceeds whole-file read limit"),
+					{ code: "ERR_FS_FILE_TOO_LARGE" },
+				);
+			}
+			return Reflect.apply(actual.readFileSync, actual, args);
+		},
+	};
+});
 
 const TS = "2026-07-20T12:00:00.000Z";
 
@@ -165,16 +189,16 @@ describe("compressed rollouts", () => {
 	it("retries the .zst sibling when the .jsonl vanished mid-scan (ENOENT)", async () => {
 		const plain = writeRollout("2026/07/20/rollout-a.jsonl", GENUINE);
 		writeRollout("2026/07/20/rollout-a.jsonl.zst", GENUINE);
-		const { readFileSync } = await import("node:fs");
+
 		const agg = createAggregate();
 		const stats = await scan(agg, {
 			roots: [root],
 			...missingConfig,
-			readFileImpl: (file) => {
+			readStreamImpl: (file, options) => {
 				if (file === plain) {
 					throw Object.assign(new Error("gone"), { code: "ENOENT" });
 				}
-				return readFileSync(file);
+				return createReadStream(file, options);
 			},
 		});
 		expect(stats.filesUnreadable).toBe(0);
@@ -205,7 +229,7 @@ describe("unreadable files are named locally (#75)", () => {
 		const stats = await scan(agg, {
 			roots: [root],
 			...missingConfig,
-			readFileImpl: () => {
+			readStreamImpl: () => {
 				throw Object.assign(new Error(full), { code: "EACCES" });
 			},
 		});
@@ -217,23 +241,161 @@ describe("unreadable files are named locally (#75)", () => {
 	});
 });
 
-describe("large rollout decoding", () => {
-	it("counts usage without decoding the entire file as one string", async () => {
-		writeRollout("rollout-large.jsonl", GENUINE);
-		const raw = Buffer.from(GENUINE.map((r) => JSON.stringify(r)).join("\n"));
-		// Reproduce Node's whole-file string ceiling on a small fixture.
-		vi.spyOn(raw, "toString").mockImplementation(() => {
-			throw Object.assign(new Error("string too long"), {
-				code: "ERR_STRING_TOO_LONG",
+it("reads rollouts when the runtime rejects whole-file allocation", async () => {
+	writeRollout("rollout-limited.jsonl", GENUINE);
+	const agg = createAggregate();
+	const stats = await scan(agg, { roots: [root], ...missingConfig });
+	expect(stats.filesUnreadable).toBe(0);
+	expect(finalize(agg).models[0]?.tokens.output).toBe(100);
+});
+
+describe("bounded rollout streams", () => {
+	it.each(["jsonl", "jsonl.zst"])(
+		"decodes %s across byte, UTF-8 and JSONL boundaries",
+		async (suffix) => {
+			const text = [
+				JSON.stringify(sessionMeta("codex-é😀")),
+				"",
+				"{bad",
+				...GENUINE.slice(1).map((r) => JSON.stringify(r)),
+			].join("\n");
+			writeFileSync(
+				join(root, `rollout-chunks.${suffix}`),
+				suffix.endsWith("zst") ? zstdCompress(Buffer.from(text)) : text,
+			);
+			const agg = createAggregate();
+			const stats = await scan(agg, {
+				roots: [root],
+				...missingConfig,
+				chunkBytes: 1,
 			});
-		});
+			expect(stats.filesRead).toBe(1);
+			expect(agg.lines).toBe(4);
+			expect(agg.parseErrors).toBe(1);
+			expect(finalize(agg).models[0]?.tokens.output).toBe(100);
+		},
+	);
+
+	it.each([true, false])(
+		"waits until EOF for a late fingerprint, genuine=%s",
+		async (genuine) => {
+			const records = [
+				sessionMeta("late-é😀"),
+				{ ...tokenCount(999), timestamp: META_TS },
+				...Array.from({ length: 100 }, () => ({ type: "unknown" })),
+				...(genuine ? [turnContext(), tokenCount(100)] : []),
+			];
+			writeRollout("rollout-late.jsonl", records);
+			const agg = createAggregate();
+			const stats = await scan(agg, {
+				roots: [root],
+				...missingConfig,
+				chunkBytes: 7,
+			});
+			expect(stats.filesForeign).toBe(genuine ? 0 : 1);
+			expect(finalize(agg).totalTokens).toBe(genuine ? 100 : 0);
+			if (!genuine) {
+				expect(agg.lines).toBe(0);
+				expect(agg.parseErrors).toBe(0);
+				expect(stats.foreignOriginators.get("late-é😀")).toBe(1);
+			}
+		},
+	);
+
+	it("discards an oversized record through its newline and resumes with visible parse coverage", async () => {
+		writeRollout("rollout-big-record.jsonl", [
+			sessionMeta(),
+			{ type: "unknown", text: "x".repeat(2048) },
+			...GENUINE.slice(1),
+		]);
 		const agg = createAggregate();
 		const stats = await scan(agg, {
 			roots: [root],
 			...missingConfig,
-			readFileImpl: () => raw,
+			chunkBytes: 13,
+			maxLineBytes: 512,
 		});
-		expect(stats.filesUnreadable).toBe(0);
-		expect(finalize(agg).models[0]?.tokens.output).toBe(100);
+		expect(stats.filesRead).toBe(1);
+		expect(agg.lines).toBe(4);
+		expect(agg.parseErrors).toBe(1);
+		expect(finalize(agg).totalTokens).toBe(100);
+	});
+
+	it("rejects a corrupt compressed checksum before any usage enters the aggregate", async () => {
+		const bytes = zlib.zstdCompressSync(
+			Buffer.from(GENUINE.map((r) => JSON.stringify(r)).join("\n")),
+			{ params: { [zlib.constants.ZSTD_c_checksumFlag]: 1 } },
+		);
+		bytes[bytes.length - 1] ^= 255;
+		writeFileSync(join(root, "rollout-corrupt.jsonl.zst"), bytes);
+		const agg = createAggregate();
+		const stats = await scan(agg, {
+			roots: [root],
+			...missingConfig,
+			chunkBytes: 3,
+		});
+		expect(stats.filesUnreadable).toBe(1);
+		expect(stats.unreadableFiles[0].reason).toBe("zstd-corrupt");
+		expect(finalize(agg).totalTokens).toBe(0);
+	});
+
+	it.each(["jsonl", "jsonl.zst"])(
+		"preserves source I/O error classification for %s",
+		async (suffix) => {
+			writeRollout(`rollout-error.${suffix}`, GENUINE);
+			const agg = createAggregate();
+			const stats = await scan(agg, {
+				roots: [root],
+				...missingConfig,
+				readStreamImpl: () =>
+					Readable.from(
+						(async function* () {
+							yield Buffer.from("x");
+							throw Object.assign(new Error("private path"), { code: "EIO" });
+						})(),
+					) as ReturnType<typeof createReadStream>,
+			});
+			expect(stats.filesUnreadable).toBe(1);
+			expect(stats.unreadableFiles[0].reason).toBe("EIO");
+			expect(finalize(agg).totalTokens).toBe(0);
+		},
+	);
+
+	it("marks a second-pass interruption unreadable instead of reporting complete coverage", async () => {
+		const file = writeRollout("rollout-interrupted.jsonl", GENUINE);
+		let reads = 0;
+		const agg = createAggregate();
+		const stats = await scan(agg, {
+			roots: [root],
+			...missingConfig,
+			readStreamImpl: (_file, options) => {
+				if (++reads === 1) return createReadStream(file, options);
+				return Readable.from(
+					(async function* () {
+						yield Buffer.from(
+							`${GENUINE.map((r) => JSON.stringify(r)).join("\n")}\n`,
+						);
+						throw Object.assign(new Error("private path"), { code: "EIO" });
+					})(),
+				) as ReturnType<typeof createReadStream>;
+			},
+		});
+		expect(stats.filesRead).toBe(0);
+		expect(stats.filesUnreadable).toBe(1);
+		expect(stats.unreadableFiles[0].reason).toBe("EIO");
+	});
+
+	it("skips unchanged files before opening a stream", async () => {
+		const file = writeRollout("rollout-old.jsonl", GENUINE);
+		utimesSync(file, new Date(META_TS), new Date(META_TS));
+		const read = vi.fn();
+		const stats = await scan(createAggregate(), {
+			roots: [root],
+			...missingConfig,
+			sinceMs: Date.parse(TS),
+			readStreamImpl: read,
+		});
+		expect(stats.filesSkippedByMtime).toBe(1);
+		expect(read).not.toHaveBeenCalled();
 	});
 });

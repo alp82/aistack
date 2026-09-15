@@ -1,5 +1,6 @@
 import { foldGitDays } from "@aistack/workflow-rules";
 import { describe, expect, it } from "vitest";
+import { disableTrace, enableTrace } from "../trace.js";
 import {
 	extractGitWorkflow,
 	extractGitWorkflowAsync,
@@ -217,7 +218,7 @@ describe("extractGitWorkflow", () => {
 				if (cwd.startsWith("/other")) return "/other/.git\n/other\n";
 				return null;
 			}
-			logCalls.push(cwd);
+			if (args.includes("--numstat")) logCalls.push(cwd);
 			return history;
 		};
 		const options = {
@@ -247,14 +248,101 @@ describe("extractGitWorkflow", () => {
 		extractGitWorkflow({
 			workingDirectories: ["/work/repo"],
 			fromMs: 0,
-			toMs: 1,
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
 			utcOffsetMinutes: 0,
 			run: (_cwd, a) => {
 				args.push([...a]);
-				return a[0] === "rev-parse" ? "/work/repo\n" : "";
+				return a[0] === "rev-parse"
+					? "/work/repo\n"
+					: record("aaaa", "2026-08-03T17:00:00Z", "1\t0\tsrc/a.ts\n");
 			},
 		});
-		const log = args.find((a) => a.includes("log"));
+		const log = args.find((a) => a.includes("--numstat"));
 		expect(log?.slice(0, 3)).toEqual(["-c", "core.bigFileThreshold=1m", "log"]);
 	});
 });
+
+it.each([false, true])(
+	"bounds diff batches and skips empty windows (%s)",
+	async (asyncRun) => {
+		const records = Array.from({ length: 257 }, (_, index) =>
+			record(
+				index.toString(16).padStart(40, "0"),
+				"2026-08-03T12:00:00Z",
+				"1\t0\tsrc/app.ts\n",
+			),
+		);
+		const metadata = records.join("");
+		const batches: string[][] = [];
+		const run: GitWorkflowRunner = (_cwd, args) => {
+			if (args[0] === "rev-parse") return "/work/repo\n";
+			if (args.includes("--no-patch")) return metadata;
+			const hashes = args.filter((arg) => /^[a-f0-9]{40}$/.test(arg));
+			batches.push(hashes);
+			return hashes.map((hash) => records[Number.parseInt(hash, 16)]).join("");
+		};
+		const options = {
+			workingDirectories: ["/work/repo"],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 0,
+		};
+		const read = (window: typeof options) =>
+			asyncRun
+				? extractGitWorkflowAsync({
+						...window,
+						run: async (cwd, args) => run(cwd, args),
+					})
+				: extractGitWorkflow({ ...window, run });
+		expect((await read(options)).days[0]?.commits).toBe(257);
+		expect(batches.map((batch) => batch.length)).toEqual([128, 128, 1]);
+		batches.length = 0;
+		expect(await read({ ...options, toMs: 1 })).toEqual({ days: [] });
+		expect(batches).toEqual([]);
+	},
+);
+
+it.each([false, true])(
+	"reports failed metadata or diff batches as unreadable (%s)",
+	async (asyncRun) => {
+		const metadata = Array.from({ length: 129 }, (_, index) =>
+			record(
+				index.toString(16).padStart(40, "0"),
+				"2026-08-03T12:00:00Z",
+				"1\t0\tsrc/app.ts\n",
+			),
+		).join("");
+		for (const failure of ["metadata", "second batch"]) {
+			const logs: string[] = [];
+			let batches = 0;
+			enableTrace((line) => logs.push(line));
+			try {
+				const run: GitWorkflowRunner = (_cwd, args) => {
+					if (args[0] === "rev-parse") return "/work/repo\n";
+					if (args.includes("--no-patch"))
+						return failure === "metadata" ? null : metadata;
+					return ++batches === 2 ? null : metadata;
+				};
+				const options = {
+					workingDirectories: ["/work/repo"],
+					fromMs: 0,
+					toMs: Date.parse("2026-08-31T23:59:59Z"),
+					utcOffsetMinutes: 0,
+				};
+				const result = asyncRun
+					? await extractGitWorkflowAsync({
+							...options,
+							run: async (cwd, args) => run(cwd, args),
+						})
+					: extractGitWorkflow({ ...options, run });
+				expect(result.days).toEqual([]);
+				expect(logs).toHaveLength(1);
+				expect(logs[0]).toContain("unreadable");
+				expect(logs[0]).not.toContain("0 commits");
+				expect(batches).toBe(failure === "metadata" ? 0 : 2);
+			} finally {
+				disableTrace();
+			}
+		}
+	},
+);

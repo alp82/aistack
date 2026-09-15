@@ -124,3 +124,91 @@ it.each([
 		fetchWindow(account, from, to, async () => Response.json(page)),
 	).rejects.toMatchObject({ code });
 });
+
+// More than 100 pages must be read in smaller, disjoint date windows.
+it.each([true, false])(
+	"recovers capped usage windows (reported total: %s)",
+	async (reported) => {
+		const events = Array.from({ length: 10_001 }, (_, i) => ({
+			...usagePage.usageEventsDisplay[0],
+			id: String(i),
+			timestamp: from + i,
+		}));
+		const fetcher = vi
+			.fn<typeof fetch>()
+			.mockImplementation(async (_, init) => {
+				const { startDate, endDate, page, pageSize } = JSON.parse(
+					String(init?.body),
+				);
+				const selected = events.filter(
+					(e) => e.timestamp >= startDate && e.timestamp <= endDate,
+				);
+				return Response.json({
+					usageEventsDisplay: selected.slice(
+						(page - 1) * pageSize,
+						page * pageSize,
+					),
+					...(reported ? { totalUsageEventsCount: selected.length } : {}),
+				});
+			});
+		const rows = await fetchWindow(
+			account,
+			from,
+			from + events.length,
+			fetcher,
+		);
+		expect(rows).toHaveLength(events.length);
+		expect(new Set(rows.map((r) => r.id)).size).toBe(events.length);
+		expect(fetcher.mock.calls.length).toBeLessThan(reported ? 110 : 210);
+	},
+);
+
+it("stops splitting when a single millisecond itself exceeds the service cap", async () => {
+	const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>
+		Response.json({
+			usageEventsDisplay: [],
+			totalUsageEventsCount: 10_001,
+		}),
+	);
+	await expect(
+		fetchWindow(account, from, from + 8, fetcher),
+	).rejects.toMatchObject({ code: "CURSOR_PAGE_LIMIT" });
+	expect(fetcher).toHaveBeenCalledTimes(4);
+});
+it("rejects the whole split query when a child fails", async () => {
+	const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_, init) => {
+		const { startDate, endDate } = JSON.parse(String(init?.body));
+		if (endDate - startDate > 1)
+			return Response.json({
+				usageEventsDisplay: [],
+				totalUsageEventsCount: 10_001,
+			});
+		if (startDate > from) return new Response(null, { status: 401 });
+		return Response.json({
+			usageEventsDisplay: [
+				{ ...usagePage.usageEventsDisplay[0], timestamp: from },
+			],
+		});
+	});
+	await expect(
+		fetchWindow(account, from, from + 4, fetcher),
+	).rejects.toMatchObject({ status: 401 });
+	expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
+it("bounds requests when repeatedly capped windows cannot establish completion", async () => {
+	const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_, init) => {
+		const { page } = JSON.parse(String(init?.body));
+		return Response.json({
+			usageEventsDisplay: Array.from({ length: 100 }, (_, i) => ({
+				cloudAgentId: "cloud",
+				conversationId: "remote",
+				id: `${page}-${i}`,
+			})),
+		});
+	});
+	await expect(fetchWindow(account, from, to, fetcher)).rejects.toMatchObject({
+		code: "CURSOR_REQUEST_LIMIT",
+	});
+	expect(fetcher).toHaveBeenCalledTimes(1000);
+});
