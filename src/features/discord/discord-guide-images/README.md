@@ -7,13 +7,14 @@ or a real creator's published reading. The public guide labels them as synthetic
 Regenerate from the repository root with:
 
 ```sh
-pnpm exec tsx scripts/discord-guide-images.ts
+pnpm dlx tsx scripts/discord-guide-images.ts
 ```
 
 The generator preserves the selected homepage prototype's usage totals, model
 shares and four paid subscription examples. Included Codex fills the fifth
 subscription preview entry without changing the illustrative monthly total.
-All cost cards retain coverage, lower-bound language and the explicit
+The cards print bare dollar figures (the owner's exception to the citation
+rule, see `docs/discord-renderer.md`); the fixtures still carry the explicit
 `synthetic-example-prices` source. Existing app brand icons are embedded locally.
 No database, external API or Discord account is involved.
 
