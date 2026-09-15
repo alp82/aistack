@@ -12,6 +12,7 @@
     "lint": "biome lint",
     "check": "biome check",
     "discord:prototype": "node --env-file-if-exists=.env.discord-prototype.local scripts/discord-prototype.mjs",
+    "prototype:compare-card": "tsx src/features/charts/prototype/compare-card-variants.ts",
     "discord:prototype:watch": "node --watch --watch-preserve-output --env-file-if-exists=.env.discord-prototype.local scripts/discord-prototype.mjs"
   },
   "dependencies": {

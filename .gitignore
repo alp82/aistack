@@ -22,3 +22,4 @@ todos.json
 
 # Rendered newsletter previews (scripts/newsletter.ts preview). Generated, never reviewed.
 drafts/newsletter/
+.prototype-out
