@@ -30,10 +30,10 @@ describe("server rendering", () => {
 		// The sr-only canonical sentence carries every figure.
 		expect(html).toContain("512M tokens measured in the last 24 hours");
 		expect(html).toContain("596 sessions");
-		expect(html).toContain("Usage in the last 24 hours");
+		expect(html).toContain("Tokens since you opened this page");
 		// The whole feed, one line.
 		expect(html).toContain("latest:");
-		expect(html).toContain("alp/ai-stack-ab12");
+		expect(html).toContain("AI Stack");
 		// The trend chart is a real path, not a wrapper waiting to be measured.
 		expect(html).toContain("<path");
 	});
