@@ -62,6 +62,7 @@ export async function loadRenderIcons(
 				.flatMap((a) =>
 					a
 						? [
+								a.identity.avatarUrl,
 								...a.icons.map((i) => i.iconUrl),
 								...a.subscriptions.rows.map((r) => r.iconUrl),
 							]
@@ -93,7 +94,7 @@ export async function loadRenderIcons(
 					if (!response.ok) continue;
 					const raw = await boundedBytes(response.body, ICON_LIMIT);
 					const png = await sharp(raw, { limitInputPixels: 1024 * 1024 })
-						.resize(48, 48, { fit: "inside" })
+						.resize(96, 96, { fit: "inside" })
 						.png()
 						.toBuffer();
 					images.set(value, `data:image/png;base64,${png.toString("base64")}`);
