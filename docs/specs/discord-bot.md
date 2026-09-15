@@ -47,9 +47,10 @@ numeric commands post text embeds with fields and the same link button. Replies 
 publicly in the channel. Where the invoking user cannot post, Discord forces the reply
 ephemeral.
 
-Money rules carry over from the web. A spend figure sums only stacks with `publishCost`
-consent. Every dollar figure prints the price-table id and the share of tokens it
-covers. Positive claims only.
+Money rules carry over from the web with one exception. A spend figure sums only
+stacks with `publishCost` consent. The card prints bare dollar figures with no
+price-table id or priced share; the stack page remains the cited surface (owner's
+decision, 2026-09-15). Positive claims only.
 
 ## Account linking
 
