@@ -523,3 +523,75 @@ it("values Cursor tokens at dated shared rates, never dashboard charges, and lea
 	expect(JSON.stringify(build(false))).not.toContain('"usd"');
 	expect(JSON.stringify(build(false))).not.toContain('"pricingTable"');
 });
+
+it("skips account lookup and network enrichment without eligible local sessions", async () => {
+	local.sessions = [];
+	local.complete = false;
+	const accountLookup = vi
+		.fn()
+		.mockResolvedValue({ scope: "account-a", cookie: "cookie" });
+	options.accountImpl = accountLookup;
+	const fetch = fetcher([event()]);
+	options.fetchImpl = fetch;
+	expect((await scan(options)).scanComplete).toBe(false);
+	expect(accountLookup).not.toHaveBeenCalled();
+	expect(fetch).not.toHaveBeenCalled();
+});
+it("reuses account windows between recent and historical scans with partial local history", async () => {
+	local.complete = false;
+	options.accountImpl = async () => ({ scope: "account-a", cookie: "cookie" });
+	const fetch = fetcher([event()]);
+	options.fetchImpl = fetch;
+	expect(await total()).toBe(800);
+	expect(await total()).toBe(800);
+	expect(fetch).toHaveBeenCalledTimes(1);
+	expect((await loadCache(path.join(dir, "cache.json"))).value.windows).toEqual(
+		{},
+	);
+});
+it("does not repeat failed account requests during the historical pass", async () => {
+	local.complete = false;
+	options.accountImpl = async () => ({ scope: "account-a", cookie: "cookie" });
+	const fetch = vi
+		.fn<typeof globalThis.fetch>()
+		.mockResolvedValue(new Response(null, { status: 401 }));
+	options.fetchImpl = fetch;
+	await scan(options);
+	options.sinceMs -= 300 * 86_400_000;
+	await scan(options);
+	expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("scopes partial-history in-memory enrichment to the current account", async () => {
+	local.complete = false;
+	options.accountImpl = async () => ({ scope: "account-a", cookie: "cookie" });
+	options.fetchImpl = fetcher([event()]);
+	expect(await total()).toBe(800);
+	options.accountImpl = async () => ({
+		scope: "account-b",
+		cookie: "cookie-b",
+	});
+	const fail = vi
+		.fn<typeof fetch>()
+		.mockResolvedValue(new Response(null, { status: 401 }));
+	options.fetchImpl = fail;
+	expect(await total()).toBe(1000);
+	expect(fail).toHaveBeenCalledTimes(1);
+});
+
+it.each(["root", "cachePath"] as const)(
+	"isolates partial-history refresh state when %s changes",
+	async (key) => {
+		local.complete = false;
+		options.accountImpl = async () => ({
+			scope: "account-a",
+			cookie: "cookie",
+		});
+		const fetch = fetcher([event()]);
+		options.fetchImpl = fetch;
+		await scan(options);
+		options[key] = path.join(dir, "other");
+		await scan(options);
+		expect(fetch).toHaveBeenCalledTimes(2);
+	},
+);

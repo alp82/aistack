@@ -21,6 +21,7 @@ import {
 import type { HarnessScan, HarnessScanOptions } from "../types.js";
 import { type Account, existingAccount } from "./account.js";
 import {
+	type AccountRefreshState,
 	cachedEvents,
 	cacheFile,
 	loadCache,
@@ -42,6 +43,9 @@ export type ScanOptions = HarnessScanOptions & {
 	accountImpl?: (root: string) => Promise<Account | null>;
 	fetchImpl?: typeof fetch;
 };
+// Keep successful account reads and a failure cooldown across this process's
+// recent/history passes, including when partial local reads cannot be saved.
+const accountRefreshes = new Map<string, AccountRefreshState>();
 export async function scan(options: ScanOptions): Promise<HarnessScan> {
 	const root = options.root ?? dataPath();
 	const now = options.now ?? Date.now();
@@ -66,7 +70,15 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 		);
 		complete = false;
 	}
-	const account = await (options.accountImpl ?? existingAccount)(root);
+	const account = ids.size
+		? await (options.accountImpl ?? existingAccount)(root)
+		: null;
+	const refreshKey = JSON.stringify([root, storeRoot(), file]);
+	let refreshState = accountRefreshes.get(refreshKey);
+	if (!refreshState) {
+		refreshState = {};
+		accountRefreshes.set(refreshKey, refreshState);
+	}
 	const cache = await refreshAccount({
 		cache: loaded.value,
 		account,
@@ -74,6 +86,7 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 		now,
 		sessionIds: ids,
 		fetchImpl: options.fetchImpl,
+		state: refreshState,
 	});
 	const api = cachedEvents(cache, ids);
 	const native = new Set<string>();

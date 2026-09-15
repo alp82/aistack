@@ -274,3 +274,18 @@ it("stops retrying when one record itself exceeds the page limit and logs safe d
 		{ path: "history", reason: "SOURCE_LIMIT_EXCEEDED" },
 	]);
 });
+
+it("names the failed discovery stage without exposing database contents", async () => {
+	await createSource();
+	const reader = await import("cursor-history");
+	vi.spyOn(reader, "listSessionSummaries").mockRejectedValue(
+		new Error("private prompt /private/db.sqlite"),
+	);
+	const logs: string[] = [];
+	enableTrace((line) => logs.push(line));
+	const reading = await readLocal(root);
+	expect(reading.complete).toBe(false);
+	expect(reading.stats.filesFound).toBe(0);
+	expect(logs.join("\n")).toContain("cursor session listing failed");
+	expect(logs.join("\n")).not.toContain("private");
+});
