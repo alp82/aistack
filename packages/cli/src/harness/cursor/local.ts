@@ -6,6 +6,7 @@ import { Worker } from "node:worker_threads";
 import type {
 	Session,
 	SessionReadContext,
+	SessionSummary,
 	SourceReadLimitsOverride,
 } from "cursor-history";
 import {
@@ -13,6 +14,8 @@ import {
 	traceEnabled,
 	traceError,
 	traceErrorCode,
+	traceLine,
+	traceRenderOptions,
 	traceStartedAt,
 	traceTimer,
 } from "../../trace.js";
@@ -67,16 +70,21 @@ export async function hasLocalSource(root = dataPath()): Promise<boolean> {
 }
 
 type Sqlite = import("node:sqlite").DatabaseSync;
-/** Supplemental read only for fields the selected reader flattens. No transcript parser. */
-export async function readTokenEvidence(
-	root: string,
-	session: Session,
-): Promise<Map<string, TokenEvidence>> {
-	const out = new Map<string, TokenEvidence>();
-	if (!session.messages.some((m) => m.identityOrigin?.startsWith("composer")))
-		return out;
+type Statement = import("node:sqlite").StatementSync;
+/**
+ * One read-only handle on the global database for the whole read. Opening a
+ * handle is cheap; on a 20 GB `state.vscdb` opening one per session is not
+ * (#445). The two statements are prepared once and the read transaction is
+ * held open so every session sees the same snapshot. `close` ends it.
+ */
+export type EvidenceDb = {
+	bubble: Statement;
+	header: Statement;
+	close(): void;
+};
+export async function openEvidenceDb(root: string): Promise<EvidenceDb | null> {
 	const file = globalDb(root);
-	if (!(await exists(file))) return out;
+	if (!(await exists(file))) return null;
 	const { DatabaseSync } = await import("node:sqlite");
 	const db: Sqlite = new DatabaseSync(file, { readOnly: true });
 	try {
@@ -86,38 +94,55 @@ export async function readTokenEvidence(
 				"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'cursorDiskKV'",
 			)
 			.get();
-		if (!table) return out;
-		const query = db.prepare(`SELECT json_object(
-			'tokenCount', json_extract(value, '$.tokenCount'),
-			'usage', json_extract(value, '$.usage'),
-			'contextWindowStatusAtCreation', json_extract(value, '$.contextWindowStatusAtCreation'),
-			'promptDryRunInfo', json_extract(value, '$.promptDryRunInfo')) AS evidence
-			FROM cursorDiskKV WHERE key = ?`);
-		for (const message of session.messages) {
-			if (!message.id || message.identityOrigin !== "composer-native") continue;
-			const row = query.get(`bubbleId:${session.id}:${message.id}`);
-			if (typeof row?.evidence === "string")
-				out.set(message.id, tokenEvidence(JSON.parse(row.evidence)));
+		if (!table) {
+			db.close();
+			return null;
 		}
-		// Older Composer headers can retain inline bubbles instead of split keys.
-		const header = db
-			.prepare(
+		return {
+			bubble: db.prepare(`SELECT json_object(
+				'tokenCount', json_extract(value, '$.tokenCount'),
+				'usage', json_extract(value, '$.usage'),
+				'contextWindowStatusAtCreation', json_extract(value, '$.contextWindowStatusAtCreation'),
+				'promptDryRunInfo', json_extract(value, '$.promptDryRunInfo')) AS evidence
+				FROM cursorDiskKV WHERE key = ?`),
+			header: db.prepare(
 				"SELECT json_extract(value, '$.conversation') AS conversation FROM cursorDiskKV WHERE key = ?",
-			)
-			.get(`composerData:${session.id}`);
-		if (typeof header?.conversation === "string") {
-			const conversation: unknown = JSON.parse(header.conversation);
-			if (Array.isArray(conversation))
-				for (const [index, raw] of conversation.entries()) {
-					const obj = asObj(raw);
-					const id = asStr(obj?.bubbleId) ?? asStr(obj?.id) ?? `msg:${index}`;
-					if (!out.has(id)) out.set(id, tokenEvidence(raw));
-				}
-		}
-		return out;
-	} finally {
+			),
+			close: () => db.close(),
+		};
+	} catch (error) {
 		db.close();
+		throw error;
 	}
+}
+
+/** Supplemental read only for fields the selected reader flattens. No transcript parser. */
+export function readTokenEvidence(
+	session: Session,
+	db: EvidenceDb | null,
+): Map<string, TokenEvidence> {
+	const out = new Map<string, TokenEvidence>();
+	if (!db) return out;
+	if (!session.messages.some((m) => m.identityOrigin?.startsWith("composer")))
+		return out;
+	for (const message of session.messages) {
+		if (!message.id || message.identityOrigin !== "composer-native") continue;
+		const row = db.bubble.get(`bubbleId:${session.id}:${message.id}`);
+		if (typeof row?.evidence === "string")
+			out.set(message.id, tokenEvidence(JSON.parse(row.evidence)));
+	}
+	// Older Composer headers can retain inline bubbles instead of split keys.
+	const header = db.header.get(`composerData:${session.id}`);
+	if (typeof header?.conversation === "string") {
+		const conversation: unknown = JSON.parse(header.conversation);
+		if (Array.isArray(conversation))
+			for (const [index, raw] of conversation.entries()) {
+				const obj = asObj(raw);
+				const id = asStr(obj?.bubbleId) ?? asStr(obj?.id) ?? `msg:${index}`;
+				if (!out.has(id)) out.set(id, tokenEvidence(raw));
+			}
+	}
+	return out;
 }
 
 async function sourceStamp(root: string): Promise<string> {
@@ -153,12 +178,32 @@ export type LocalRead = {
  */
 const localReads = new Map<
 	string,
-	{ stamp: string; read: Promise<LocalRead> }
+	{ stamp: string; sinceMs: number | undefined; read: Promise<LocalRead> }
 >();
+
+/**
+ * The oldest moment this process needs a session for; undefined reads every
+ * session. The sync stage sets it once, before any harness runs, to the
+ * widest window of the run: the retention the day rows cover, not the 30-day
+ * detection window. The read skips a session whose listing entry dates it
+ * entirely before this moment (#445). The memo above holds one read per
+ * root, so the window has to be the widest one BEFORE the first caller
+ * arrives; a read taken with a narrower window is repeated, not reused, when
+ * a wider one is asked for later (see `readLocal`).
+ */
+let readWindowSinceMs: number | undefined;
+export function setCursorReadWindow(sinceMs: number | undefined): void {
+	readWindowSinceMs = sinceMs;
+}
+/** Whether a read taken with window `held` has every session `wanted` needs. */
+function covers(held: number | undefined, wanted: number | undefined): boolean {
+	return held === undefined || (wanted !== undefined && held <= wanted);
+}
 
 /** Tests only: forget the reads this process made. */
 export function forgetLocalReads(): void {
 	localReads.clear();
+	readWindowSinceMs = undefined;
 }
 
 /** Errors never escape with paths, prompts or database values. */
@@ -167,10 +212,11 @@ export async function readLocal(
 	onProgress?: (files: number, total?: number) => void,
 ): Promise<LocalRead> {
 	const held = localReads.get(root);
-	if (held) {
+	if (held && covers(held.sinceMs, readWindowSinceMs)) {
 		trace("cursor · reusing this run's history read");
 		return held.read;
 	}
+	if (held) trace("cursor · widening this run's history read");
 	// Nothing to walk, nothing to remember: an install that appears later in
 	// the same process (tests do this) must still be read.
 	if (!(await hasLocalSource(root))) {
@@ -179,7 +225,7 @@ export async function readLocal(
 	}
 	const stamp = await sourceStamp(root);
 	const read = readLocalOffThread(root, stamp, onProgress);
-	localReads.set(root, { stamp, read });
+	localReads.set(root, { stamp, sinceMs: readWindowSinceMs, read });
 	return read;
 }
 
@@ -221,12 +267,16 @@ async function readLocalOffThread(
 			workerData: {
 				root,
 				before,
+				sinceMs: readWindowSinceMs,
 				trace: traceEnabled(),
 				traceStartedAt: traceStartedAt(),
+				traceColor: traceRenderOptions().color,
+				traceColumns: traceRenderOptions().columns,
 			},
 		});
 		worker.on("message", (message: CursorWorkerMessage) => {
-			if (message.kind === "progress")
+			if (message.kind === "trace") traceLine(message.line);
+			else if (message.kind === "progress")
 				onProgress?.(message.files, message.total);
 			else if (message.kind === "result") settle(() => resolve(message.read));
 			else
@@ -253,8 +303,73 @@ async function readLocalOffThread(
 
 export type CursorWorkerMessage =
 	| { kind: "progress"; files: number; total?: number }
+	/** A formatted trace line, written by the main thread on receipt (see worker.ts). */
+	| { kind: "trace"; line: string }
 	| { kind: "result"; read: LocalRead }
 	| { kind: "error" };
+
+/**
+ * How long the read may go without finishing a session or returning a
+ * listing page before it is abandoned. A whole-read deadline was the wrong
+ * tool: a 20 GB database with 721 sessions needs 106 s for the listing alone
+ * and the read runs in a worker, so a long read freezes nothing (#445). A
+ * stall is different: no progress for this long means the reader is stuck.
+ */
+export const STALL_MS = 120_000;
+
+/**
+ * A session slower than this gets its own trace line. On a 20 GB database
+ * one session took 35 s and the log had nothing to say which of the 721 it
+ * was or what made it heavy (#445). The line carries counts only.
+ */
+export const SLOW_SESSION_MS = 2_000;
+
+/**
+ * How far before the window a listing entry may date a session and still be
+ * opened. `scan.ts` marks the read incomplete when a cached dashboard event
+ * inside the window belongs to a session the read did not return, and a
+ * session's dashboard-side event can post-date its local `lastUpdatedAt` by
+ * a little. A day of slack keeps such a session in the read.
+ */
+export const READ_WINDOW_MARGIN_MS = 86_400_000;
+
+/**
+ * The newest moment a listing entry vouches for, or null when it has none.
+ * The public listing carries the creation time as `timestamp` and the last
+ * update as `metadata.lastModified`, each with its source. cursor-history
+ * stamps a moment it cannot date with epoch zero and the source
+ * `epoch-unknown`. A session with no dated moment is read: undated retained
+ * history is real, and `detect` in adapter.ts counts it (it can gain its
+ * first anchor from dashboard enrichment). An ambiguous entry has no dates.
+ */
+export function summaryNewestMs(summary: SessionSummary): number | null {
+	if (summary.resolutionState === "ambiguous") return null;
+	let newest: number | null = null;
+	for (const [iso, source] of [
+		[summary.metadata?.lastModified, summary.lastUpdatedAtSource],
+		[summary.timestamp, summary.createdAtSource],
+	] as const) {
+		if (source === "epoch-unknown" || typeof iso !== "string") continue;
+		const ms = Date.parse(iso);
+		if (!Number.isFinite(ms) || ms <= 0) continue;
+		newest = newest === null ? ms : Math.max(newest, ms);
+	}
+	return newest;
+}
+/**
+ * A session the window cannot use: its listing entry dates its newest moment
+ * more than `READ_WINDOW_MARGIN_MS` before the window opens. `getSession` is
+ * the expensive half of the read on a large database (#445), so these are
+ * never opened.
+ */
+function olderThanWindow(
+	summary: SessionSummary,
+	sinceMs: number | undefined,
+): boolean {
+	if (sinceMs === undefined) return false;
+	const newest = summaryNewestMs(summary);
+	return newest !== null && newest < sinceMs - READ_WINDOW_MARGIN_MS;
+}
 
 /** The read itself, on whichever thread called it. */
 export async function readLocalOnce(
@@ -262,6 +377,8 @@ export async function readLocalOnce(
 	before: string | undefined,
 	onProgress?: (files: number, total?: number) => void,
 	sourceReadLimits?: SourceReadLimitsOverride,
+	stallMs = STALL_MS,
+	sinceMs: number | undefined = readWindowSinceMs,
 ): Promise<LocalRead> {
 	before ??= await sourceStamp(root);
 	const stats = emptyScanStats();
@@ -273,18 +390,43 @@ export async function readLocalOnce(
 	trace(`cursor · global database ${await globalDbSize(root)}`);
 	const readDone = traceTimer("cursor history read");
 	let context: SessionReadContext | undefined;
+	let evidence: EvidenceDb | null | undefined;
 	let retrySmallPage = false;
 	let unresolved = 0;
 	let corrupted = 0;
 	let ambiguous = 0;
+	let encodingInvalid = 0;
+	let total: number | undefined;
 	let stage = "reader setup";
-	const signal = AbortSignal.timeout(120_000);
+	// The stall detector. Every completed session and every listing page
+	// re-arms the timer; only silence for `stallMs` aborts. cursor-history
+	// reads synchronously, so the timer cannot fire during a read: it fires
+	// on the next turn of the event loop, after the blocking call returns.
+	// Late is fine. The reader checks the signal before its next step, so a
+	// stall still ends the read there instead of running on to the end.
+	const stall = new AbortController();
+	const { signal } = stall;
+	let stallTimer: NodeJS.Timeout | undefined;
+	const progressed = () => {
+		if (signal.aborted) return;
+		clearTimeout(stallTimer);
+		stallTimer = setTimeout(() => {
+			const error = new Error(
+				`cursor read stalled: no progress for ${Math.round(stallMs / 1000)} s`,
+			);
+			error.name = "AbortError";
+			stall.abort(error);
+		}, stallMs);
+		stallTimer.unref?.();
+	};
+	progressed();
 	try {
 		const reader = await import("cursor-history");
 		const options = {
 			dataPath: root,
 			sqliteDriver: "node:sqlite" as const,
 			onDiagnostic: (diagnostic: { code?: string }) => {
+				if (signal.aborted) return;
 				traceError("cursor source diagnostic", diagnostic, "warn");
 				out.complete = false;
 			},
@@ -305,13 +447,27 @@ export async function readLocalOnce(
 				offset,
 				limit: 100,
 			});
+			progressed();
 			pageDone(`${page.data.length} of ${page.pagination.total} sessions`);
-			if (offset === 0) onProgress?.(0, page.pagination.total);
+			total = page.pagination.total;
+			if (offset === 0) onProgress?.(0, total);
 			for (const summary of page.data) {
+				// Skipped sessions are neither found nor unreadable: `filesFound`
+				// counts what the read opened, so the read/found line stays
+				// whole, and `filesSkippedByMtime` carries the count, as the
+				// file-based harnesses use it. Nothing compares `filesFound`
+				// with the listing total.
+				if (olderThanWindow(summary, sinceMs)) {
+					stats.filesSkippedByMtime++;
+					onProgress?.(stats.filesRead + stats.filesSkippedByMtime, total);
+					continue;
+				}
 				stats.filesFound++;
 				if (summary.resolutionState === "ambiguous") {
 					out.complete = false;
 				}
+				const position = `${stats.filesRead + stats.filesUnreadable + stats.filesSkippedByMtime + 1} of ${total}`;
+				const sessionStartedMs = Date.now();
 				try {
 					stage = "session read";
 					const session = await reader.getSession(summary.id, config);
@@ -325,18 +481,32 @@ export async function readLocalOnce(
 						out.complete = false;
 					}
 					stage = "token evidence";
-					const tokens = await readTokenEvidence(root, session);
+					if (evidence === undefined) evidence = await openEvidenceDb(root);
+					const tokens = readTokenEvidence(session, evidence);
 					out.sessions.push({ session, tokens });
 					stats.filesRead++;
-					onProgress?.(stats.filesRead, page.pagination.total);
+					const elapsedMs = Date.now() - sessionStartedMs;
+					if (elapsedMs >= SLOW_SESSION_MS)
+						trace(
+							`cursor slow session · ${position} · ${elapsedMs} ms · ${session.messages.length} messages, ${tokens.size} bubbles with token evidence`,
+							"warn",
+						);
+					onProgress?.(stats.filesRead + stats.filesSkippedByMtime, total);
 				} catch (error) {
-					if (isPageByteLimit(error)) throw error;
-					if (traceErrorCode(error) === "SESSION_AMBIGUOUS") ambiguous++;
+					// A stall ends the whole read; the outer catch reports it once.
+					if (signal.aborted || isPageByteLimit(error)) throw error;
+					const code = traceErrorCode(error);
+					if (code === "SESSION_AMBIGUOUS") ambiguous++;
+					// A bubble payload with a BOM inside the text or invalid UTF-8
+					// drops the whole session in cursor-history. Counted apart
+					// from the other rejections so the review can name it.
+					else if (code === "SOURCE_ENCODING_INVALID") encodingInvalid++;
 					else traceError(`cursor ${stage}`, error, "warn");
 					out.complete = false;
 					stats.filesUnreadable++;
 				} finally {
 					context.releaseSession(summary.id);
+					progressed();
 				}
 			}
 			if (!page.pagination.hasMore) break;
@@ -351,18 +521,41 @@ export async function readLocalOnce(
 			offset += page.data.length;
 		}
 	} catch (error) {
-		traceError(`cursor ${stage}`, error);
-		if (signal.aborted)
-			traceError("cursor read deadline", signal.reason, "warn");
-		retrySmallPage =
-			isPageByteLimit(error) && sourceReadLimits?.sqlitePageRows !== 1;
-		stats.unreadableFiles.push({
-			path: "history",
-			reason: traceErrorCode(error),
-		});
+		if (signal.aborted) {
+			// Sessions the loop never reached. A session that stalled mid-read
+			// is counted under `history` below, not here.
+			const inFlight = stage === "session listing" ? 0 : 1;
+			const skipped = Math.max(
+				0,
+				(total ?? 0) -
+					stats.filesRead -
+					stats.filesUnreadable -
+					stats.filesSkippedByMtime -
+					inFlight,
+			);
+			trace(
+				`cursor read stalled · no progress for ${Math.round(stallMs / 1000)} s during ${stage} · ${stats.filesRead} sessions kept, ${skipped} skipped`,
+				"warn",
+			);
+			stats.unreadableFiles.push({ path: "history", reason: "STALLED" });
+		} else {
+			traceError(`cursor ${stage}`, error);
+			retrySmallPage =
+				isPageByteLimit(error) && sourceReadLimits?.sqlitePageRows !== 1;
+			stats.unreadableFiles.push({
+				path: "history",
+				reason: traceErrorCode(error),
+			});
+		}
 		out.complete = false;
 		stats.filesUnreadable++;
 	} finally {
+		clearTimeout(stallTimer);
+		try {
+			evidence?.close();
+		} catch (error) {
+			traceError("cursor evidence database close", error, "warn");
+		}
 		try {
 			await context?.dispose();
 		} catch (error) {
@@ -377,11 +570,19 @@ export async function readLocalOnce(
 		);
 		// Restart after disposing the context. No partially collected sessions
 		// survive the retry, and the byte/value limits remain in force.
-		return readLocalOnce(root, before, onProgress, {
-			...sourceReadLimits,
-			sqlitePageRows: 1,
-		});
+		return readLocalOnce(
+			root,
+			before,
+			onProgress,
+			{ ...sourceReadLimits, sqlitePageRows: 1 },
+			stallMs,
+			sinceMs,
+		);
 	}
+	if (stats.filesSkippedByMtime)
+		trace(
+			`cursor · ${stats.filesSkippedByMtime} sessions older than the window skipped`,
+		);
 	if (before !== (await sourceStamp(root))) {
 		trace(
 			"cursor history incomplete · database changed during the read",
@@ -389,12 +590,19 @@ export async function readLocalOnce(
 		);
 		out.complete = false;
 	}
-	if (unresolved || corrupted || ambiguous) {
+	if (unresolved || corrupted || ambiguous || encodingInvalid) {
 		trace(
-			`cursor partial history · ${unresolved} sessions unresolved, ${corrupted} with corrupted messages, ${ambiguous} skipped with conflicting copies${ambiguous ? " (SESSION_AMBIGUOUS)" : ""} · available dated usage retained`,
+			`cursor partial history · ${unresolved} sessions unresolved, ${corrupted} with corrupted messages, ${ambiguous} skipped with conflicting copies${ambiguous ? " (SESSION_AMBIGUOUS)" : ""}, ${encodingInvalid} skipped with non-UTF-8 payloads${encodingInvalid ? " (SOURCE_ENCODING_INVALID)" : ""} · available dated usage retained`,
 			"warn",
 		);
 	}
+	// The gate's local-only note behind the unreadable count. One line for
+	// the group: a session has no path to name, and the count is the fact.
+	if (encodingInvalid)
+		stats.unreadableFiles.push({
+			path: `${encodingInvalid} session${encodingInvalid === 1 ? "" : "s"} skipped`,
+			reason: "non-UTF-8 payload",
+		});
 	readDone(
 		`${stats.filesRead}/${stats.filesFound} sessions read, ${stats.filesUnreadable} unreadable${out.complete ? "" : ", incomplete"}`,
 		out.complete ? "success" : "warn",
