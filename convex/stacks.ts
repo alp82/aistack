@@ -500,6 +500,7 @@ export const update = mutation({
       args.toolSubscriptions !== undefined ||
       args.bundleSubscriptions !== undefined ||
       args.modelSubscriptions !== undefined
+    // Reopens the reports: the mark drops, the flags stay, the admin re-judges.
     if (meaningfulChange && stack.isLowQuality) patch.isLowQuality = false
 
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions

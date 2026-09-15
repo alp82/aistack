@@ -32,6 +32,7 @@ import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
 import { isAdmin } from './lib/admin'
 import { normalizeFrequencyHours } from './lib/autoSync'
+import { reopenStackReports } from './lib/stackReports'
 
 import { extractShortId } from './lib/ids'
 import {
@@ -446,6 +447,11 @@ async function acceptPayload(
   if (machine !== undefined) {
     await ensureMachineOrdinal(ctx, stackId, machine, receivedAt)
   }
+  // A sync reopens the stack's reports, like a meaningful edit does: the
+  // low-quality mark drops and the flags stay, so the stack returns to the
+  // admin queue for a fresh call. This is the one path in, so every sync
+  // route gets the same behavior.
+  await reopenStackReports(ctx, stackId)
   return { receivedAt }
 }
 

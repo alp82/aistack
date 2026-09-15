@@ -1,5 +1,3 @@
-* stack usage: context breakdown
-* undo report when sync happens
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed
