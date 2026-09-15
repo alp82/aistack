@@ -140,12 +140,12 @@ export const begin = internalMutation({
         return { error: 'Choose a creator first.' }
       view.picker = null
     } else if (args.action === 'full') {
-      if (!['tokens', 'cost'].includes(view.command) || view.picker)
+      if (!['tokens', 'cost', 'compare'].includes(view.command) || view.picker)
         return { error: 'This view has no list control.' }
       view.full = !view.full
     } else if (args.action === 'harness') {
       if (
-        !['context', 'harness'].includes(view.command) ||
+        view.command !== 'context' ||
         !args.value ||
         args.value.length > 100
       )

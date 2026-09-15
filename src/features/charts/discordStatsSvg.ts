@@ -687,18 +687,14 @@ export function discordStatsSvg(
 				),
 			);
 		} else if (command === "harness") {
-			const id = a.selectedTokenHarness ?? "";
-			const name = nameOf("harness", id, a, b)?.name ?? id;
-			const share = (x: RenderAnswer) =>
-				x.current.usage?.harnesses.find((h) => h.harness === id)?.tokenShare;
 			add(
 				meter(
 					y,
-					"terminal",
-					`${cut(name, 20).toUpperCase()} · SHARE OF TOKENS`,
-					share(a),
-					share(b),
-					pct,
+					"coins",
+					"TOKENS",
+					a.current.usage?.totalTokens,
+					b.current.usage?.totalTokens,
+					compactNumber,
 				),
 			);
 			add(
@@ -722,6 +718,9 @@ export function discordStatsSvg(
 					money,
 				),
 			);
+			// The measured figure is what the range buttons move; subscriptions are monthly.
+			if (a.publishCost && b.publishCost)
+				add(meter(y, "coins", "MEASURED USAGE", costOf(a), costOf(b), money));
 			// Neither side reaching the floor drops the row, sponsored counting as reached.
 			const earned = new Set(
 				[...subRows(a, full), ...subRows(b, full)]

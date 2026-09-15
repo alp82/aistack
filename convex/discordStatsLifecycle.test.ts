@@ -446,70 +446,49 @@ test('/compare without person opens picker; selection and refinements preserve t
     'https://aistack.test/@bob',
   ])
 })
-test('harness comparisons default from subject and preserve an explicit same-harness selection', async () => {
+test('the harness card lists every harness, so it offers no harness selector and rejects the action', async () => {
   const t = convexTest(schema, modules),
-    alice = await seed(t),
-    bob = await seed(t, 'bob', 'bob-discord')
+    alice = await seed(t)
   await t.run(async (ctx) => {
-    for (const [target, harnesses] of [
-      [alice, ['codex', 'claude-code']],
-      [bob, ['claude-code']],
-    ] as const) {
-      await ctx.db.insert('measuredDays', {
-        stackId: target.stackId,
-        date: '2026-09-12',
-        capturedAt: 1,
-        receivedAt: 1,
-        aggregateVersion: 'measured-days/v1',
-        fingerprint: target.stackId,
-        usage: {
-          harnesses: harnesses.map((harness, i) => ({
-            harness,
-            sessions: 1,
-            projectKeys: [],
-            subagentTokens: 0,
-            excludedTokens: { unpriced: 0, synthetic: 0 },
-            models: [
-              {
-                model: 'test-model',
-                tokens: {
-                  input: 100 - i * 20,
-                  output: 0,
-                  cacheRead: 0,
-                  cacheWrite: 0,
-                },
+    await ctx.db.insert('measuredDays', {
+      stackId: alice.stackId,
+      date: '2026-09-12',
+      capturedAt: 1,
+      receivedAt: 1,
+      aggregateVersion: 'measured-days/v1',
+      fingerprint: alice.stackId,
+      usage: {
+        harnesses: ['codex', 'claude-code'].map((harness, i) => ({
+          harness,
+          sessions: 1,
+          projectKeys: [],
+          subagentTokens: 0,
+          excludedTokens: { unpriced: 0, synthetic: 0 },
+          models: [
+            {
+              model: 'test-model',
+              tokens: {
+                input: 100 - i * 20,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
               },
-            ],
-          })),
-        },
-      })
-    }
+            },
+          ],
+        })),
+      },
+    })
   })
   await start(t, 'harness')
-  await click(t, 'compare')
-  await run(t)
-  let s = await state(t)
-  await click(t, 'person', {
-    data: {
-      custom_id: controlId(s._id, s.revision, 'person'),
-      values: ['bob'],
-    },
-  })
-  await run(t)
-  expect(renders[1].subject.selectedTokenHarness).toBe('codex')
-  expect(renders[1].comparison.selectedTokenHarness).toBe('codex')
-  s = await state(t)
-  await click(t, 'harness', {
+  expect(JSON.stringify(patches[0].components)).not.toContain('"Harness"')
+  const s = await state(t)
+  const result = await click(t, 'harness', {
     data: {
       custom_id: controlId(s._id, s.revision, 'harness'),
       values: ['claude-code'],
     },
   })
-  await run(t)
-  await click(t, 'range30')
-  await run(t)
-  expect(renders[3].subject.selectedTokenHarness).toBe('claude-code')
-  expect(renders[3].comparison.selectedTokenHarness).toBe('claude-code')
+  expect(result.data.content).toContain('Choose an available harness')
 })
 test('invalid ranges and foreign modal nonce leave confirmed state untouched', async () => {
   const t = convexTest(schema, modules)

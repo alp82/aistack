@@ -69,7 +69,7 @@ export function controls(
   ]
   const extra: ReturnType<typeof button>[] = []
   if (
-    (view.command === 'tokens' &&
+    (['tokens', 'compare'].includes(view.command) &&
       (subject?.current.hasMoreModels ||
         comparison?.current.hasMoreModels ||
         view.full)) ||
@@ -82,19 +82,18 @@ export function controls(
       button(
         key('full'),
         view.full
-          ? view.command === 'tokens'
-            ? '5% and up'
-            : 'Five entries'
+          ? view.command === 'cost'
+            ? 'Five entries'
+            : '5% and up'
           : 'Full list',
       ),
     )
   if (extra.length) rows.push(row(...extra))
+  // Only the context card reads one harness. The harness card lists them all.
   const harnesses =
     view.command === 'context'
       ? subject?.current.context.map((h) => h.harness)
-      : view.command === 'harness'
-        ? subject?.current.usage?.harnesses.map((h) => h.harness)
-        : []
+      : []
   if (harnesses && harnesses.length > 1)
     rows.push(
       row({
@@ -248,7 +247,6 @@ async function read(ctx: ActionCtx, view: View) {
     endDate: view.endDate,
     days: view.days,
     contextHarness: view.command === 'context' ? view.harness : undefined,
-    tokenHarness: view.command === 'harness' ? view.harness : undefined,
   }
   const subject: DiscordAnswer | null = await ctx.runQuery(
     internal.discordStats.readAnswer,
@@ -256,29 +254,18 @@ async function read(ctx: ActionCtx, view: View) {
   )
   if (!subject) throw new Error('Selected creator is unavailable')
   const harness =
-    view.command === 'context'
-      ? subject.selectedContextHarness
-      : view.command === 'harness'
-        ? subject.selectedTokenHarness
-        : undefined
+    view.command === 'context' ? subject.selectedContextHarness : undefined
   const comparison: DiscordAnswer | null = view.comparison
     ? await ctx.runQuery(internal.discordStats.readAnswer, {
         ...view.comparison,
         ...args,
-        ...(view.command === 'context' && harness
-          ? { contextHarness: harness }
-          : {}),
-        ...(view.command === 'harness' && harness
-          ? { tokenHarness: harness }
-          : {}),
+        ...(harness ? { contextHarness: harness } : {}),
       })
     : null
   if (view.comparison && !comparison)
     throw new Error('Selected comparison is unavailable')
   if (comparison && view.command === 'context')
     comparison.selectedContextHarness = subject.selectedContextHarness
-  if (comparison && view.command === 'harness')
-    comparison.selectedTokenHarness = subject.selectedTokenHarness
   return { subject, comparison }
 }
 const consent = (answers: Awaited<ReturnType<typeof read>>) =>
@@ -343,20 +330,12 @@ export const fulfill = internalAction({
       }
       let answers = await read(ctx, view)
       if (args.action === 'harness') {
-        const choices =
-          view.command === 'context'
-            ? answers.subject?.current.context.map((h) => h.harness)
-            : answers.subject?.current.usage?.harnesses.map((h) => h.harness)
+        const choices = answers.subject?.current.context.map((h) => h.harness)
         if (!choices?.includes(view.harness!))
           throw new Error('Harness unavailable')
       }
-      if (!view.harness && answers.subject)
-        view.harness =
-          (view.command === 'context'
-            ? answers.subject.selectedContextHarness
-            : view.command === 'harness'
-              ? answers.subject.selectedTokenHarness
-              : null) ?? undefined
+      if (!view.harness && answers.subject && view.command === 'context')
+        view.harness = answers.subject.selectedContextHarness ?? undefined
       const choices = view.picker
         ? await ctx.runQuery(internal.discordStats.searchCreators, {
             text: view.search,
