@@ -1,0 +1,33 @@
+{
+  "sourceCommit": "75810042ca2762aa0b0fa17864f3f68823ccbea5",
+  "releasedClientVersion": null,
+  "observedRecordings": 0,
+  "sourceTestsExecuted": false,
+  "sources": [
+    {
+      "path": "crates/codegen/xai-grok-shell/src/session/usage_file.rs",
+      "sha256": "bdb1a2486a929dbab6f904ac2774f5551ff6e3dd490bbb7cb5633eadbb8d559a",
+      "url": "https://github.com/xai-org/grok-build/blob/75810042ca2762aa0b0fa17864f3f68823ccbea5/crates/codegen/xai-grok-shell/src/session/usage_file.rs"
+    },
+    {
+      "path": "crates/codegen/xai-grok-shell/src/session/usage_file_tests.rs",
+      "sha256": "c7ea642128efdbccf488a7f422e0c00f92a6426ee04f6c092531bbdbc267a15c",
+      "url": "https://github.com/xai-org/grok-build/blob/75810042ca2762aa0b0fa17864f3f68823ccbea5/crates/codegen/xai-grok-shell/src/session/usage_file_tests.rs"
+    },
+    {
+      "path": "crates/codegen/xai-grok-shell/src/session/storage/jsonl/copy_tests.rs",
+      "sha256": "bbb0e113d999799bddb790bd66cdd8371a8a47a1e4a2808ad5acf5a0b6db3e68",
+      "url": "https://github.com/xai-org/grok-build/blob/75810042ca2762aa0b0fa17864f3f68823ccbea5/crates/codegen/xai-grok-shell/src/session/storage/jsonl/copy_tests.rs"
+    },
+    {
+      "path": "crates/codegen/xai-grok-shell/src/session/acp_session_tests/record_response_token_usage_tests.rs",
+      "sha256": "7f8d1bad340bb61d2b11d8e9e4befe022af560d799c27824d3bef385d858f7c5",
+      "url": "https://github.com/xai-org/grok-build/blob/75810042ca2762aa0b0fa17864f3f68823ccbea5/crates/codegen/xai-grok-shell/src/session/acp_session_tests/record_response_token_usage_tests.rs"
+    },
+    {
+      "path": "crates/codegen/xai-grok-pager/src/usage_cmd.rs",
+      "sha256": "cef2cee9d3a026794f5a081b783d5208a9bd117b638f2cb2b3cdbca044141aed",
+      "url": "https://github.com/xai-org/grok-build/blob/75810042ca2762aa0b0fa17864f3f68823ccbea5/crates/codegen/xai-grok-pager/src/usage_cmd.rs"
+    }
+  ]
+}

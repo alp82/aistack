@@ -1,0 +1,17 @@
+{
+  "provenance": "Selected measurement fields transcribed from the owner-pasted v2 excerpt. Full v2 export not available locally.",
+  "timestamp": 1788848030,
+  "agentTimestampMs": 1788848030906,
+  "sessionId": "01SANITIZEDSESSION0001",
+  "eventId": "01SANITIZEDSESSION0001-2",
+  "toolExample": {
+    "toolCallId": "call-00000000-0000-4000-8000-000000000001-001",
+    "promptId": "00000000-0000-4000-8000-000000000001",
+    "name": "read_file"
+  },
+  "reportedUnavailable": [
+    "resume/fork recordings with usage on both sides",
+    "actual subagent parent/child recordings"
+  ],
+  "validationLimit": "No terminal prompt_id record or events.jsonl completion record is visible in the pasted excerpt; full cross-field identity correction is not established."
+}

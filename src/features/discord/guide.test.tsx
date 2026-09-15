@@ -35,10 +35,7 @@ test("public guide renders complete setup and an example before hydration", () =
 test("five example controls update images while install and account actions remain distinct", () => {
 	render(<DiscordGuidePage />);
 	for (const command of ["tokens", "cost", "context", "harness", "compare"]) {
-		const button = screen.getByRole("button", {
-			name: `/${command}`,
-			exact: true,
-		});
+		const button = screen.getByRole("button", { name: `/${command}` });
 		fireEvent.click(button);
 		expect(button).toHaveAttribute("aria-pressed", "true");
 		const img = screen.getByRole("img");

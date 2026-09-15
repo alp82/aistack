@@ -1,0 +1,15 @@
+{
+  "current_model_id": "grok-4.6",
+  "next_trace_turn": 2,
+  "chat_format_version": 1,
+  "reasoning_effort": "high",
+  "num_messages": 16,
+  "num_chat_messages": 8,
+  "info": {
+    "id": "fixture-session-b-id-001",
+    "cwd": "/fixture/workspace"
+  },
+  "created_at": "2026-01-01T22:30:08.558165Z",
+  "updated_at": "2026-01-01T22:30:39.367789Z",
+  "last_active_at": "2026-01-01T22:30:39.367789Z"
+}

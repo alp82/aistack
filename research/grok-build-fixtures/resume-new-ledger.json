@@ -1,0 +1,110 @@
+{
+  "name": "resume-new-ledger",
+  "provenance": "constructed from pinned source; not released-client output",
+  "records": {
+    "usage.json": {
+      "sessionId": "fixture-main",
+      "updatedAt": "2026-09-08T00:02:00Z",
+      "session": {
+        "inputTokens": 165,
+        "outputTokens": 35,
+        "cachedReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 200,
+        "modelCalls": 3,
+        "turnCount": 3,
+        "modelUsage": {
+          "grok-4": {
+            "inputTokens": 165,
+            "outputTokens": 35,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "totalTokens": 200,
+            "modelCalls": 3
+          }
+        },
+        "primaryModelId": "grok-4"
+      },
+      "turns": [
+        {
+          "turnNumber": 1,
+          "endedAt": "2026-09-07T23:59:59Z",
+          "inputTokens": 100,
+          "outputTokens": 20,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 120,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 100,
+              "outputTokens": 20,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 120,
+              "modelCalls": 1
+            }
+          }
+        },
+        {
+          "turnNumber": 2,
+          "endedAt": "2026-09-08T00:01:00Z",
+          "inputTokens": 40,
+          "outputTokens": 10,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 50,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 40,
+              "outputTokens": 10,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 50,
+              "modelCalls": 1
+            }
+          }
+        },
+        {
+          "turnNumber": 3,
+          "endedAt": "2026-09-08T00:02:00Z",
+          "inputTokens": 25,
+          "outputTokens": 5,
+          "cachedReadTokens": 0,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "totalTokens": 30,
+          "modelCalls": 1,
+          "primaryModelId": "grok-4",
+          "modelUsage": {
+            "grok-4": {
+              "inputTokens": 25,
+              "outputTokens": 5,
+              "cachedReadTokens": 0,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "totalTokens": 30,
+              "modelCalls": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "inputTokens": 165,
+    "outputTokens": 35
+  },
+  "sourceTests": [
+    "resume_folds_new_process_ledger_onto_persisted_session"
+  ]
+}
