@@ -359,7 +359,20 @@ export function extractGitWorkflow(
 	let index = 0;
 	for (const cwd of roots.values()) {
 		const done = repositoryTimer(++index, roots.size);
-		const history = run(cwd, gitLogArgs());
+		const metadata = run(cwd, gitMetadataArgs());
+		const parts: string[] = [];
+		let history: string | null = metadata === null ? null : "";
+		if (metadata !== null) {
+			for (const args of gitDiffBatches(metadata, options)) {
+				const part = run(cwd, args);
+				if (part === null) {
+					history = null;
+					break;
+				}
+				parts.push(part);
+			}
+			if (history !== null) history = parts.join("");
+		}
 		done(history);
 		if (history) histories.push(history);
 	}
@@ -389,7 +402,20 @@ export async function extractGitWorkflowAsync(
 	const worker = async (): Promise<void> => {
 		for (let cwd = queue.shift(); cwd !== undefined; cwd = queue.shift()) {
 			const done = repositoryTimer(++index, total);
-			const history = await run(cwd, gitLogArgs());
+			const metadata = await run(cwd, gitMetadataArgs());
+			const parts: string[] = [];
+			let history: string | null = metadata === null ? null : "";
+			if (metadata !== null) {
+				for (const args of gitDiffBatches(metadata, options)) {
+					const part = await run(cwd, args);
+					if (part === null) {
+						history = null;
+						break;
+					}
+					parts.push(part);
+				}
+				if (history !== null) history = parts.join("");
+			}
 			done(history);
 			if (history) histories.push(history);
 		}
@@ -455,17 +481,56 @@ function countCommits(history: string): number {
 	return count;
 }
 
-function gitLogArgs(): readonly string[] {
-	return [
+const GIT_FORMAT = `--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`;
+const GIT_DIFF_BATCH_SIZE = 128;
+
+function gitMetadataArgs(): readonly string[] {
+	return ["log", "--all", "--no-merges", GIT_FORMAT, "--no-patch", "-z"];
+}
+
+/**
+ * Walk every reachable commit's metadata: Git's date filters use committer
+ * time, but this reading uses author time, including backdated/rebased commits.
+ * Only selected commits need expensive blob diffs. Batches bound argv size and
+ * output buffers, and preserve the metadata traversal order for the reducer.
+ * No persisted cache: each read observes current refs, attributes and settings.
+ */
+function* gitDiffBatches(
+	metadata: string,
+	options: Pick<ExtractGitWorkflowOptions, "fromMs" | "toMs">,
+): Generator<readonly string[]> {
+	const fields = metadata.split("\u0000");
+	let hashes: string[] = [];
+	const args = (batch: string[]): readonly string[] => [
 		"-c",
 		`core.bigFileThreshold=${BIG_FILE_THRESHOLD}`,
 		"log",
-		"--all",
+		"--no-walk=unsorted",
 		"--no-merges",
-		`--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`,
+		GIT_FORMAT,
 		"--numstat",
 		"-z",
+		...batch,
+		"--",
 	];
+	for (let index = 0; index < fields.length; index++) {
+		if (fields[index]?.replace(/^\n+/, "") !== COMMIT_MARKER) continue;
+		const hash = fields[++index] ?? "";
+		const authoredMs = Date.parse(fields[++index] ?? "");
+		if (
+			!/^[a-f0-9]+$/.test(hash) ||
+			!Number.isFinite(authoredMs) ||
+			authoredMs < options.fromMs ||
+			authoredMs > options.toMs
+		)
+			continue;
+		hashes.push(hash);
+		if (hashes.length === GIT_DIFF_BATCH_SIZE) {
+			yield args(hashes);
+			hashes = [];
+		}
+	}
+	if (hashes.length) yield args(hashes);
 }
 
 function reduceGitHistories(

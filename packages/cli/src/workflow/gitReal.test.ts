@@ -255,3 +255,85 @@ it.each([false, true])(
 		}
 	},
 );
+
+it.each([false, true])(
+	"diffs only author-window commits while preserving the legacy reading (%s)",
+	async (asyncRun) => {
+		const directory = fs.mkdtempSync(
+			path.join(os.tmpdir(), "aistack-git-window-"),
+		);
+		try {
+			git(directory, ["init", "--initial-branch=main", "--quiet"]);
+			git(directory, ["config", "commit.gpgsign", "false"]);
+			const hashes: string[] = [];
+			for (const [index, authoredAt] of [
+				"2020-01-01T00:00:00Z",
+				"2026-08-01T00:00:00Z",
+				"2026-08-31T23:59:59Z",
+				"2020-01-02T00:00:00Z",
+			].entries()) {
+				write(directory, `src/file${index}.ts`, lines(index + 1));
+				git(directory, ["add", "-A"]);
+				// All commits have old committer times, including the in-window author.
+				git(
+					directory,
+					["commit", "--date", authoredAt, "-m", `commit ${index}`],
+					"2020-01-03T00:00:00Z",
+				);
+				hashes.push(
+					execFileSync("git", ["rev-parse", "HEAD"], {
+						cwd: directory,
+						encoding: "utf8",
+					}).trim(),
+				);
+			}
+			const options = {
+				workingDirectories: [directory],
+				fromMs: Date.parse("2026-08-01T00:00:00Z"),
+				toMs: Date.parse("2026-08-31T23:59:59Z"),
+				utcOffsetMinutes: 120,
+			};
+			const execute = (cwd: string, args: readonly string[]) =>
+				execFileSync("git", [...args], { cwd, encoding: "utf8" });
+			const legacyArgs = [
+				"-c",
+				"core.bigFileThreshold=1m",
+				"log",
+				"--all",
+				"--no-merges",
+				"--format=%x00aistack-commit%x00%H%x00%aI%x00",
+				"--numstat",
+				"-z",
+			];
+			const legacy = extractGitWorkflow({
+				...options,
+				run: (cwd, args) =>
+					execute(cwd, args[0] === "rev-parse" ? args : legacyArgs),
+			});
+			const diffed: string[] = [];
+			const run = (cwd: string, args: readonly string[]) => {
+				const output = execute(cwd, args);
+				if (args.includes("--numstat")) {
+					diffed.push(
+						...[...output.matchAll(/aistack-commit\0([a-f0-9]+)\0/g)].map(
+							(match) => match[1] ?? "",
+						),
+					);
+				}
+				return output;
+			};
+			const actual = asyncRun
+				? await extractGitWorkflowAsync({
+						...options,
+						run: async (cwd, args) => run(cwd, args),
+					})
+				: extractGitWorkflow({ ...options, run });
+			expect(actual).toEqual(legacy);
+			expect(actual.days[0]?.additions).toBe(2);
+			expect(actual.days[1]?.additions).toBe(3);
+			expect(diffed).toEqual([hashes[2], hashes[1]]);
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	},
+);
