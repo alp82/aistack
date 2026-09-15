@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.8](https://github.com/alp82/aistack/compare/cli-v0.16.7...cli-v0.16.8) (2026-09-15)
+
+
+### Bug Fixes
+
+* **cli:** recover large sync reads and reduce Git diff work ([#439](https://github.com/alp82/aistack/issues/439)) ([8af839f](https://github.com/alp82/aistack/commit/8af839f9bae64c5a46b352860ec1803b0aa7b8f8))
+
 ## [0.16.7](https://github.com/alp82/aistack/compare/cli-v0.16.6...cli-v0.16.7) (2026-09-14)
 
 
