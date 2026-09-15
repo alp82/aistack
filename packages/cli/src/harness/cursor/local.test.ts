@@ -17,9 +17,11 @@ import {
 	readLocalOnce,
 	SLOW_SESSION_MS,
 	setCursorReadWindow,
+	setCursorSessionCacheDir,
 	summaryNewestMs,
 } from "./local.js";
 import { scan } from "./scan.js";
+import { loadSessionCache, sessionCacheFile } from "./sessionCache.js";
 
 vi.mock("cursor-history", async (importOriginal) => ({
 	...(await importOriginal<typeof import("cursor-history")>()),
@@ -33,6 +35,7 @@ beforeEach(async () => {
 	vi.stubEnv("CURSOR_DATA_PATH", root);
 	vi.stubEnv("CURSOR_STORE_ROOT", path.join(dir, "store"));
 	forgetLocalReads();
+	setCursorSessionCacheDir(path.join(dir, "session-cache"));
 });
 afterEach(async () => {
 	disableTrace();
@@ -190,9 +193,21 @@ it.each([false, true])(
 		).run(JSON.stringify({ inputTokens: 123, outputTokens: 0 }));
 		if (partial) {
 			// Exercise the library's partial-resolution contract while retaining
-			// its real SQLite token extraction for the surviving messages.
+			// its real SQLite token extraction for the surviving messages. A
+			// session with no Composer half is the one the read still hands to
+			// the library (#452).
 			const reader = await import("cursor-history");
 			const getSession = reader.getSession;
+			const list = reader.listSessionSummaries;
+			vi.spyOn(reader, "listSessionSummaries").mockImplementation(
+				async (...args) => {
+					const page = await list(...args);
+					return {
+						...page,
+						data: page.data.map((s) => ({ ...s, sources: ["store"] })),
+					};
+				},
+			);
 			vi.spyOn(reader, "getSession").mockImplementation(async (...args) => ({
 				...(await getSession(...args)),
 				resolutionState: "partial",
@@ -661,4 +676,119 @@ it("a stalled listing reports once with nothing kept", async () => {
 	expect(stalled).toHaveLength(1);
 	expect(stalled[0]).toContain("during session listing");
 	expect(stalled[0]).toContain("0 sessions kept, 0 skipped");
+});
+
+// The session cache (#452). A session the listing dates and counts as the
+// last run did is served from the cache and its bubbles are never opened.
+it("serves an unchanged session from the cache and re-reads a changed one", async () => {
+	await createSource();
+	const logs: string[] = [];
+	enableTrace((line) => logs.push(line));
+	const first = await readLocalOnce(root, undefined);
+	expect(first.sessions).toHaveLength(1);
+	expect(
+		logs.filter((l) => l.includes("0 sessions from cache, 1 read directly")),
+	).toHaveLength(1);
+	const file = sessionCacheFile(
+		path.join(dir, "session-cache"),
+		root,
+		path.join(dir, "store"),
+	);
+	const held = await loadSessionCache(file);
+	expect([...held.keys()]).toEqual(["11111111-1111-4111-8111-111111111111"]);
+	// The bubbles are not opened for a cached session: the range read is the
+	// only thing that would see this row.
+	const global = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	const key = "bubbleId:11111111-1111-4111-8111-111111111111:assistant-1";
+	global
+		.prepare(
+			"UPDATE cursorDiskKV SET value = json_set(value, '$.tokenCount', json(?)) WHERE key = ?",
+		)
+		.run(JSON.stringify({ inputTokens: 777, outputTokens: 0 }), key);
+	global.close();
+	logs.length = 0;
+	const second = await readLocalOnce(root, undefined);
+	expect(
+		logs.filter((l) => l.includes("1 sessions from cache, 0 read directly")),
+	).toHaveLength(1);
+	expect(second.sessions[0].tokens.get("assistant-1")?.input).toBe(
+		first.sessions[0].tokens.get("assistant-1")?.input,
+	);
+	expect(second.sessions[0].session).toEqual(first.sessions[0].session);
+	// A newer stored moment on the session changes its stamp: the read opens
+	// the bubbles again and sees the new evidence.
+	const bump = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	bump
+		.prepare(
+			"UPDATE cursorDiskKV SET value = json_set(value, '$.lastUpdatedAt', ?) WHERE key = ?",
+		)
+		.run(
+			Date.UTC(2026, 8, 12),
+			"composerData:11111111-1111-4111-8111-111111111111",
+		);
+	bump.close();
+	logs.length = 0;
+	const third = await readLocalOnce(root, undefined);
+	expect(
+		logs.filter((l) => l.includes("0 sessions from cache, 1 read directly")),
+	).toHaveLength(1);
+	expect(third.sessions[0].tokens.get("assistant-1")?.input).toBe(777);
+});
+
+it("never caches a session with a corrupted message and drops a session the listing no longer names", async () => {
+	await createSource();
+	const global = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	global
+		.prepare("INSERT INTO cursorDiskKV VALUES (?, ?)")
+		.run("bubbleId:11111111-1111-4111-8111-111111111111:broken", "{not json");
+	global.close();
+	const reading = await readLocalOnce(root, undefined);
+	expect(reading.complete).toBe(false);
+	expect(
+		reading.sessions[0].session.messages.map((m) => m.metadata?.corrupted),
+	).toEqual([undefined, undefined, true]);
+	const file = sessionCacheFile(
+		path.join(dir, "session-cache"),
+		root,
+		path.join(dir, "store"),
+	);
+	expect((await loadSessionCache(file)).size).toBe(0);
+	// An entry for a session the complete listing does not name is pruned.
+	const fixed = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	fixed
+		.prepare("DELETE FROM cursorDiskKV WHERE key = ?")
+		.run("bubbleId:11111111-1111-4111-8111-111111111111:broken");
+	fixed.close();
+	await readLocalOnce(root, undefined);
+	expect((await loadSessionCache(file)).size).toBe(1);
+	const emptied = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	emptied.exec("DELETE FROM cursorDiskKV; DELETE FROM ItemTable");
+	emptied.close();
+	await readLocalOnce(root, undefined);
+	expect((await loadSessionCache(file)).size).toBe(0);
+});
+
+it("a null cache directory disables the session cache", async () => {
+	await createSource();
+	setCursorSessionCacheDir(null);
+	await readLocalOnce(root, undefined);
+	expect(
+		await readFile(
+			sessionCacheFile(
+				path.join(dir, "session-cache"),
+				root,
+				path.join(dir, "store"),
+			),
+		).catch((error: NodeJS.ErrnoException) => error.code),
+	).toBe("ENOENT");
 });

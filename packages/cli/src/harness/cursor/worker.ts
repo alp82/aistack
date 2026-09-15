@@ -16,6 +16,7 @@ const input = workerData as {
 	// The read window travels with the job: the worker is a fresh module
 	// instance, so the setter on the main thread never reaches it.
 	sinceMs: number | undefined;
+	sessionCacheDir: string | null | undefined;
 	trace: boolean;
 	traceStartedAt: number;
 	traceColor: boolean;
@@ -43,6 +44,7 @@ readLocalOnce(
 	undefined,
 	undefined,
 	input.sinceMs,
+	input.sessionCacheDir,
 ).then(
 	(read) => post({ kind: "result", read }),
 	(error) => {
