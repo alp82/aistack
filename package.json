@@ -1,6 +1,7 @@
 {
   "name": "aistack-web",
   "private": true,
+  "packageManager": "pnpm@10.27.0",
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3019",
