@@ -57,6 +57,24 @@ export function traceStartedAt(): number {
 	return startedAtMs;
 }
 
+/**
+ * The render settings a worker thread needs to format lines the way the main
+ * thread does. A worker's `process.stderr` is not a TTY, so it would detect
+ * neither color nor width on its own.
+ */
+export function traceRenderOptions(): { color: boolean; columns?: number } {
+	return { color: colored, ...(columns !== undefined ? { columns } : {}) };
+}
+
+/**
+ * A line another thread already formatted. The worker's own stderr reaches
+ * the terminal asynchronously through the main thread and lands after later
+ * main-thread lines; posting the line and writing it here keeps the order.
+ */
+export function traceLine(line: string): void {
+	sink?.(line);
+}
+
 export function disableTrace(): void {
 	sink = null;
 }

@@ -34,6 +34,7 @@ import {
 	getToken,
 	type Settings,
 } from "../config.js";
+import { setCursorReadWindow } from "../harness/cursor/local.js";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
@@ -357,6 +358,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// date the server would keep. Two scans over the same files; the second is
 	// the one the days and the workflow blocks come from.
 	const daysSinceMs = windowStartMs(now, retentionDays);
+	// The Cursor read is one walk per process and its memo cannot widen for
+	// free, so the widest window of this run is set before the first detect
+	// asks for the 30-day one (#445).
+	setCursorReadWindow(daysSinceMs);
 	// Every harness is checked and scanned at once (#420): the adapters are
 	// independent, the transcript readers are asynchronous, and Cursor's
 	// synchronous SQLite walk runs in a worker thread, so the board keeps

@@ -1,8 +1,8 @@
 diff --git a/dist/cjs/core/composer-sqlite.js b/dist/cjs/core/composer-sqlite.js
-index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..4e5896ace0371edac4dbc96a87b66bc4b4548841 100644
+index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fffe4cfebcc 100644
 --- a/dist/cjs/core/composer-sqlite.js
 +++ b/dist/cjs/core/composer-sqlite.js
-@@ -24,7 +24,19 @@ function sqliteLikeLiteralPrefix(value) {
+@@ -24,7 +24,43 @@ function sqliteLikeLiteralPrefix(value) {
   * IDs that differ only by case cannot share payload rows.
   */
  function exactBlobPrefixPredicate(qualifiedKey) {
@@ -20,32 +20,94 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..4e5896ace0371edac4dbc96a87b66bc4
 +        return prefix + String.fromCodePoint(0x10ffff) + String.fromCodePoint(0x10ffff);
 +    const lastLength = last > 0xffff ? 2 : 1;
 +    return prefix.slice(0, prefix.length - lastLength) + String.fromCodePoint(last + 1);
++}
++/**
++ * A LIKE pattern that is one literal prefix and a trailing `%`, with no other
++ * wildcard and no escape, is also a key range, and a walk over a key range can
++ * page by key. The rowid keyset below needs a rowid-ordered read, which SQLite
++ * serves by reading EVERY row of the table in rowid order: `bubbleId:%` over
++ * a 20 GB store walks every `agentKv:` row as well, and the first listing
++ * page takes minutes. A key keyset over the same range is one pass over the
++ * UNIQUE index on `key`, in key order, touching only the rows in range. (An
++ * index range with ORDER BY rowid is worse than either: SQLite sorts the whole
++ * remaining range for every page.) The LIKE stays on the query; the visitors
++ * of these walks count, collect and group, and none depends on the order.
++ * The range matches the prefix by exact case, and the prefixes the library
++ * passes are Cursor's own key namespaces, which have one spelling.
++ */
++function literalPrefixRange(keyPattern) {
++    const prefix = keyPattern.slice(0, -1);
++    if (!keyPattern.endsWith('%') || prefix.length === 0 || /[%_\\]/.test(prefix))
++        return null;
++    return { lower: prefix, upper: exactPrefixUpperBound(prefix) };
++}
++/** `key` bounds for the next page of a key keyset walk. Bind: lower, upper. */
++function keyPagePredicate(qualifiedKey, afterKey) {
++    return `${qualifiedKey} ${afterKey === null ? '>=' : '>'} ? AND ${qualifiedKey} < ?`;
  }
  function abortError(signal) {
      if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
-@@ -151,8 +163,8 @@ function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, si
+@@ -147,12 +183,18 @@ function getBoundedComposerMetadataByKey(db, table, key, budget, signal) {
+ /** Iterate finite row-ID-keyset metadata pages using the operation's page bound. */
+ function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, signal) {
+     const pageRows = budget.limits.sqlitePageRows;
++    const range = literalPrefixRange(keyPattern);
+     let afterRowId = null;
++    let afterKey = null;
      while (true) {
          throwIfAborted(signal);
-         const rawPage = db
+-        const rawPage = db
 -            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND (? IS NULL OR ${table}.rowid > ?) ORDER BY ${table}.rowid ASC LIMIT ?`)
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
-+            .all(keyPattern, afterRowId, pageRows);
++        const rawPage = range
++            ? db
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
++                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
++            : db
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -181,8 +193,8 @@ function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, visit, sig
+@@ -168,6 +210,7 @@ function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, si
+         if (legacyInlinePage || rawPage.length < pageRows)
+             break;
+         afterRowId = page[page.length - 1].rowId;
++        afterKey = page[page.length - 1].key;
+     }
+ }
+ /**
+@@ -177,12 +220,18 @@ function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, si
+  */
+ function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, visit, signal) {
+     const pageRows = budget.limits.sqlitePageRows;
++    const range = literalPrefixRange(keyPattern);
+     let afterRowId = null;
++    let afterKey = null;
      while (true) {
          throwIfAborted(signal);
-         const rawPage = db
+-        const rawPage = db
 -            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
-+            .all(keyPattern, afterRowId, pageRows);
++        const rawPage = range
++            ? db
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
++                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
++            : db
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -205,8 +217,8 @@ function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix, budget
+@@ -196,6 +245,7 @@ function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, visit, sig
+         if (legacyInlinePage || rawPage.length < pageRows)
+             break;
+         afterRowId = page[page.length - 1].rowId;
++        afterKey = page[page.length - 1].key;
+     }
+ }
+ /** Iterate nullable global bubbles for one exact, case-sensitive byte prefix. */
+@@ -205,8 +255,8 @@ function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix, budget
      while (true) {
          throwIfAborted(signal);
          const rawPage = db
@@ -56,7 +118,7 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..4e5896ace0371edac4dbc96a87b66bc4
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -336,7 +348,7 @@ function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget,
+@@ -336,7 +386,7 @@ function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget,
      throwIfAborted(signal);
      const raw = db
          .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
@@ -66,10 +128,10 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..4e5896ace0371edac4dbc96a87b66bc4
          return undefined;
      const metadata = normalizeBubbleMetadata(raw, keyPrefix);
 diff --git a/dist/core/composer-sqlite.js b/dist/core/composer-sqlite.js
-index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..a688b33eb3f8a0e1fa7c59e1a3cc1bcac9075dbf 100644
+index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742d7641d6e 100644
 --- a/dist/core/composer-sqlite.js
 +++ b/dist/core/composer-sqlite.js
-@@ -9,7 +9,19 @@ export function sqliteLikeLiteralPrefix(value) {
+@@ -9,7 +9,43 @@ export function sqliteLikeLiteralPrefix(value) {
   * IDs that differ only by case cannot share payload rows.
   */
  function exactBlobPrefixPredicate(qualifiedKey) {
@@ -87,32 +149,94 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..a688b33eb3f8a0e1fa7c59e1a3cc1bca
 +        return prefix + String.fromCodePoint(0x10ffff) + String.fromCodePoint(0x10ffff);
 +    const lastLength = last > 0xffff ? 2 : 1;
 +    return prefix.slice(0, prefix.length - lastLength) + String.fromCodePoint(last + 1);
++}
++/**
++ * A LIKE pattern that is one literal prefix and a trailing `%`, with no other
++ * wildcard and no escape, is also a key range, and a walk over a key range can
++ * page by key. The rowid keyset below needs a rowid-ordered read, which SQLite
++ * serves by reading EVERY row of the table in rowid order: `bubbleId:%` over
++ * a 20 GB store walks every `agentKv:` row as well, and the first listing
++ * page takes minutes. A key keyset over the same range is one pass over the
++ * UNIQUE index on `key`, in key order, touching only the rows in range. (An
++ * index range with ORDER BY rowid is worse than either: SQLite sorts the whole
++ * remaining range for every page.) The LIKE stays on the query; the visitors
++ * of these walks count, collect and group, and none depends on the order.
++ * The range matches the prefix by exact case, and the prefixes the library
++ * passes are Cursor's own key namespaces, which have one spelling.
++ */
++function literalPrefixRange(keyPattern) {
++    const prefix = keyPattern.slice(0, -1);
++    if (!keyPattern.endsWith('%') || prefix.length === 0 || /[%_\\]/.test(prefix))
++        return null;
++    return { lower: prefix, upper: exactPrefixUpperBound(prefix) };
++}
++/** `key` bounds for the next page of a key keyset walk. Bind: lower, upper. */
++function keyPagePredicate(qualifiedKey, afterKey) {
++    return `${qualifiedKey} ${afterKey === null ? '>=' : '>'} ? AND ${qualifiedKey} < ?`;
  }
  function abortError(signal) {
      if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
-@@ -136,8 +148,8 @@ export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, vi
+@@ -132,12 +168,18 @@ export function getBoundedComposerMetadataByKey(db, table, key, budget, signal)
+ /** Iterate finite row-ID-keyset metadata pages using the operation's page bound. */
+ export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, signal) {
+     const pageRows = budget.limits.sqlitePageRows;
++    const range = literalPrefixRange(keyPattern);
+     let afterRowId = null;
++    let afterKey = null;
      while (true) {
          throwIfAborted(signal);
-         const rawPage = db
+-        const rawPage = db
 -            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND (? IS NULL OR ${table}.rowid > ?) ORDER BY ${table}.rowid ASC LIMIT ?`)
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
-+            .all(keyPattern, afterRowId, pageRows);
++        const rawPage = range
++            ? db
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
++                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
++            : db
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -166,8 +178,8 @@ export function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, vis
+@@ -153,6 +195,7 @@ export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, vi
+         if (legacyInlinePage || rawPage.length < pageRows)
+             break;
+         afterRowId = page[page.length - 1].rowId;
++        afterKey = page[page.length - 1].key;
+     }
+ }
+ /**
+@@ -162,12 +205,18 @@ export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, vi
+  */
+ export function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, visit, signal) {
+     const pageRows = budget.limits.sqlitePageRows;
++    const range = literalPrefixRange(keyPattern);
+     let afterRowId = null;
++    let afterKey = null;
      while (true) {
          throwIfAborted(signal);
-         const rawPage = db
+-        const rawPage = db
 -            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
-+            .all(keyPattern, afterRowId, pageRows);
++        const rawPage = range
++            ? db
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
++                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
++            : db
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -190,8 +202,8 @@ export function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix,
+@@ -181,6 +230,7 @@ export function forEachBoundedComposerBubbleMetadata(db, keyPattern, budget, vis
+         if (legacyInlinePage || rawPage.length < pageRows)
+             break;
+         afterRowId = page[page.length - 1].rowId;
++        afterKey = page[page.length - 1].key;
+     }
+ }
+ /** Iterate nullable global bubbles for one exact, case-sensitive byte prefix. */
+@@ -190,8 +240,8 @@ export function forEachBoundedComposerBubbleMetadataByExactPrefix(db, keyPrefix,
      while (true) {
          throwIfAborted(signal);
          const rawPage = db
@@ -123,7 +247,7 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..a688b33eb3f8a0e1fa7c59e1a3cc1bca
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -321,7 +333,7 @@ export function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix,
+@@ -321,7 +371,7 @@ export function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix,
      throwIfAborted(signal);
      const raw = db
          .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
