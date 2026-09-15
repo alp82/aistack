@@ -46,6 +46,16 @@ origins are required; redirects and credentials in URLs are refused. Missing,
 unapproved, oversized, or failed icons render a neutral mark. Never add an
 origin solely because it appeared in a request.
 
+The creator avatar on the name plate loads through the same list. A
+storage-backed avatar resolves to the Convex storage origin and renders; an
+avatar that still points at a third-party origin renders the handle's first
+letter instead, unless that origin is trusted here.
+
+The card prints bare dollar figures. The price-table ids, the priced share and
+the lower-bound status for each figure go in the embed footer, built by
+`convex/lib/discordPriceFooter.ts`, so every dollar figure still cites its
+source.
+
 ## Bounds and failures
 
 Requests are limited to 512 KiB, 250 entries per catalog/list, and 180 days per

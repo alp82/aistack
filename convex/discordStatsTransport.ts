@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction, type ActionCtx } from './_generated/server'
 import type { DiscordAnswer } from './discordStats'
+import { priceFooter } from './lib/discordPriceFooter'
 import { controlId, WORK_TTL, type View } from './lib/discordSession'
 import { bytesToHex, encodeUtf8 } from './lib/webCrypto'
 import { getAppUrl } from './httpCli'
@@ -416,7 +417,18 @@ export const fulfill = internalAction({
           choices,
         ),
       }
-      if (png) data.embeds = [{ image: { url: 'attachment://stats.png' } }]
+      if (png) {
+        // The card prints bare dollars; the footer carries their citations.
+        const text = answers.subject
+          ? priceFooter(view.command, answers.subject, answers.comparison)
+          : undefined
+        data.embeds = [
+          {
+            image: { url: 'attachment://stats.png' },
+            ...(text ? { footer: { text } } : {}),
+          },
+        ]
+      }
       else if (!pickerOnly) {
         data.embeds = []
         data.attachments = []

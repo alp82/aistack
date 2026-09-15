@@ -149,17 +149,45 @@ describe("production Discord renderer", () => {
 			}
 		},
 	);
-	test("shows citations, coverage, estimates and removes withheld costs", () => {
+	test("prints bare dollars, cites nothing on the card and removes withheld costs", () => {
 		const p = payload("compare", true);
 		let svg = discordStatsSvg(p).svg;
-		expect(svg).toContain("modelPrices/22-abc");
-		expect(svg).toContain("80.0% of tokens priced");
-		expect(svg).toContain("estimate / lower bound");
+		expect(svg).toContain(">$2</text>");
+		// The citation lives in the embed footer, never on the card.
+		expect(svg).not.toContain("modelPrices/22-abc");
+		expect(svg).not.toContain("of tokens priced");
 		p.subject.publishCost = false;
 		if (p.comparison) p.comparison.publishCost = false;
 		svg = discordStatsSvg(p).svg;
-		expect(svg).not.toContain("$2.00");
-		expect(svg).not.toContain("modelPrices/22-abc");
+		expect(svg).not.toContain(">$2</text>");
+		expect(svg).not.toContain("COST");
+		const solo = payload("cost");
+		expect(discordStatsSvg(solo).svg).toContain("MEASURED USAGE");
+		solo.subject.publishCost = false;
+		expect(discordStatsSvg(solo).svg).not.toContain("MEASURED USAGE");
+	});
+	test("names both people, falls back to an initial without an avatar and loads it with one", async () => {
+		const p = payload("tokens", true);
+		const svg = discordStatsSvg(p).svg;
+		expect(svg).toContain("A-CREATOR-W…");
+		expect(svg).toContain(">A</text>");
+		expect(svg).toContain(">VS</text>");
+		expect(svg).toContain("Sep 6 to 12, 2026 · 7 days");
+		p.subject.identity.avatarUrl = "https://storage.example/avatar";
+		if (p.comparison)
+			p.comparison.identity.avatarUrl = "https://storage.example/avatar";
+		const png = await sharp({
+			create: { width: 4, height: 4, channels: 4, background: "#fff" },
+		})
+			.png()
+			.toBuffer();
+		const images = await loadRenderIcons(
+			p,
+			["https://storage.example"],
+			async () => new Response(new Uint8Array(png)),
+		);
+		expect(images.has("https://storage.example/avatar")).toBe(true);
+		expect(discordStatsSvg(p, images).svg).not.toContain(">A</text>");
 	});
 	test("fills five subscriptions and full list preserves sponsored and included states", async () => {
 		const p = payload("cost");
@@ -198,6 +226,7 @@ describe("production Discord renderer", () => {
 		p.subject.publishWorkflow = false;
 		svg = discordStatsSvg(p).svg;
 		expect(svg).not.toContain("Retained calls only");
+		expect(svg).toContain(">n/a</text>");
 	});
 	test("missing and recorded zero stay distinct with no infinite delta", async () => {
 		const p = payload();
