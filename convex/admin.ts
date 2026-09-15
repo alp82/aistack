@@ -4,6 +4,7 @@ import type { Id } from './_generated/dataModel'
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
 import { isAdmin } from './lib/admin'
+import { clearStackReports } from './lib/stackReports'
 import { assertValidIconUrl } from './lib/iconUrl'
 import { buildTiers } from './lib/tiers'
 
@@ -671,15 +672,8 @@ export const unmarkStackLowQuality = mutation({
   args: { stackId: v.id('stacks') },
   handler: async (ctx, args) => {
     if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
-    await ctx.db.patch(args.stackId, { isLowQuality: false, updatedAt: Date.now() })
-    // Also clear all flags so it doesn't reappear in the flagged queue
-    const flags = await ctx.db
-      .query('stackFlags')
-      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
-      .collect()
-    for (const flag of flags) {
-      await ctx.db.delete(flag._id)
-    }
+    // Clears the flags too, so the stack does not reappear in the flagged queue.
+    await clearStackReports(ctx, args.stackId)
   },
 })
 
