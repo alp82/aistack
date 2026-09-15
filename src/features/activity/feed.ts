@@ -7,7 +7,7 @@ import type { api } from "../../../convex/_generated/api";
  *
  * The server owns every figure and every exclusion. This module only decides
  * how a figure reads on screen - and the row GRAMMAR, which #84 locked:
- * movement leads, the total is demoted, the stack name is the link.
+ * movement leads, the total is demoted, the stack is the link.
  */
 
 export type Band = FunctionReturnType<typeof api.activityFeed.band>;
@@ -94,11 +94,6 @@ export function liveDays(points: readonly DayPoint[]): number {
 export function syncTokens(row: FeedRow): number {
 	if (row.event.type !== "sync.landed") return 0;
 	return row.event.harnesses.reduce((sum, h) => sum + h.totalTokens, 0);
-}
-
-/** `alp/ai-stack-ab12` - the compact identity a one-line surface has room for. */
-export function rowHandle(row: FeedRow): string {
-	return `${row.stack.creator}/${row.stack.slug}`;
 }
 
 /**

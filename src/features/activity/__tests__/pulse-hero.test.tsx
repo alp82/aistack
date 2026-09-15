@@ -13,8 +13,8 @@ afterEach(cleanup);
 
 describe("the hero", () => {
 	it("carries the canonical reading where the animation cannot", () => {
-		// SpeedingText paints its digits from an effect, so the crawler-facing
-		// sentence is the sr-only line - it holds every figure the reel will show.
+		// PaceCounter paints its digits from an effect, so the crawler-facing
+		// sentence is the sr-only line - it holds the 24-hour total and levels.
 		const { container } = render(<PulseHero band={band()} />);
 		const reading = container.querySelector(".sr-only");
 		expect(reading?.textContent).toContain(
@@ -47,12 +47,31 @@ describe("the hero", () => {
 		);
 	});
 
-	it("names its window in the kicker", () => {
+	it("names the counter's window in the kicker and its pace under it", () => {
 		render(<PulseHero band={band()} />);
-		expect(screen.getByText("Usage in the last 24 hours")).toBeInTheDocument();
+		expect(
+			screen.getByText("Tokens since you opened this page"),
+		).toBeInTheDocument();
+		expect(screen.getByText(/at the last 24 hours' pace/)).toBeInTheDocument();
 	});
 
-	it("renders a quiet window as an em dash, with no counter mounted", () => {
+	it("lays the levels out in one static row, the 24-hour total first", () => {
+		const { container } = render(<PulseHero band={band()} />);
+		const labels = [...container.querySelectorAll(".grid span:nth-child(2)")]
+			.map((el) => el.textContent)
+			.filter(Boolean);
+		expect(labels).toEqual([
+			"tokens · 24h",
+			"sessions",
+			"projects",
+			"tools",
+			"stacks",
+		]);
+		expect(screen.getByText("512M")).toBeInTheDocument();
+		expect(screen.getByText("596")).toBeInTheDocument();
+	});
+
+	it("renders a quiet window as a dash, with no counter mounted", () => {
 		render(
 			<PulseHero
 				band={band({
@@ -69,6 +88,7 @@ describe("the hero", () => {
 		);
 		expect(screen.getByText("-")).toBeInTheDocument();
 		expect(screen.queryByText(/tokens measured/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/hours' pace/)).not.toBeInTheDocument();
 	});
 
 	it("compresses the whole feed into one latest line", () => {
@@ -78,8 +98,10 @@ describe("the hero", () => {
 		);
 		expect(container.textContent).toContain("latest:");
 		expect(container.textContent).toContain("+285M measured");
-		const link = screen.getByText("alp/ai-stack-ab12");
+		// The stack's NAME is the link, not creator/slug.
+		const link = screen.getByText("AI Stack");
 		expect(link.closest("a")).toHaveAttribute("href", "/stacks/$slug");
+		expect(container.textContent).not.toContain("alp/ai-stack-ab12");
 	});
 
 	it("sends the visitor to the sync story, not a form", () => {
@@ -96,10 +118,12 @@ describe("the hero", () => {
 });
 
 describe("the trend chart", () => {
-	it("titles itself with the range select, defaulting to 7 days", () => {
-		render(<PulseHero band={band()} />);
-		expect(screen.getByText("Usage in the")).toBeInTheDocument();
+	it("titles itself with the range select under the marks, defaulting to 7 days", () => {
+		const { container } = render(<PulseHero band={band()} />);
 		expect(screen.getByText("last 7 days")).toBeInTheDocument();
+		// The select follows the chart in document order.
+		const text = container.textContent ?? "";
+		expect(text.indexOf("high ·")).toBeLessThan(text.indexOf("Usage in the"));
 	});
 
 	it("stands its high and low chips on the line", () => {

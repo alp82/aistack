@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { RelativeTime } from "@/components/RelativeTime";
-import SpeedingText from "@/components/speeding-text";
 import {
 	BrutalistSelect,
 	type BrutalistSelectOption,
@@ -10,42 +9,43 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatDay, Sparkline } from "@/features/charts";
 import type { Band, DayPoint } from "./feed";
-import {
-	fmtCount,
-	fmtTokens,
-	liveDays,
-	MONO_LABEL,
-	rowHandle,
-	rowSummary,
-} from "./feed";
+import { fmtCount, fmtTokens, liveDays, MONO_LABEL, rowSummary } from "./feed";
+import { fmtSeconds, PaceCounter, usePace } from "./PaceCounter";
 
 /**
- * The landing pulse - one bold number (#147, locked from the pulse-band
- * prototype's variant D after the E1 band was judged too busy).
+ * The landing pulse - one moving number (#147's variant D, reshaped by the
+ * 2026-09-15 strip prototype, variant K).
  *
- *   ■ USAGE IN THE LAST 24 HOURS
+ *   ■ TOKENS SINCE YOU OPENED THIS PAGE
  *
- *          106,299,666,998 tokens        ← SpeedingText counter
- *              596 sessions              ← SpeedingText reel
+ *          1,528,415                     ← PaceCounter, linear, blurred lanes
+ *          8s at the last 24 hours' pace
+ *   ───────────────────────────────────
+ *   15.48B    1,156    218    34    14   ← the levels, big, static
+ *   TOKENS·24H SESSIONS PROJECTS TOOLS STACKS
  *
- *          USAGE IN THE [ last 7 days ▾ ]
  *          ~~~~~~~/\~~~~ with high/low bubbles + hover tooltip
+ *          USAGE IN THE [ last 7 days ▾ ]
  *
- *   latest: alp/ai-stack +285M measured · 4h ago
  *          [ ADD YOUR TOKENS → ]  all activity
+ *   latest: AI Stack +285M measured · 4h ago
  *
- * ONE INSIGHT AT A TIME. The old band's four tiles and four feed rows each
- * competed for the same glance; here the token count is the only headline,
- * the other levels take turns in the reel, and the whole feed is one line.
+ * ONE MOVING THING. The counter is the only animation; the levels sit still
+ * in a row instead of taking turns in a reel, so a visitor reads all of them
+ * at once and the eye has one place to rest.
  *
- * THE ANIMATION IS NOT THE RECORD. SpeedingText paints its digits from an
+ * THE ANIMATION IS NOT THE RECORD. PaceCounter paints its digits from an
  * effect, so the first HTML carries them nowhere a crawler or screen reader
- * looks. The sr-only sentence below the count is the canonical server-rendered
- * reading; the animated pair is aria-hidden and exists for sighted visitors.
+ * looks. The sr-only sentence is the canonical server-rendered reading, and
+ * it carries the 24-hour total the counter is paced by, not the counter's
+ * own figure, which is an estimate.
  *
- * QUIET IS NOT ZERO (#84): with no sync in the window the count renders an em
- * dash and the reel does not mount - a counter racing to zero reads as a
- * broken site, not a quiet one.
+ * QUIET IS NOT ZERO (#84): with no sync in the window the count renders a
+ * dash and no counter mounts - a counter sitting at zero reads as a broken
+ * site, not a quiet one.
+ *
+ * The latest line names the STACK, not `creator/slug`: the slug is an
+ * address, the name is what the owner called it.
  *
  * The tooltip chips are QUIET GLASS - translucent canvas, no border, no solid
  * fill. Bordered means control (the range select), filled means nothing here:
@@ -161,21 +161,26 @@ function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
 	const hideMin = hover === minIdx || minIdx === maxIdx;
 	const hideMax = hover === maxIdx;
 
+	// The range select sits UNDER the marks: the chart is the object, the
+	// control is its caption, and the high chip needs the headroom above.
+	const rangeControl = (
+		<div className="mt-4 flex items-center justify-center gap-3">
+			<span className={`${MONO_LABEL} text-fg-muted`}>Usage in the</span>
+			<BrutalistSelect
+				options={RANGE_OPTIONS}
+				value={range}
+				onChange={(next) => {
+					setRange(next);
+					setHover(null);
+				}}
+				size="sm"
+				className="w-36"
+			/>
+		</div>
+	);
+
 	return (
-		<div className="mt-10 w-full max-w-2xl">
-			<div className="mb-3 flex items-center justify-center gap-3">
-				<span className={`${MONO_LABEL} text-fg-muted`}>Usage in the</span>
-				<BrutalistSelect
-					options={RANGE_OPTIONS}
-					value={range}
-					onChange={(next) => {
-						setRange(next);
-						setHover(null);
-					}}
-					size="sm"
-					className="w-36"
-				/>
-			</div>
+		<div className="mt-16 w-full max-w-2xl">
 			<div
 				ref={ref}
 				className="relative touch-none"
@@ -236,6 +241,7 @@ function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
 					</>
 				) : null}
 			</div>
+			{rangeControl}
 		</div>
 	);
 }
@@ -244,25 +250,18 @@ export function PulseHero({ band }: { readonly band: Band }) {
 	const { totals, usage, points, rows } = band;
 	const quiet = usage.stacks === 0;
 	const latest = rows[0];
+	const pace = usePace(usage.tokens);
 
-	// The band is a live Convex subscription, so a landing sync changes
-	// `usage.tokens` under an open tab. The counter then races FROM the reading
-	// the viewer is already looking at, not from zero - a replay of the whole
-	// count-up would claim the day started over. First paint still runs 0 → value.
-	//
-	// The pair lives in STATE and advances only when the level changes. The
-	// query re-delivers an identical band right after hydration; a ref updated
-	// per render fed that re-render from = value, which cancelled the race
-	// before it drew a frame.
-	const [run, setRun] = useState({ from: 0, to: usage.tokens });
-	if (run.to !== usage.tokens) {
-		setRun({ from: run.to, to: usage.tokens });
-	}
-	const reel = [
-		`${fmtCount(usage.sessions)} sessions`,
-		`${fmtCount(usage.projects)} projects`,
-		`${fmtCount(usage.tools)} tools`,
-		`${totals.stacksSeen} ${totals.stacksSeen === 1 ? "stack" : "stacks"}`,
+	const levels: [string, string, boolean][] = [
+		["tokens · 24h", fmtTokens(usage.tokens), true],
+		["sessions", fmtCount(usage.sessions), false],
+		["projects", fmtCount(usage.projects), false],
+		["tools", fmtCount(usage.tools), false],
+		[
+			totals.stacksSeen === 1 ? "stack" : "stacks",
+			fmtCount(totals.stacksSeen),
+			false,
+		],
 	];
 
 	return (
@@ -274,7 +273,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 						<span className="relative inline-flex h-2 w-2 bg-accent-lime" />
 					</span>
 					<span className="font-mono text-sm font-semibold uppercase tracking-[0.25em] text-accent-lime">
-						Usage in the last 24 hours
+						Tokens since you opened this page
 					</span>
 				</span>
 
@@ -293,91 +292,39 @@ export function PulseHero({ band }: { readonly band: Band }) {
 							{totals.stacksSeen === 1 ? "stack" : "stacks"}.
 						</p>
 
-						{/* SpeedingText sets `display: flex` inline, which beats a
-						    `hidden` utility on the component itself - the responsive
-						    pair needs wrapper divs. */}
-						<div
-							aria-hidden="true"
-							className="mt-6 w-full tracking-tighter text-fg-primary"
-						>
+						<div className="mt-6 w-full tracking-tighter text-fg-primary">
 							<div className="hidden md:block">
-								<SpeedingText
-									value={run.to}
-									from={run.from}
-									suffix=" tokens"
-									duration={2600}
-									italic={false}
-									fontWeight={900}
-									fontSize={80}
-									textColor="currentColor"
-									height="6.5rem"
-								/>
+								<PaceCounter pace={pace} fontSize={80} height="6.5rem" />
 							</div>
 							<div className="md:hidden">
-								<SpeedingText
-									value={run.to}
-									from={run.from}
-									suffix=" tokens"
-									duration={2600}
-									italic={false}
-									fontWeight={900}
-									fontSize={32}
-									textColor="currentColor"
-									height="3rem"
-								/>
+								<PaceCounter pace={pace} fontSize={32} height="3rem" />
 							</div>
 						</div>
-
 						<div
 							aria-hidden="true"
-							className="mt-2 tracking-tighter text-fg-secondary"
+							className="mt-1 font-mono text-xs text-fg-muted"
 						>
-							<div className="hidden md:block">
-								<SpeedingText
-									words={reel}
-									interval={2200}
-									swapDuration={520}
-									travel={70}
-									italic={false}
-									fontWeight={900}
-									fontSize={44}
-									textColor="currentColor"
-									height="3.5rem"
-								/>
-							</div>
-							<div className="md:hidden">
-								<SpeedingText
-									words={reel}
-									interval={2200}
-									swapDuration={520}
-									travel={50}
-									italic={false}
-									fontWeight={900}
-									fontSize={28}
-									textColor="currentColor"
-									height="2.5rem"
-								/>
-							</div>
+							{fmtSeconds(pace.seconds)} at the last 24 hours' pace
+						</div>
+
+						<div className="mt-10 grid w-full max-w-4xl grid-cols-3 gap-x-4 gap-y-6 border-t border-stroke-muted pt-6 md:grid-cols-5">
+							{levels.map(([label, value, lead]) => (
+								<div key={label} className="flex flex-col items-center gap-1">
+									<span
+										className={`text-4xl font-black leading-none tracking-tighter tabular-nums md:text-5xl ${
+											lead ? "text-accent-lime" : "text-fg-primary"
+										}`}
+									>
+										{value}
+									</span>
+									<span className={`${MONO_LABEL} text-fg-muted`}>{label}</span>
+								</div>
+							))}
 						</div>
 					</>
 				)}
 
 				<TokenTrend points={points} />
-
-				{latest ? (
-					<div className="mt-6 font-mono text-xs text-fg-muted">
-						latest:{" "}
-						<Link
-							to="/stacks/$slug"
-							params={{ slug: latest.stack.slug }}
-							className="font-semibold text-fg-secondary hover:text-accent-lime"
-						>
-							{rowHandle(latest)}
-						</Link>{" "}
-						{rowSummary(latest)} ·{" "}
-						<RelativeTime at={latest.at} className="text-fg-muted/60" />
-					</div>
-				) : null}
 
 				<div className="mt-8 flex items-center gap-6">
 					<Button asChild size="lg">
@@ -392,6 +339,21 @@ export function PulseHero({ band }: { readonly band: Band }) {
 						all activity
 					</Link>
 				</div>
+
+				{latest ? (
+					<div className="mt-6 font-mono text-xs text-fg-muted">
+						latest:{" "}
+						<Link
+							to="/stacks/$slug"
+							params={{ slug: latest.stack.slug }}
+							className="font-semibold text-fg-secondary hover:text-accent-lime"
+						>
+							{latest.stack.name}
+						</Link>{" "}
+						{rowSummary(latest)} ·{" "}
+						<RelativeTime at={latest.at} className="text-fg-muted/60" />
+					</div>
+				) : null}
 			</div>
 		</section>
 	);
