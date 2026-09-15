@@ -1,11 +1,11 @@
 import path from "node:path";
 import { normalizeModel } from "@aistack/pricing";
-import type { Message } from "cursor-history";
 import { detectMcpServers } from "../../mcp.js";
 import type { HarnessWorkflowReducer } from "../../workflow/reducer.js";
 import { type Aggregate, asStr, bump } from "../shared/aggregate.js";
 import {
 	type Contribution,
+	type LocalMessage,
 	type LocalSession,
 	messageTimes,
 } from "./evidence.js";
@@ -76,7 +76,7 @@ export function projectHistory(options: {
 				? session.canonicalWorkspacePath
 				: undefined;
 		const times = messageTimes(session, api);
-		const scopeOf = (message: Message) => {
+		const scopeOf = (message: LocalMessage) => {
 			// A sidechain bit establishes routing. Only an actual parent reference establishes fan-out.
 			const parent =
 				message.parentMessageId && nativeOwners.get(message.parentMessageId);

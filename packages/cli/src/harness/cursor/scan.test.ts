@@ -192,7 +192,7 @@ it("preserves copied native response prefixes once while counting newly performe
 				...parent.messages[1],
 				id: "child-new",
 				isSidechain: true,
-				content: "new text",
+				contentLength: 8,
 			},
 		],
 	});
@@ -224,23 +224,21 @@ it("retains untimed model inventory without inventing a dated usage row", async 
 it("projects tools, questions and API routing through shared workflow while keeping accumulated Context absent", async () => {
 	const reply = local.sessions[0].session.messages[1];
 	reply.toolCalls = [
-		{ id: "read", name: "read_file_v2", status: "completed" },
-		{ id: "edit", name: "search_replace", status: "completed" },
+		{ id: "read", name: "read_file_v2" },
+		{ id: "edit", name: "search_replace" },
 		{
 			id: "test",
 			name: "run_terminal_cmd",
-			status: "completed",
 			params: { command: "pnpm test" },
 		},
-		{ id: "search", name: "web_search", status: "completed" },
-		{ id: "ask", name: "ask_question", status: "completed" },
+		{ id: "search", name: "web_search" },
+		{ id: "ask", name: "ask_question" },
 		{
 			id: "skill",
 			name: "skill",
-			status: "completed",
 			params: { skill: "code-review" },
 		},
-		{ id: "mcp", name: "mcp__context7__query_docs", status: "completed" },
+		{ id: "mcp", name: "mcp__context7__query_docs" },
 	];
 	options.accountImpl = async () => ({ scope: "account", cookie: "cookie" });
 	options.fetchImpl = fetcher([event()]);
@@ -287,7 +285,6 @@ it("deduplicates inherited native messages and tools and uses demonstrated sidec
 			id: "native-tool",
 			identityOrigin: "source-native",
 			name: "read_file",
-			status: "completed",
 		},
 	];
 	const child = session({
@@ -305,7 +302,6 @@ it("deduplicates inherited native messages and tools and uses demonstrated sidec
 						id: "new-tool",
 						identityOrigin: "source-native",
 						name: "edit_file",
-						status: "completed",
 					},
 				],
 			},
@@ -331,9 +327,7 @@ it("deduplicates inherited native messages and tools and uses demonstrated sidec
 
 it("skips Cursor workflow extraction with consent off while retaining observed inventory and usage", async () => {
 	options.publishWorkflow = false;
-	local.sessions[0].session.messages[1].toolCalls = [
-		{ name: "read_file", status: "completed" },
-	];
+	local.sessions[0].session.messages[1].toolCalls = [{ name: "read_file" }];
 	const reading = await scan(options);
 	expect(reading.workflow.days).toEqual([]);
 	expect(reading.workflowLocal.projectWorkspaces.size).toBe(0);
@@ -349,9 +343,7 @@ it("keeps undated tools in inventory without inventing workflow or a Git day", a
 		...m,
 		timestampSource: "unknown",
 	}));
-	localSession.messages[1].toolCalls = [
-		{ name: "read_file", status: "completed" },
-	];
+	localSession.messages[1].toolCalls = [{ name: "read_file" }];
 	const reading = await scan(options);
 	expect(reading.aggregate.toolCalls.get("read_file")).toBe(1);
 	expect(reading.workflow.days).toEqual([]);
@@ -396,10 +388,10 @@ it("reuses configured Cursor resources without claiming use and publishes only c
 	]);
 	local.sessions[0].session.canonicalWorkspacePath = project;
 	local.sessions[0].session.messages[1].toolCalls = [
-		{ name: "read_file", status: "completed" },
-		{ name: "private-tool", status: "completed" },
-		{ name: "skill", status: "completed", params: { skill: "private-skill" } },
-		{ name: "mcp_private_docs_search", status: "completed" },
+		{ name: "read_file" },
+		{ name: "private-tool" },
+		{ name: "skill", params: { skill: "private-skill" } },
+		{ name: "mcp_private_docs_search" },
 	];
 	const reading = await scan(options);
 	expect(reading.aggregate.mcpServerCalls).toEqual(

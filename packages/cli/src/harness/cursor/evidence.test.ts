@@ -4,6 +4,7 @@ import {
 	localContributions,
 	messageTimes,
 	reconcile,
+	slimSession,
 	tokenEvidence,
 } from "./evidence.js";
 
@@ -102,5 +103,101 @@ describe("Cursor evidence", () => {
 		expect(localContributions({ session: s, tokens: new Map() })).toEqual([]);
 		s.createdAtSource = "store-meta";
 		expect(messageTimes(s)).toEqual([AT, AT]);
+	});
+});
+
+describe("slimSession", () => {
+	it("keeps what the scan reads and drops text, thinking, results and file bodies", () => {
+		const slim = slimSession({
+			id: "s",
+			workspace: "/p",
+			canonicalWorkspacePath: "/p",
+			timestamp: new Date(AT).toISOString(),
+			createdAtSource: "composer-metadata",
+			lastUpdatedAtSource: "composer-metadata",
+			resolutionState: "complete",
+			messageCount: 2,
+			metadata: { cursorVersion: "1.0", lastModified: "2026-09-10T12:00:01Z" },
+			usage: { totalInputTokens: 5 },
+			messages: [
+				{
+					id: "u",
+					role: "user",
+					content: "x".repeat(4000),
+					timestamp: new Date(AT).toISOString(),
+					timestampSource: "composer-created-at",
+				},
+				{
+					id: "a",
+					identityOrigin: "composer-native",
+					parentMessageId: "u",
+					isSidechain: true,
+					role: "assistant",
+					content: "y".repeat(9),
+					thinking: "z".repeat(4000),
+					model: "claude-sonnet-4-6",
+					timestamp: new Date(AT + 1000).toISOString(),
+					timestampSource: "composer-timing",
+					metadata: { corrupted: true, bubbleType: 2 },
+					toolCalls: [
+						{
+							id: "t",
+							identityOrigin: "source-native",
+							name: "write_file",
+							status: "completed",
+							params: { path: "a.ts", contents: "w".repeat(4000) },
+							result: "r".repeat(4000),
+						},
+						{
+							name: "run_terminal_cmd",
+							status: "completed",
+							params: { command: "pnpm test", explanation: "long" },
+						},
+					],
+				},
+			],
+		});
+		expect(slim).toEqual({
+			id: "s",
+			timestamp: new Date(AT).toISOString(),
+			createdAtSource: "composer-metadata",
+			lastUpdatedAtSource: "composer-metadata",
+			resolutionState: "complete",
+			canonicalWorkspacePath: "/p",
+			metadata: { cursorVersion: "1.0", lastModified: "2026-09-10T12:00:01Z" },
+			messages: [
+				{
+					id: "u",
+					role: "user",
+					contentLength: 4000,
+					timestamp: new Date(AT).toISOString(),
+					timestampSource: "composer-created-at",
+				},
+				{
+					id: "a",
+					identityOrigin: "composer-native",
+					parentMessageId: "u",
+					isSidechain: true,
+					role: "assistant",
+					contentLength: 9,
+					model: "claude-sonnet-4-6",
+					timestamp: new Date(AT + 1000).toISOString(),
+					timestampSource: "composer-timing",
+					metadata: { corrupted: true },
+					toolCalls: [
+						{ id: "t", identityOrigin: "source-native", name: "write_file" },
+						{ name: "run_terminal_cmd", params: { command: "pnpm test" } },
+					],
+				},
+			],
+		});
+		expect(JSON.stringify(slim).length).toBeLessThan(1000);
+		expect(
+			localContributions({ session: slim, tokens: new Map() }).map(
+				(c) => c.buckets,
+			),
+		).toEqual([
+			{ input: 1000, inputSource: "text", output: 3, outputSource: "text" },
+		]);
 	});
 });

@@ -72,7 +72,7 @@ it("resolves the qualified Composer fixture with the packaged node:sqlite reader
 	const reading = await readLocal(root);
 	expect(
 		reading.complete,
-		JSON.stringify(reading.sessions.map((s) => s.session.resolution)),
+		JSON.stringify(reading.sessions.map((s) => s.session.resolutionState)),
 	).toBe(true);
 	expect(reading.sessions).toHaveLength(1);
 	expect(reading.sessions[0].session.id).toBe(
@@ -141,7 +141,7 @@ it("reconciles a transcript copy once and retains explicit-zero raw token eviden
 	const reading = await readLocal(root);
 	expect(
 		reading.complete,
-		JSON.stringify(reading.sessions.map((s) => s.session.resolution)),
+		JSON.stringify(reading.sessions.map((s) => s.session.resolutionState)),
 	).toBe(true);
 	expect(reading.sessions).toHaveLength(1);
 	expect(reading.sessions[0].tokens.get("assistant-1")).toMatchObject({

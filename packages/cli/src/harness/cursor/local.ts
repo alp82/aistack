@@ -23,6 +23,7 @@ import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
 	type LocalSession,
+	slimSession,
 	type TokenEvidence,
 	tokenEvidence,
 } from "./evidence.js";
@@ -257,6 +258,19 @@ async function readLocalOffThread(
 	if (!file) return readLocalOnce(root, before, onProgress);
 	return new Promise<LocalRead>((resolve) => {
 		const fallback = () => resolve(readLocalOnce(root, before, onProgress));
+		// A worker that ran out of heap read the same database the main thread
+		// would: retrying inline runs out too, and that takes the whole sync
+		// down instead of one harness (#449). Report the read unreadable.
+		const outOfMemory = () => {
+			trace(
+				"cursor worker out of memory · Cursor history not read this sync",
+				"warn",
+			);
+			const stats = emptyScanStats();
+			stats.filesUnreadable++;
+			stats.unreadableFiles.push({ path: "history", reason: "OUT_OF_MEMORY" });
+			resolve({ sessions: [], complete: false, stats });
+		};
 		let settled = false;
 		const settle = (fn: () => void) => {
 			if (settled) return;
@@ -288,7 +302,8 @@ async function readLocalOffThread(
 		worker.on("error", (error) =>
 			settle(() => {
 				traceError("cursor worker", error);
-				fallback();
+				if (traceErrorCode(error) === "ERR_WORKER_OUT_OF_MEMORY") outOfMemory();
+				else fallback();
 			}),
 		);
 		worker.on("exit", (code) => {
@@ -483,7 +498,9 @@ export async function readLocalOnce(
 					stage = "token evidence";
 					if (evidence === undefined) evidence = await openEvidenceDb(root);
 					const tokens = readTokenEvidence(session, evidence);
-					out.sessions.push({ session, tokens });
+					// Slim before holding: the full session (text, thinking, tool
+					// results) is released with `releaseSession` below.
+					out.sessions.push({ session: slimSession(session), tokens });
 					stats.filesRead++;
 					const elapsedMs = Date.now() - sessionStartedMs;
 					if (elapsedMs >= SLOW_SESSION_MS)
