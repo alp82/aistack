@@ -234,16 +234,20 @@ export function messageTimes(
 		session.lastUpdatedAtSource !== "epoch-unknown"
 			? timestamp(session.metadata?.lastModified)
 			: null;
-	const apiTimes = api
-		.filter((e) => e.session === session.id)
-		.map((e) => e.tsMs);
+	let firstApi: number | null = null;
+	let lastApi: number | null = null;
+	for (const event of api) {
+		if (event.session !== session.id) continue;
+		firstApi = firstApi === null ? event.tsMs : Math.min(firstApi, event.tsMs);
+		lastApi = lastApi === null ? event.tsMs : Math.max(lastApi, event.tsMs);
+	}
 	if (!anchors.some((a) => a.index === 0)) {
-		const time = start ?? (apiTimes.length ? Math.min(...apiTimes) : null);
+		const time = start ?? firstApi;
 		if (time !== null) anchors.unshift({ index: -1, time });
 	}
 	const last = session.messages.length;
 	if (last && !anchors.some((a) => a.index === last - 1)) {
-		const time = end ?? (apiTimes.length ? Math.max(...apiTimes) : null);
+		const time = end ?? lastApi;
 		if (time !== null) anchors.push({ index: last, time });
 	}
 	for (let i = 0; i < times.length; i++) {

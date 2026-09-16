@@ -8,7 +8,7 @@ import {
 	setActivePricer,
 } from "@aistack/pricing";
 import { dayFingerprint } from "@aistack/workflow-rules";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
 import { assistant } from "../harness/claude/fixtures.js";
 import type {
@@ -30,6 +30,33 @@ import { CLI_VERSION } from "../version.js";
 import { type StageDeps, stageId, stageSync } from "./stage.js";
 
 const NOW = Date.parse("2026-07-30T12:00:00.000Z");
+
+test("uses an adapter's shared window read without changing staged measurements", async () => {
+	const expected = await stageSync(deps({}));
+	const scan = vi.fn(FAKE_CLAUDE_ADAPTER.scan);
+	const scanWindows = vi.fn(
+		async (
+			options: Parameters<NonNullable<HarnessAdapter["scanWindows"]>>[0],
+		) => Promise.all(options.map((opts) => FAKE_CLAUDE_ADAPTER.scan(opts))),
+	);
+	const actual = await stageSync(
+		deps({
+			adaptersImpl: () => [{ ...FAKE_CLAUDE_ADAPTER, scan, scanWindows }],
+		}),
+	);
+	expect(scan).not.toHaveBeenCalled();
+	expect(scanWindows).toHaveBeenCalledTimes(1);
+	expect(
+		scanWindows.mock.calls[0][0].map((opts) => [
+			opts.sinceMs,
+			opts.publishWorkflow,
+		]),
+	).toEqual([
+		[windowStartMs(NOW, 30), false],
+		[windowStartMs(NOW, 400), true],
+	]);
+	expect(actual.bodyJson).toBe(expected.bodyJson);
+});
 
 const FETCHED: SyncConfig = {
 	allowlist: { mcpServers: [], skills: [], subagents: [], slashCommands: [] },

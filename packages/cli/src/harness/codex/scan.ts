@@ -96,18 +96,38 @@ export type ScanOptions = {
 	maxLineBytes?: number;
 };
 
+export type ScanWindow = {
+	aggregate: Aggregate;
+	sinceMs?: number;
+	onProgress?: (files: number) => void;
+};
+
 export async function scan(
 	agg: Aggregate,
 	opts: ScanOptions = {},
 ): Promise<ScanStats> {
-	const stats: ScanStats = emptyScanStats();
-	const visited = new Set<string>();
+	return (
+		await scanWindows(
+			[{ aggregate: agg, sinceMs: opts.sinceMs, onProgress: opts.onProgress }],
+			opts,
+		)
+	)[0];
+}
 
+/** Validate and decode each file once for every requested window. */
+export async function scanWindows(
+	windows: ScanWindow[],
+	opts: ScanOptions = {},
+): Promise<ScanStats[]> {
+	const targets = windows.map((window) => ({
+		...window,
+		stats: emptyScanStats(),
+	}));
+	const visited = new Set<string>();
 	for (const root of opts.roots ?? rolloutRoots()) {
 		if (!(await exists(root))) continue;
 		for await (const file of walkRollouts(root)) {
-			stats.filesFound++;
-
+			for (const { stats } of targets) stats.filesFound++;
 			let resolved: string;
 			try {
 				resolved = await realpath(file);
@@ -116,62 +136,66 @@ export async function scan(
 					traceError("codex rollout path resolution", error, "warn");
 				resolved = file;
 			}
-			// Dedup key = resolved path with `.zst` stripped. Codex's compression
-			// worker leaves `foo.jsonl` and `foo.jsonl.zst` coexisting for a moment
-			// (rename before unlink, #73 §4) - one session, two names. Keying on
-			// the stem makes the second listing a duplicate, not a double count.
+			// Plain and compressed siblings can coexist during Codex compression.
 			const dedupKey = resolved.endsWith(".zst")
-				? resolved.slice(0, -".zst".length)
+				? resolved.slice(0, -4)
 				: resolved;
 			if (visited.has(dedupKey)) {
-				stats.filesSkippedAsDuplicate++;
+				for (const { stats } of targets) stats.filesSkippedAsDuplicate++;
 				continue;
 			}
 			visited.add(dedupKey);
-
-			// Rollouts are append-only and chronological, so a file untouched since
-			// the window opened cannot hold an in-window record.
-			if (opts.sinceMs !== undefined) {
+			let mtimeMs: number | undefined;
+			if (targets.some((target) => target.sinceMs !== undefined)) {
 				try {
-					const st = await stat(file);
-					if (st.mtimeMs < opts.sinceMs) {
-						stats.filesSkippedByMtime++;
-						continue;
-					}
+					mtimeMs = (await stat(file)).mtimeMs;
 				} catch (error) {
 					if ((error as NodeJS.ErrnoException)?.code !== "ENOENT")
 						traceError("codex rollout stat", error, "warn");
-					/* unreadable stat - fall through and try to read it */
 				}
 			}
-
-			agg.files++;
-			stats.filesRead++;
-			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
-			const outcome = await ingestWithRetry(agg, file, opts);
-			if (!outcome.ok) {
-				// Never rethrown: the error object carries the absolute path. The
-				// stats keep a relative path and a bare error class instead (#75).
-				stats.filesUnreadable++;
-				stats.filesRead--;
-				if (outcome.reason === "zstd-unsupported") stats.filesZstdUnsupported++;
-				stats.unreadableFiles.push({
-					path: path.relative(root, file),
-					reason: outcome.reason,
-				});
-			} else if (!outcome.genuine) {
-				// Fingerprint failure (#73): another tool wrote this file. Its usage
-				// stayed out of the aggregate entirely.
-				stats.filesForeign++;
-				stats.filesRead--;
-				const seen = stats.foreignOriginators.get(outcome.originator) ?? 0;
-				stats.foreignOriginators.set(outcome.originator, seen + 1);
+			const eligible = targets.filter((target) => {
+				if (
+					mtimeMs !== undefined &&
+					target.sinceMs !== undefined &&
+					mtimeMs < target.sinceMs
+				) {
+					target.stats.filesSkippedByMtime++;
+					return false;
+				}
+				return true;
+			});
+			if (!eligible.length) continue;
+			for (const { aggregate, stats, onProgress } of eligible) {
+				aggregate.files++;
+				stats.filesRead++;
+				if (aggregate.files % 20 === 0) onProgress?.(aggregate.files);
+			}
+			const outcome = await ingestWithRetry(eligible, file, opts);
+			for (const { stats } of eligible) {
+				if (!outcome.ok) {
+					stats.filesUnreadable++;
+					stats.filesRead--;
+					if (outcome.reason === "zstd-unsupported")
+						stats.filesZstdUnsupported++;
+					stats.unreadableFiles.push({
+						path: path.relative(root, file),
+						reason: outcome.reason,
+					});
+				} else if (!outcome.genuine) {
+					stats.filesForeign++;
+					stats.filesRead--;
+					stats.foreignOriginators.set(
+						outcome.originator,
+						(stats.foreignOriginators.get(outcome.originator) ?? 0) + 1,
+					);
+				}
 			}
 		}
 	}
-
-	readConfiguredMcpServers(agg, opts.configFile);
-	return stats;
+	for (const { aggregate } of targets)
+		readConfiguredMcpServers(aggregate, opts.configFile);
+	return targets.map((target) => target.stats);
 }
 
 async function exists(p: string): Promise<boolean> {
@@ -211,17 +235,17 @@ const readError = (reason: string): Error =>
  * try the `.zst` sibling once before counting the file unreadable.
  */
 async function ingestWithRetry(
-	agg: Aggregate,
+	windows: ScanWindow[],
 	file: string,
 	opts: ScanOptions,
 ): Promise<IngestOutcome> {
 	try {
-		return await ingestFile(agg, file, opts);
+		return await ingestFile(windows, file, opts);
 	} catch (e) {
 		traceError("codex rollout read", e);
 		if (errorClass(e) === "ENOENT" && !file.endsWith(".zst")) {
 			try {
-				return await ingestFile(agg, `${file}.zst`, opts);
+				return await ingestFile(windows, `${file}.zst`, opts);
 			} catch (e2) {
 				traceError("codex compressed rollout retry", e2);
 				return { ok: false, reason: errorClass(e2) };
@@ -238,7 +262,7 @@ async function ingestWithRetry(
  * An open descriptor survives the compression worker unlinking the plain file.
  */
 async function ingestFile(
-	agg: Aggregate,
+	windows: ScanWindow[],
 	file: string,
 	opts: ScanOptions,
 ): Promise<IngestOutcome> {
@@ -315,11 +339,17 @@ async function ingestFile(
 		}
 		const verdict = await classifyRollout(records(true));
 		if (!verdict.genuine) return { ok: true, ...verdict };
-		agg.lines += nonEmptyLines;
-		agg.parseErrors += parseErrors;
-		const state = createFileState();
+		const targets = windows.map((window) => ({
+			...window,
+			state: createFileState(),
+		}));
+		for (const { aggregate } of targets) {
+			aggregate.lines += nonEmptyLines;
+			aggregate.parseErrors += parseErrors;
+		}
 		for await (const rec of records(false))
-			ingestLine(agg, rec, state, opts.sinceMs);
+			for (const { aggregate, state, sinceMs } of targets)
+				ingestLine(aggregate, rec, state, sinceMs);
 		return { ok: true, genuine: true };
 	} finally {
 		await handle.close();

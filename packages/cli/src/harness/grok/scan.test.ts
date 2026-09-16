@@ -1,9 +1,67 @@
-import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { finalize } from "../shared/aggregate.js";
 import { createAggregate } from "./analyzer.js";
-import { scan } from "./scan.js";
+import { scan, scanWindows } from "./scan.js";
+
+vi.mock("node:fs", async (original) => {
+	const fs = await original<typeof import("node:fs")>();
+	return { ...fs, createReadStream: vi.fn(fs.createReadStream) };
+});
+
+test("reads Grok files once for separate recent and historical results", async () => {
+	const root = await mkdtemp(path.join(tmpdir(), "grok-windows-"));
+	try {
+		const dir = path.join(root, "workspace", "session");
+		await mkdir(dir, { recursive: true });
+		await writeFile(path.join(dir, "updates.jsonl"), "{}\n{malformed\n");
+		await writeFile(
+			path.join(dir, "usage.json"),
+			JSON.stringify({
+				sessionId: "s",
+				turns: ["2026-08-01", "2026-09-10"].map((date) => ({
+					endedAt: `${date}T12:00:00Z`,
+					primaryModelId: "grok",
+					inputTokens: 4,
+					outputTokens: 1,
+				})),
+			}),
+		);
+		const since = [Date.parse("2026-09-01"), 0];
+		const expected = [];
+		for (const sinceMs of since) {
+			const aggregate = createAggregate();
+			const result = await scan(aggregate, { roots: [root], sinceMs });
+			expected.push({
+				result,
+				usage: finalize(aggregate),
+				workflow: aggregate.workflow.finish(),
+			});
+		}
+		const windows = since.map((sinceMs) => ({
+			aggregate: createAggregate(),
+			sinceMs,
+		}));
+		vi.mocked(createReadStream).mockClear();
+		const results = await scanWindows(windows, { roots: [root] });
+		expect(
+			windows.map(({ aggregate }, i) => ({
+				result: results[i],
+				usage: finalize(aggregate),
+				workflow: aggregate.workflow.finish(),
+			})),
+		).toEqual(expected);
+		expect(
+			windows.map(({ aggregate }) => finalize(aggregate).totalTokens),
+		).toEqual([5, 10]);
+		expect(createReadStream).toHaveBeenCalledTimes(1);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
 
 describe("Grok Build scanner", () => {
 	test("reads only known workspace/session levels and does not follow directory symlinks", async () => {

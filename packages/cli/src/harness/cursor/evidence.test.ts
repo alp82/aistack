@@ -11,6 +11,19 @@ import {
 import { AT, session } from "./fixtures.js";
 
 describe("Cursor evidence", () => {
+	it("dates untimed messages from a large account history without overflowing", () => {
+		const s = session({ createdAtSource: "epoch-unknown" });
+		s.messages = s.messages.map((m) => ({ ...m, timestampSource: "unknown" }));
+		const api = Array.from({ length: 308_140 }, (_, i) => ({
+			session: s.id,
+			tsMs: AT + (i % 2 === 0 ? 3000 : 0),
+			model: "auto",
+			buckets: {},
+			source: "api" as const,
+		}));
+		expect(messageTimes(s, api)).toEqual([AT + 1000, AT + 2000]);
+	});
+
 	it("keeps explicit zero and records context/dry-run provenance without inventing output", () => {
 		expect(
 			tokenEvidence({

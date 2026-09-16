@@ -124,25 +124,49 @@ export async function modelAliasesForRoot(
 	}
 }
 
-export async function scan(
-	agg: Aggregate,
-	opts: {
-		sinceMs?: number;
-		roots?: string[];
-		onProgress?: (files: number) => void;
-		contextCacheDir?: string;
-	} = {},
-): Promise<{
+export type ScanWindow = {
+	aggregate: Aggregate;
+	sinceMs?: number;
+	onProgress?: (files: number) => void;
+};
+export type ScanOptions = {
+	sinceMs?: number;
+	roots?: string[];
+	onProgress?: (files: number) => void;
+	contextCacheDir?: string;
+};
+export type ScanResult = {
 	stats: ScanStats;
 	complete: boolean;
 	sessionDates: Map<string, Set<string>>;
-}> {
+};
+
+export async function scan(
+	agg: Aggregate,
+	opts: ScanOptions = {},
+): Promise<ScanResult> {
+	return (
+		await scanWindows(
+			[{ aggregate: agg, sinceMs: opts.sinceMs, onProgress: opts.onProgress }],
+			opts,
+		)
+	)[0];
+}
+
+/** Each stable file read feeds both folds before its parsed records are released. */
+export async function scanWindows(
+	windows: ScanWindow[],
+	opts: ScanOptions = {},
+): Promise<ScanResult[]> {
 	const stats = emptyScanStats();
-	const sessionDates = new Map<string, Set<string>>();
-	const candidates = new Map<
-		string,
-		{ precedence: number; rows: UsageContribution[] }
-	>();
+	const targets = windows.map((window) => ({
+		...window,
+		sessionDates: new Map<string, Set<string>>(),
+		candidates: new Map<
+			string,
+			{ precedence: number; rows: UsageContribution[] }
+		>(),
+	}));
 	let complete = true;
 	for (const root of opts.roots ?? sessionRoots()) {
 		const aliases = await modelAliasesForRoot(root);
@@ -221,7 +245,10 @@ export async function scan(
 				rows = [];
 				precedence = 0;
 			}
-			const eventState = createGrokEventState(parentSession);
+			const eventTargets = targets.map((target) => ({
+				...target,
+				eventState: createGrokEventState(parentSession),
+			}));
 			const updates = files.get("updates.jsonl");
 			if (updates) {
 				const useTerminalUsage = rows.length === 0 && !child;
@@ -235,10 +262,11 @@ export async function scan(
 				stats.filesRead++;
 				for (const value of read.lines ?? []) {
 					if (value === null) {
-						agg.parseErrors++;
+						for (const { aggregate } of targets) aggregate.parseErrors++;
 						continue;
 					}
-					ingestUpdate(agg, eventState, value, projectDir, opts.sinceMs);
+					for (const { aggregate, eventState, sinceMs } of eventTargets)
+						ingestUpdate(aggregate, eventState, value, projectDir, sinceMs);
 					if (useTerminalUsage) {
 						const row = terminalContribution(value, projectDir);
 						if (row) rows.push(row);
@@ -257,43 +285,48 @@ export async function scan(
 				}
 				stats.filesRead++;
 				for (const value of read.lines ?? []) {
-					if (value === null) agg.parseErrors++;
+					if (value === null)
+						for (const { aggregate } of targets) aggregate.parseErrors++;
 					else
-						ingestEvent(
-							agg,
-							eventState,
-							value,
-							sessionFallback,
-							projectDir,
-							opts.sinceMs,
-						);
+						for (const { aggregate, eventState, sinceMs } of eventTargets)
+							ingestEvent(
+								aggregate,
+								eventState,
+								value,
+								sessionFallback,
+								projectDir,
+								sinceMs,
+							);
 				}
 			}
-			rows = rows.filter(
-				(row) => opts.sinceMs === undefined || row.tsMs >= opts.sinceMs,
-			);
-			rows = rows.map((row) => ({
-				...row,
-				models: row.models.map(({ model, counts }) => ({
-					model: aliases.get(model) ?? model,
-					counts,
-				})),
-			}));
-			if (rows.length > 0) {
-				const sessionId = rows[0]?.sessionId as string;
-				const held = candidates.get(sessionId);
-				const total = (values: UsageContribution[]) =>
-					values
-						.flatMap((value) => value.models)
-						.reduce((sum, model) => sum + countsTotal(model.counts), 0);
-				if (
-					!held ||
-					precedence > held.precedence ||
-					(precedence === held.precedence && total(rows) > total(held.rows))
-				)
-					candidates.set(sessionId, { precedence, rows });
+			for (const { sinceMs, candidates, onProgress } of targets) {
+				let windowRows = rows.filter(
+					(row) => sinceMs === undefined || row.tsMs >= sinceMs,
+				);
+				windowRows = windowRows.map((row) => ({
+					...row,
+					models: row.models.map(({ model, counts }) => ({
+						model: aliases.get(model) ?? model,
+						counts,
+					})),
+				}));
+				if (windowRows.length > 0) {
+					const sessionId = windowRows[0]?.sessionId as string;
+					const held = candidates.get(sessionId);
+					const total = (values: UsageContribution[]) =>
+						values
+							.flatMap((value) => value.models)
+							.reduce((sum, model) => sum + countsTotal(model.counts), 0);
+					if (
+						!held ||
+						precedence > held.precedence ||
+						(precedence === held.precedence &&
+							total(windowRows) > total(held.rows))
+					)
+						candidates.set(sessionId, { precedence, rows: windowRows });
+				}
+				onProgress?.(stats.filesFound);
 			}
-			opts.onProgress?.(stats.filesFound);
 		}
 		try {
 			const calls = await retainedContextCalls(
@@ -301,21 +334,23 @@ export async function scan(
 				new Set(contextSessions.keys()),
 				opts.contextCacheDir,
 			);
-			for (const call of calls) {
-				if (opts.sinceMs !== undefined && call.tsMs < opts.sinceMs) continue;
-				const source = contextSessions.get(call.session);
-				agg.workflow.ingest({
-					type: "response",
-					session: call.session,
-					projectWorkspace: source?.projectDir,
-					parentSession: source?.parentSession,
-					tsMs: call.tsMs,
-					responseId: `context:${call.id}`,
-					contextTokens: call.tokens,
-				});
-				const dates = sessionDates.get(call.session) ?? new Set<string>();
-				dates.add(new Date(call.tsMs).toISOString().slice(0, 10));
-				sessionDates.set(call.session, dates);
+			for (const { aggregate, sinceMs, sessionDates } of targets) {
+				for (const call of calls) {
+					if (sinceMs !== undefined && call.tsMs < sinceMs) continue;
+					const source = contextSessions.get(call.session);
+					aggregate.workflow.ingest({
+						type: "response",
+						session: call.session,
+						projectWorkspace: source?.projectDir,
+						parentSession: source?.parentSession,
+						tsMs: call.tsMs,
+						responseId: `context:${call.id}`,
+						contextTokens: call.tokens,
+					});
+					const dates = sessionDates.get(call.session) ?? new Set<string>();
+					dates.add(new Date(call.tsMs).toISOString().slice(0, 10));
+					sessionDates.set(call.session, dates);
+				}
 			}
 		} catch (error) {
 			traceError("grok retained context", error);
@@ -323,13 +358,15 @@ export async function scan(
 			stats.filesUnreadable++;
 		}
 	}
-	for (const { rows } of candidates.values()) {
-		for (const row of rows) {
-			ingestContribution(agg, row);
-			const dates = sessionDates.get(row.sessionId) ?? new Set<string>();
-			dates.add(new Date(row.tsMs).toISOString().slice(0, 10));
-			sessionDates.set(row.sessionId, dates);
+	for (const { aggregate, candidates, sessionDates } of targets) {
+		for (const { rows } of candidates.values()) {
+			for (const row of rows) {
+				ingestContribution(aggregate, row);
+				const dates = sessionDates.get(row.sessionId) ?? new Set<string>();
+				dates.add(new Date(row.tsMs).toISOString().slice(0, 10));
+				sessionDates.set(row.sessionId, dates);
+			}
 		}
 	}
-	return { stats, complete, sessionDates };
+	return targets.map(({ sessionDates }) => ({ stats, complete, sessionDates }));
 }

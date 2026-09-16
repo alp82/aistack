@@ -232,18 +232,25 @@ export function readComposerSession(
 		(summary.lastUpdatedAtSource === "composer-metadata"
 			? storedDate(summary.metadata?.lastModified)
 			: null);
-	const directMs = direct.flatMap((d) => (d && isValid(d.ms) ? [d.ms] : []));
+	let firstDirect: number | null = null;
+	let lastDirect: number | null = null;
+	for (const time of direct) {
+		if (!time || !isValid(time.ms)) continue;
+		firstDirect =
+			firstDirect === null ? time.ms : Math.min(firstDirect, time.ms);
+		lastDirect = lastDirect === null ? time.ms : Math.max(lastDirect, time.ms);
+	}
 	const created =
 		createdStored !== null
 			? { ms: createdStored, source: "composer-metadata" as const }
-			: directMs.length
-				? { ms: Math.min(...directMs), source: "direct-message" as const }
+			: firstDirect !== null
+				? { ms: firstDirect, source: "direct-message" as const }
 				: { ms: UNKNOWN_TIMESTAMP_EPOCH_MS, source: "epoch-unknown" as const };
 	const updated =
 		updatedStored !== null
 			? { ms: updatedStored, source: "composer-metadata" as const }
-			: directMs.length
-				? { ms: Math.max(...directMs), source: "direct-message" as const }
+			: lastDirect !== null
+				? { ms: lastDirect, source: "direct-message" as const }
 				: { ms: UNKNOWN_TIMESTAMP_EPOCH_MS, source: "epoch-unknown" as const };
 	const times = resolveTimes(
 		direct,

@@ -17,7 +17,7 @@ import * as zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { finalize } from "../shared/aggregate.js";
 import { createAggregate } from "./analyzer.js";
-import { scan } from "./scan.js";
+import { scan, scanWindows } from "./scan.js";
 
 vi.mock("node:fs", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs")>();
@@ -250,6 +250,80 @@ it("reads rollouts when the runtime rejects whole-file allocation", async () => 
 });
 
 describe("bounded rollout streams", () => {
+	it.each(["jsonl", "jsonl.zst"])(
+		"shares the validated %s read across recent and historical windows",
+		async (suffix) => {
+			const text = [
+				...GENUINE,
+				{ ...tokenCount(200), timestamp: "2026-07-21T12:00:00Z" },
+			]
+				.map((row) => JSON.stringify(row))
+				.join("\n");
+			writeFileSync(
+				join(root, `rollout-shared.${suffix}`),
+				suffix.endsWith("zst") ? zstdCompress(Buffer.from(text)) : text,
+			);
+			const since = [Date.parse(TS) + 1000, Date.parse(META_TS) - 1000];
+			const expected = [];
+			for (const sinceMs of since) {
+				const aggregate = createAggregate();
+				const stats = await scan(aggregate, {
+					roots: [root],
+					...missingConfig,
+					sinceMs,
+				});
+				expected.push({
+					stats,
+					usage: finalize(aggregate),
+					workflow: aggregate.workflow.finish(),
+				});
+			}
+			const windows = since.map((sinceMs) => ({
+				aggregate: createAggregate(),
+				sinceMs,
+			}));
+			const read = vi.fn(createReadStream);
+			const stats = await scanWindows(windows, {
+				roots: [root],
+				...missingConfig,
+				readStreamImpl: read,
+			});
+			expect(
+				windows.map(({ aggregate }, i) => ({
+					stats: stats[i],
+					usage: finalize(aggregate),
+					workflow: aggregate.workflow.finish(),
+				})),
+			).toEqual(expected);
+			expect(
+				windows.map(({ aggregate }) => finalize(aggregate).totalTokens),
+			).toEqual([200, 300]);
+			expect(read).toHaveBeenCalledTimes(2);
+		},
+	);
+	it("keeps per-window mtime skips and foreign-file verdicts when sharing reads", async () => {
+		const file = writeRollout("rollout-old-window.jsonl", GENUINE);
+		utimesSync(file, new Date(TS), new Date(TS));
+		writeRollout("rollout-foreign-shared.jsonl", [tokenCount(999)]);
+		const windows = [Date.parse(TS) + 1000, 0].map((sinceMs) => ({
+			aggregate: createAggregate(),
+			sinceMs,
+		}));
+		const stats = await scanWindows(windows, {
+			roots: [root],
+			...missingConfig,
+		});
+		expect(
+			stats.map((s) => [s.filesRead, s.filesSkippedByMtime, s.filesForeign]),
+		).toEqual([
+			[0, 1, 1],
+			[1, 0, 1],
+		]);
+		expect(
+			windows.map(({ aggregate }) => finalize(aggregate).totalTokens),
+		).toEqual([0, 100]);
+	});
+
 	it.each(["jsonl", "jsonl.zst"])(
 		"decodes %s across byte, UTF-8 and JSONL boundaries",
 		async (suffix) => {

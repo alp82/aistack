@@ -89,6 +89,44 @@ it("resolves the qualified Composer fixture with the packaged node:sqlite reader
 		"read_file",
 	);
 });
+
+it("lists Cursor metadata without loading message bodies to measure their byte lengths", async () => {
+	await createSource();
+	const queries = new Set<string>();
+	const prepare = DatabaseSync.prototype.prepare;
+	const spy = vi
+		.spyOn(DatabaseSync.prototype, "prepare")
+		.mockImplementation(function (this: DatabaseSync, sql) {
+			if (sql.includes("cursorDiskKV") && sql.includes("AS byteLength"))
+				queries.add(sql);
+			return prepare.call(this, sql);
+		});
+	expect((await readLocal(root)).complete).toBe(true);
+	spy.mockRestore();
+	expect(queries.size).toBeGreaterThan(0);
+	const db = new DatabaseSync(
+		path.join(dir, "User", "globalStorage", "state.vscdb"),
+	);
+	try {
+		for (const sql of queries) {
+			const plan = db
+				.prepare(`EXPLAIN ${sql}`)
+				.all(
+					...Array.from({ length: sql.match(/\?/g)?.length ?? 0 }, () => null),
+				);
+			const values = plan.filter(
+				(row) => row.opcode === "Column" && row.p2 === 1,
+			);
+			expect(values.length).toBeGreaterThan(0);
+			// SQLite's length/null-only Column flags let it read the record
+			// header without loading overflow pages containing the transcript.
+			for (const column of values)
+				expect(Number(column.p5) & 0xc0, sql).not.toBe(0);
+		}
+	} finally {
+		db.close();
+	}
+});
 // A sync asks the adapter four times (detect twice, scan twice). Each read
 // walks the whole global database, so the later three must be the first one's
 // result, even after the source moved: an open Cursor appends to its

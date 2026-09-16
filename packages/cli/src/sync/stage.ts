@@ -355,8 +355,8 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const sinceMs = windowStartMs(now, windowDays);
 	// The day scan reaches the whole retention (#307): the snapshot stays a
 	// 30-day block until its readers retire, while the day rows cover every
-	// date the server would keep. Two scans over the same files; the second is
-	// the one the days and the workflow blocks come from.
+	// date the server would keep. Adapters can share the read across both
+	// windows; the historical result supplies the days and workflow blocks.
 	const daysSinceMs = windowStartMs(now, retentionDays);
 	// The Cursor read is one walk per process and its memo cannot widen for
 	// free, so the widest window of this run is set before the first detect
@@ -408,33 +408,55 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				note: phase,
 			});
 		};
-		if (active) {
-			step(id, label, "running", "recent usage");
-			const scanDone = traceTimer(`scan ${adapter.name} (recent)`);
-			reading.recent = await adapter.scan({
-				sinceMs,
-				publishWorkflow: false,
-				onProgress: progress("recent usage"),
+		if (active && adapter.scanWindows) {
+			step(id, label, "running", "recent usage and history");
+			const scanDone = traceTimer(
+				`scan ${adapter.name} (recent and historical)`,
+			);
+			[reading.recent, reading.history] = await adapter.scanWindows([
+				{ sinceMs, publishWorkflow: false },
+				{
+					sinceMs: daysSinceMs,
+					publishWorkflow: config.publishWorkflow,
+					onProgress: progress("recent usage and history"),
+				},
+			]);
+			scanDone(
+				describeScan(reading.history.stats),
+				reading.history.scanComplete === false ||
+					reading.history.stats.filesUnreadable > 0
+					? "warn"
+					: "success",
+			);
+		} else {
+			if (active) {
+				step(id, label, "running", "recent usage");
+				const scanDone = traceTimer(`scan ${adapter.name} (recent)`);
+				reading.recent = await adapter.scan({
+					sinceMs,
+					publishWorkflow: false,
+					onProgress: progress("recent usage"),
+				});
+				scanDone(
+					describeScan(reading.recent.stats),
+					reading.recent.stats.filesUnreadable ? "warn" : "success",
+				);
+			}
+			step(id, label, "running", "history");
+			const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
+			reading.history = await adapter.scan({
+				sinceMs: daysSinceMs,
+				publishWorkflow: config.publishWorkflow,
+				onProgress: progress("history"),
 			});
 			scanDone(
-				describeScan(reading.recent.stats),
-				reading.recent.stats.filesUnreadable ? "warn" : "success",
+				`${describeScan(reading.history.stats)}${reading.history.scanComplete === false ? ", incomplete" : ""}`,
+				reading.history.scanComplete === false ||
+					reading.history.stats.filesUnreadable > 0
+					? "warn"
+					: "success",
 			);
 		}
-		step(id, label, "running", "history");
-		const scanDone = traceTimer(`scan ${adapter.name} (historical)`);
-		reading.history = await adapter.scan({
-			sinceMs: daysSinceMs,
-			publishWorkflow: config.publishWorkflow,
-			onProgress: progress("history"),
-		});
-		scanDone(
-			`${describeScan(reading.history.stats)}${reading.history.scanComplete === false ? ", incomplete" : ""}`,
-			reading.history.scanComplete === false ||
-				reading.history.stats.filesUnreadable > 0
-				? "warn"
-				: "success",
-		);
 		const files = Math.max(seen, reading.history.stats.filesRead);
 		step(
 			id,

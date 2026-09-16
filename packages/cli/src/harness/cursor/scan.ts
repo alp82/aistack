@@ -145,12 +145,14 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 		if (project && path.isAbsolute(project)) aggregate.projectDirs.add(project);
 		if (session.metadata?.cursorVersion)
 			aggregate.ccVersions.add(session.metadata.cursorVersion);
-		const times = messageTimes(session, api).filter(
-			(t): t is number => t !== null && t >= options.sinceMs && t <= now,
-		);
-		if (times.length) {
+		let firstTime: number | null = null;
+		for (const time of messageTimes(session, api)) {
+			if (time === null || time < options.sinceMs || time > now) continue;
+			firstTime = firstTime === null ? time : Math.min(firstTime, time);
+		}
+		if (firstTime !== null) {
 			aggregate.sessions.add(session.id);
-			noteSessionStart(aggregate, session.id, Math.min(...times));
+			noteSessionStart(aggregate, session.id, firstTime);
 		}
 	}
 	const usage = reconcile(contributions, api);
