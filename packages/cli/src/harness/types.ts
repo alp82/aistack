@@ -62,4 +62,6 @@ export interface HarnessAdapter {
 	 */
 	detect(opts: HarnessDetectOptions): Promise<boolean>;
 	scan(opts: HarnessScanOptions): Promise<HarnessScan>;
+	/** Read overlapping windows together, returning one result per option in order. */
+	scanWindows?(options: HarnessScanOptions[]): Promise<HarnessScan[]>;
 }

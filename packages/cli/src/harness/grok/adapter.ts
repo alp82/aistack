@@ -1,7 +1,7 @@
 import { hasRecentFile } from "../shared/recency.js";
 import type { HarnessAdapter } from "../types.js";
 import { createAggregate } from "./analyzer.js";
-import { isGrokEvidenceFile, scan, sessionRoots } from "./scan.js";
+import { isGrokEvidenceFile, scan, scanWindows, sessionRoots } from "./scan.js";
 
 export const GROK_HARNESS_NAME = "grok-build";
 export const GROK_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
@@ -32,5 +32,21 @@ export const grokAdapter: HarnessAdapter = {
 			scanComplete: result.complete,
 			sessionDates: result.sessionDates,
 		};
+	},
+	async scanWindows(options) {
+		const windows = options.map((opts) => ({
+			aggregate: createAggregate(),
+			sinceMs: opts.sinceMs,
+			onProgress: opts.onProgress,
+		}));
+		const results = await scanWindows(windows);
+		return windows.map(({ aggregate }, index) => ({
+			aggregate,
+			stats: results[index].stats,
+			workflow: aggregate.workflow.finish(),
+			workflowLocal: aggregate.workflowLocal,
+			scanComplete: results[index].complete,
+			sessionDates: results[index].sessionDates,
+		}));
 	},
 };

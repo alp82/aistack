@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   cursor-history@0.18.0:
-    hash: 3ee284d373d283bd4c4f5a74440096c9f1d6d5a4c9732d5d983ccdc6f10ff9f0
+    hash: dbff0ea0e399ea9504168452170a23ee2b432a6dc6a69a20b49bf95ef139fa74
     path: patches/cursor-history@0.18.0.patch
 
 importers:
@@ -371,7 +371,7 @@ importers:
         version: 24.13.0
       cursor-history:
         specifier: 0.18.0
-        version: 0.18.0(patch_hash=3ee284d373d283bd4c4f5a74440096c9f1d6d5a4c9732d5d983ccdc6f10ff9f0)
+        version: 0.18.0(patch_hash=dbff0ea0e399ea9504168452170a23ee2b432a6dc6a69a20b49bf95ef139fa74)
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)
@@ -8457,7 +8457,7 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  cursor-history@0.18.0(patch_hash=3ee284d373d283bd4c4f5a74440096c9f1d6d5a4c9732d5d983ccdc6f10ff9f0):
+  cursor-history@0.18.0(patch_hash=dbff0ea0e399ea9504168452170a23ee2b432a6dc6a69a20b49bf95ef139fa74):
     dependencies:
       better-sqlite3: 12.11.1
       commander: 14.0.3

@@ -8,7 +8,7 @@ import type {
 	HarnessScanOptions,
 } from "../types.js";
 import { createAggregate } from "./analyzer.js";
-import { isRolloutFile, rolloutRoots, scan } from "./scan.js";
+import { isRolloutFile, rolloutRoots, scan, scanWindows } from "./scan.js";
 
 export const CODEX_HARNESS_NAME = "codex";
 
@@ -67,5 +67,19 @@ export const codexAdapter: HarnessAdapter = {
 			workflow: aggregate.workflow.finish(),
 			workflowLocal: aggregate.workflowLocal,
 		};
+	},
+	async scanWindows(options) {
+		const windows = options.map((opts) => ({
+			aggregate: createAggregate(),
+			sinceMs: opts.sinceMs,
+			onProgress: opts.onProgress,
+		}));
+		const stats = await scanWindows(windows);
+		return windows.map(({ aggregate }, index) => ({
+			aggregate,
+			stats: stats[index],
+			workflow: aggregate.workflow.finish(),
+			workflowLocal: aggregate.workflowLocal,
+		}));
 	},
 };

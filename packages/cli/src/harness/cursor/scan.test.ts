@@ -71,6 +71,29 @@ const fetcher = (events: unknown[]) =>
 	);
 const total = async () => finalize((await scan(options)).aggregate).totalTokens;
 
+it("scans a 308140-message Cursor session after account refresh fails without overflowing", async () => {
+	const count = 308_140;
+	const source = local.sessions[0];
+	source.session.messages = Array.from({ length: count }, (_, i) => ({
+		...source.session.messages[1],
+		id: `reply-${i}`,
+	}));
+	source.tokens = new Map();
+	local.complete = false;
+	options.accountImpl = async () => ({ scope: "account-a", cookie: "cookie" });
+	const fetch = vi
+		.fn<typeof globalThis.fetch>()
+		.mockResolvedValue(Response.json({ error: "unavailable" }));
+	options.fetchImpl = fetch;
+	const reading = await scan(options);
+	expect(fetch).toHaveBeenCalledTimes(1);
+	expect(reading.scanComplete).toBe(false);
+	expect(reading.aggregate.sessions.size).toBe(1);
+	expect(reading.aggregate.distinctResponses).toBe(count);
+	expect(finalize(reading.aggregate).totalTokens).toBe(count * 2);
+	expect(reading.workflow.days[0].sessions).toBe(1);
+});
+
 it("publishes useful local-only counts then replaces them with matched API usage through shared days", async () => {
 	expect(await total()).toBe(1000);
 	options.accountImpl = async () => ({
@@ -105,13 +128,13 @@ it("preserves complete enrichment on a later-page failure and on missing login",
 	options.fetchImpl = fetcher([event()]);
 	expect(await total()).toBe(800);
 	options.now = AT + 600_000;
-	const page = Array.from({ length: 100 }, (_, i) =>
+	const page = Array.from({ length: 1000 }, (_, i) =>
 		event({ id: String(i), tokenUsage: { inputTokens: 1 } }),
 	);
 	options.fetchImpl = vi
 		.fn<typeof fetch>()
 		.mockResolvedValueOnce(
-			Response.json({ usageEventsDisplay: page, totalUsageEventsCount: 101 }),
+			Response.json({ usageEventsDisplay: page, totalUsageEventsCount: 1001 }),
 		)
 		.mockResolvedValueOnce(new Response(null, { status: 401 }));
 	expect(await total()).toBe(800);

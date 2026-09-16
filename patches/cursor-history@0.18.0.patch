@@ -1,5 +1,5 @@
 diff --git a/dist/cjs/core/composer-sqlite.js b/dist/cjs/core/composer-sqlite.js
-index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fffe4cfebcc 100644
+index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..d643e76339763863d6445c08e3185177a62e8e91 100644
 --- a/dist/cjs/core/composer-sqlite.js
 +++ b/dist/cjs/core/composer-sqlite.js
 @@ -24,7 +24,43 @@ function sqliteLikeLiteralPrefix(value) {
@@ -47,6 +47,15 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fff
  }
  function abortError(signal) {
      if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
+@@ -136,7 +172,7 @@ function createComposerSqliteBudget(limits = source_read_limits_js_1.SOURCE_READ
+ function getBoundedComposerMetadataByKey(db, table, key, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key = ? COLLATE BINARY AND value IS NOT NULL`)
++        .prepare(`SELECT CAST(rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key = ? COLLATE BINARY AND value IS NOT NULL`)
+         .get(key);
+     if (!raw)
+         return undefined;
 @@ -147,12 +183,18 @@ function getBoundedComposerMetadataByKey(db, table, key, budget, signal) {
  /** Iterate finite row-ID-keyset metadata pages using the operation's page bound. */
  function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, signal) {
@@ -61,10 +70,10 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fff
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
 +        const rawPage = range
 +            ? db
-+                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
 +                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
 +            : db
-+                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
 +                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
@@ -91,10 +100,10 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fff
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
 +        const rawPage = range
 +            ? db
-+                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
 +                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
 +            : db
-+                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 +                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
@@ -113,22 +122,51 @@ index 1058d8d602bb0d5eb56aa8f6f56e39a447b640d7..eaa5afd5fe03d0dbb03ae2f263066fff
          const rawPage = db
 -            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 -            .all(keyPrefix, keyPrefix, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 +            .all(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -336,7 +386,7 @@ function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget,
+@@ -266,7 +316,7 @@ function readAdmittedComposerBubbleValue(db, metadata, budget, signal) {
+     }
+     else {
+         const row = db
+-            .prepare(`SELECT key, CAST(value AS BLOB) AS value, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE cursorDiskKV.rowid = ? AND key = ? COLLATE BINARY`)
++            .prepare(`SELECT key, CAST(value AS BLOB) AS value, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE cursorDiskKV.rowid = ? AND key = ? COLLATE BINARY`)
+             .get(metadata.rowId, metadata.key);
+         if (!row || row.value === undefined) {
+             throw new Error('Composer SQLite payload changed after metadata admission.');
+@@ -311,7 +361,7 @@ function readBoundedComposerValueByKey(db, table, key, budget, signal) {
+ function readFirstBoundedComposerValue(db, table, keyPattern, budget, signal) {
      throwIfAborted(signal);
      const raw = db
-         .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+-        .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.rowid ASC LIMIT 1`)
++        .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.rowid ASC LIMIT 1`)
+         .get(keyPattern);
+     if (!raw)
+         return undefined;
+@@ -323,7 +373,7 @@ function readFirstBoundedComposerValue(db, table, keyPattern, budget, signal) {
+ function readFirstBoundedComposerBubbleValue(db, keyPattern, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
++        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+         .get(keyPattern);
+     if (!raw)
+         return undefined;
+@@ -335,8 +385,8 @@ function readFirstBoundedComposerBubbleValue(db, keyPattern, budget, signal) {
+ function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
 -        .get(keyPrefix, keyPrefix);
++        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
 +        .get(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix);
      if (!raw)
          return undefined;
      const metadata = normalizeBubbleMetadata(raw, keyPrefix);
 diff --git a/dist/core/composer-sqlite.js b/dist/core/composer-sqlite.js
-index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742d7641d6e 100644
+index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..3f17c753e776acde538dc0522f54fdbff37a1a0a 100644
 --- a/dist/core/composer-sqlite.js
 +++ b/dist/core/composer-sqlite.js
 @@ -9,7 +9,43 @@ export function sqliteLikeLiteralPrefix(value) {
@@ -176,6 +214,15 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742
  }
  function abortError(signal) {
      if (signal.reason instanceof Error && signal.reason.name === 'AbortError')
+@@ -121,7 +157,7 @@ export function createComposerSqliteBudget(limits = SOURCE_READ_LIMITS_V1_DEFAUL
+ export function getBoundedComposerMetadataByKey(db, table, key, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key = ? COLLATE BINARY AND value IS NOT NULL`)
++        .prepare(`SELECT CAST(rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key = ? COLLATE BINARY AND value IS NOT NULL`)
+         .get(key);
+     if (!raw)
+         return undefined;
 @@ -132,12 +168,18 @@ export function getBoundedComposerMetadataByKey(db, table, key, budget, signal)
  /** Iterate finite row-ID-keyset metadata pages using the operation's page bound. */
  export function forEachBoundedComposerMetadata(db, table, keyPattern, budget, visit, signal) {
@@ -190,10 +237,10 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
 +        const rawPage = range
 +            ? db
-+                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE ${keyPagePredicate(`${table}.key`, afterKey)} AND key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.key ASC LIMIT ?`)
 +                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
 +            : db
-+                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
++                .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL AND ${table}.rowid > COALESCE(?, -1) ORDER BY ${table}.rowid ASC LIMIT ?`)
 +                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
@@ -220,10 +267,10 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742
 -            .all(keyPattern, afterRowId, afterRowId, pageRows);
 +        const rawPage = range
 +            ? db
-+                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${keyPagePredicate('cursorDiskKV.key', afterKey)} AND key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.key ASC LIMIT ?`)
 +                .all(afterKey ?? range.lower, range.upper, keyPattern, pageRows)
 +            : db
-+                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++                .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 +                .all(keyPattern, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
@@ -242,16 +289,45 @@ index 469c5eb1da1f49ae3d3c4f4d6fee86c3d68fce6c..fe486b9589f7d935691c2430ae7bf742
          const rawPage = db
 -            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND (? IS NULL OR cursorDiskKV.rowid > ?) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 -            .all(keyPrefix, keyPrefix, afterRowId, afterRowId, pageRows);
-+            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
++            .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} AND cursorDiskKV.rowid > COALESCE(?, -1) ORDER BY cursorDiskKV.rowid ASC LIMIT ?`)
 +            .all(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix, afterRowId, pageRows);
          if (rawPage.length === 0)
              break;
          const fallbackBase = typeof afterRowId === 'number' && Number.isSafeInteger(afterRowId) ? afterRowId : -1;
-@@ -321,7 +371,7 @@ export function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix,
+@@ -251,7 +301,7 @@ function readAdmittedComposerBubbleValue(db, metadata, budget, signal) {
+     }
+     else {
+         const row = db
+-            .prepare(`SELECT key, CAST(value AS BLOB) AS value, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE cursorDiskKV.rowid = ? AND key = ? COLLATE BINARY`)
++            .prepare(`SELECT key, CAST(value AS BLOB) AS value, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE cursorDiskKV.rowid = ? AND key = ? COLLATE BINARY`)
+             .get(metadata.rowId, metadata.key);
+         if (!row || row.value === undefined) {
+             throw new Error('Composer SQLite payload changed after metadata admission.');
+@@ -296,7 +346,7 @@ export function readBoundedComposerValueByKey(db, table, key, budget, signal) {
+ export function readFirstBoundedComposerValue(db, table, keyPattern, budget, signal) {
      throwIfAborted(signal);
      const raw = db
-         .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+-        .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, length(CAST(value AS BLOB)) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.rowid ASC LIMIT 1`)
++        .prepare(`SELECT CAST(${table}.rowid AS TEXT) AS rowId, key, octet_length(value) AS byteLength FROM ${table} WHERE key LIKE ? ESCAPE '\\' AND value IS NOT NULL ORDER BY ${table}.rowid ASC LIMIT 1`)
+         .get(keyPattern);
+     if (!raw)
+         return undefined;
+@@ -308,7 +358,7 @@ export function readFirstBoundedComposerValue(db, table, keyPattern, budget, sig
+ export function readFirstBoundedComposerBubbleValue(db, keyPattern, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
++        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE key LIKE ? ESCAPE '\\' ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
+         .get(keyPattern);
+     if (!raw)
+         return undefined;
+@@ -320,8 +370,8 @@ export function readFirstBoundedComposerBubbleValue(db, keyPattern, budget, sign
+ export function readFirstBoundedComposerBubbleValueByExactPrefix(db, keyPrefix, budget, signal) {
+     throwIfAborted(signal);
+     const raw = db
+-        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(length(CAST(value AS BLOB)), 0) AS byteLength, value IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
 -        .get(keyPrefix, keyPrefix);
++        .prepare(`SELECT CAST(cursorDiskKV.rowid AS TEXT) AS rowId, key, COALESCE(octet_length(value), 0) AS byteLength, octet_length(value) IS NULL AS valueIsNull FROM cursorDiskKV WHERE ${exactBlobPrefixPredicate('cursorDiskKV.key')} ORDER BY cursorDiskKV.rowid ASC LIMIT 1`)
 +        .get(keyPrefix, exactPrefixUpperBound(keyPrefix), keyPrefix, keyPrefix);
      if (!raw)
          return undefined;

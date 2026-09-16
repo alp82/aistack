@@ -15,6 +15,65 @@ const account = { scope: "synthetic-account", cookie: "synthetic-cookie" };
 const from = Date.UTC(2026, 8, 10);
 const to = from + 86_400_000;
 
+it("reads 10000 account events in ten requests", async () => {
+	const events = Array.from({ length: 10_000 }, (_, i) => ({
+		...usagePage.usageEventsDisplay[0],
+		id: String(i),
+	}));
+	const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_, init) => {
+		const { page, pageSize } = JSON.parse(String(init?.body));
+		return Response.json({
+			usageEventsDisplay: events.slice((page - 1) * pageSize, page * pageSize),
+			totalUsageEventsCount: events.length,
+		});
+	});
+	expect(await fetchWindow(account, from, to, fetcher)).toHaveLength(
+		events.length,
+	);
+	expect(fetcher).toHaveBeenCalledTimes(10);
+});
+
+it.each([{}, { totalUsageEventsCount: 0 }])(
+	"accepts Cursor's empty usage window %j",
+	async (payload) => {
+		expect(
+			await fetchWindow(account, from, to, async () => Response.json(payload)),
+		).toEqual([]);
+	},
+);
+
+it("accepts a count-only terminal page after a full page without a count", async () => {
+	const events = Array.from({ length: 1000 }, (_, i) => ({
+		...usagePage.usageEventsDisplay[0],
+		id: String(i),
+	}));
+	const fetcher = vi
+		.fn<typeof fetch>()
+		.mockResolvedValueOnce(Response.json({ usageEventsDisplay: events }))
+		.mockResolvedValueOnce(Response.json({ totalUsageEventsCount: 1000 }));
+	expect(await fetchWindow(account, from, to, fetcher)).toHaveLength(1000);
+});
+
+it.each([{}, { totalUsageEventsCount: 1001 }, { totalUsageEventsCount: 0 }])(
+	"rejects an omitted array that contradicts earlier counts: %j",
+	async (payload) => {
+		const events = Array.from({ length: 1000 }, (_, i) => ({
+			...usagePage.usageEventsDisplay[0],
+			id: String(i),
+		}));
+		const fetcher = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(
+				Response.json({
+					usageEventsDisplay: events,
+					totalUsageEventsCount: 1001,
+				}),
+			)
+			.mockResolvedValueOnce(Response.json(payload));
+		await expect(fetchWindow(account, from, to, fetcher)).rejects.toThrow();
+	},
+);
+
 it("preserves two equal-timestamp ID-less events from qualified JSON and omits absent/cloud joins", async () => {
 	const fetcher = vi
 		.fn<typeof fetch>()
@@ -30,7 +89,7 @@ it("preserves two equal-timestamp ID-less events from qualified JSON and omits a
 		startDate: from,
 		endDate: to - 1,
 		page: 1,
-		pageSize: 100,
+		pageSize: 1000,
 	});
 });
 it("deduplicates native IDs without deduplicating identical ID-less events", async () => {
@@ -48,7 +107,7 @@ it("deduplicates native IDs without deduplicating identical ID-less events", asy
 	expect(await fetchWindow(account, from, to, fetcher)).toHaveLength(3);
 });
 it("rejects repeated pages, later-page failure, inconsistent totals and malformed token buckets", async () => {
-	const events = Array.from({ length: 100 }, (_, i) => ({
+	const events = Array.from({ length: 1000 }, (_, i) => ({
 		...usagePage.usageEventsDisplay[0],
 		id: String(i),
 	}));
@@ -63,7 +122,10 @@ it("rejects repeated pages, later-page failure, inconsistent totals and malforme
 	const fail = vi
 		.fn<typeof fetch>()
 		.mockResolvedValueOnce(
-			Response.json({ usageEventsDisplay: events, totalUsageEventsCount: 101 }),
+			Response.json({
+				usageEventsDisplay: events,
+				totalUsageEventsCount: 1001,
+			}),
 		)
 		.mockResolvedValueOnce(new Response("", { status: 401 }));
 	await expect(fetchWindow(account, from, to, fail)).rejects.toThrow(
@@ -115,8 +177,12 @@ it("reuses only a synthetic existing SQLite login, identifies account changes an
 
 it.each([
 	[{ unexpected: true }, "CURSOR_INVALID_PAGE_SHAPE"],
+	[{ usageEventsDisplay: null }, "CURSOR_INVALID_PAGE_SHAPE"],
+	[{ usageEventsDisplay: {} }, "CURSOR_INVALID_PAGE_SHAPE"],
+	[{ error: "denied", totalUsageEventsCount: 0 }, "CURSOR_INVALID_PAGE_SHAPE"],
+	[{ totalUsageEventsCount: "bad" }, "CURSOR_PAGE_COUNT_CHANGED"],
 	[
-		{ usageEventsDisplay: Array.from({ length: 101 }, () => ({})) },
+		{ usageEventsDisplay: Array.from({ length: 1001 }, () => ({})) },
 		"CURSOR_PAGE_TOO_LARGE",
 	],
 ])("distinguishes invalid account page responses", async (page, code) => {
@@ -125,7 +191,7 @@ it.each([
 	).rejects.toMatchObject({ code });
 });
 
-// More than 100 pages must be read in smaller, disjoint date windows.
+// More than 10000 events must be read in smaller, disjoint date windows.
 it.each([true, false])(
 	"recovers capped usage windows (reported total: %s)",
 	async (reported) => {
@@ -159,7 +225,7 @@ it.each([true, false])(
 		);
 		expect(rows).toHaveLength(events.length);
 		expect(new Set(rows.map((r) => r.id)).size).toBe(events.length);
-		expect(fetcher.mock.calls.length).toBeLessThan(reported ? 110 : 210);
+		expect(fetcher.mock.calls.length).toBeLessThan(reported ? 20 : 30);
 	},
 );
 
@@ -200,7 +266,7 @@ it("bounds requests when repeatedly capped windows cannot establish completion",
 	const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_, init) => {
 		const { page } = JSON.parse(String(init?.body));
 		return Response.json({
-			usageEventsDisplay: Array.from({ length: 100 }, (_, i) => ({
+			usageEventsDisplay: Array.from({ length: 1000 }, (_, i) => ({
 				cloudAgentId: "cloud",
 				conversationId: "remote",
 				id: `${page}-${i}`,
@@ -210,5 +276,5 @@ it("bounds requests when repeatedly capped windows cannot establish completion",
 	await expect(fetchWindow(account, from, to, fetcher)).rejects.toMatchObject({
 		code: "CURSOR_REQUEST_LIMIT",
 	});
-	expect(fetcher).toHaveBeenCalledTimes(1000);
+	expect(fetcher).toHaveBeenCalledTimes(100);
 });

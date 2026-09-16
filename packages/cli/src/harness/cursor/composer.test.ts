@@ -58,6 +58,38 @@ async function insert(key: string, value: string) {
 	global.close();
 }
 
+it("derives session bounds from 308140 direct message times without overflowing", async () => {
+	const db = await openEvidenceDb(root);
+	if (!db) throw new Error("expected the global database");
+	const first = Date.parse("2026-09-10T00:00:00Z");
+	const count = 308_140;
+	vi.spyOn(db.composer, "get").mockReturnValue(undefined);
+	vi.spyOn(db.bubbles, "iterate").mockImplementation(function* () {
+		for (let i = 0; i < count; i++)
+			yield {
+				key: `bubbleId:${ID}:${i}`,
+				value: JSON.stringify({ type: 2, createdAt: first + count - i }),
+			};
+		return undefined;
+	});
+	try {
+		const local = readComposerSession(
+			db,
+			summary({ createdAtSource: "direct-message" }),
+		);
+		expect(local?.session.messages).toHaveLength(count);
+		expect(local?.session.timestamp).toBe(new Date(first + 1).toISOString());
+		expect(local?.session.metadata?.lastModified).toBe(
+			new Date(first + count).toISOString(),
+		);
+		expect(local?.session.createdAtSource).toBe("direct-message");
+		expect(local?.session.lastUpdatedAtSource).toBe("direct-message");
+	} finally {
+		vi.restoreAllMocks();
+		db.close();
+	}
+});
+
 it("projects the fixture as the scan reads it, in insertion order", async () => {
 	const db = await openEvidenceDb(root);
 	if (!db) throw new Error("expected the global database");
