@@ -71,6 +71,7 @@ const fetcher = (events: unknown[]) =>
 	);
 const total = async () => finalize((await scan(options)).aggregate).totalTokens;
 
+// This full-size regression takes over five seconds on the shared CI runner.
 it("scans a 308140-message Cursor session after account refresh fails without overflowing", async () => {
 	const count = 308_140;
 	const source = local.sessions[0];
@@ -92,7 +93,7 @@ it("scans a 308140-message Cursor session after account refresh fails without ov
 	expect(reading.aggregate.distinctResponses).toBe(count);
 	expect(finalize(reading.aggregate).totalTokens).toBe(count * 2);
 	expect(reading.workflow.days[0].sessions).toBe(1);
-});
+}, 30_000);
 
 it("publishes useful local-only counts then replaces them with matched API usage through shared days", async () => {
 	expect(await total()).toBe(1000);
