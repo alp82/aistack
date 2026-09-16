@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.11](https://github.com/alp82/aistack/compare/cli-v0.16.10...cli-v0.16.11) (2026-09-16)
+
+
+### Bug Fixes
+
+* **cli:** keep large-history syncs reliable and reduce repeated reads ([#459](https://github.com/alp82/aistack/issues/459)) ([b9a7734](https://github.com/alp82/aistack/commit/b9a7734f0b98b729909846e82a8dca325a00abbd))
+
 ## [0.16.10](https://github.com/alp82/aistack/compare/cli-v0.16.9...cli-v0.16.10) (2026-09-15)
 
 
