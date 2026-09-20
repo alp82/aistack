@@ -210,48 +210,57 @@ components, never the library.
 * Every chart server-renders complete SVG. `ssr.test.tsx` asserts real marks, so
   a library regression fails the build instead of shipping blank charts.
 
-## Measured workflow
+## Measured workflow and Stats
 
-The Workflow section on the stack page. Spec:
-[docs/specs/workflow-surface.md](docs/specs/workflow-surface.md).
+The measured workflow atoms feed Stats (the Actual Usage section,
+`src/features/usage`). Spec: [docs/specs/workflow-surface.md](docs/specs/workflow-surface.md).
 
 * **The rules are one package**: `packages/workflow-rules` (`@aistack/workflow-rules`),
-  imported by the CLI, the Convex backend, and the web app. It holds `phase-rules/v1`,
-  `metric-rules/v2`, `component-rules/v2`, `lead-templates/v1`, `playbook-rules/v2`, the
-  daily wire shape and its fold (`daily.ts`), and the fixed row order
-  (`workflowRows.ts`). Every function in it is pure, so it is where a rule change gets
-  tested.
-* **The wire is per-day rows of combinable atoms** (`workflow-aggregates/v3`, #285, #358).
-  The CLI ships one `WorkflowDay` per UTC date holding counts, sums, maxes and
-  `log-buckets/v1` histograms (`log-buckets/v2`, half-octave, for the per-call `context`
-  block), and NO share, median or mean. The server folds a window (30 days, 7 days, or
-  the last 24 hours) at read time and computes every row over the fold. A rule change is
-  a server deploy and needs no re-sync. The `context` block is optional, so v2 days from
-  an old client fold beside v3 days; the Context reading (`context` on
-  `getWorkflowByStackSlug`) is null until a day carries the block.
-* **A reading is one machine's, per day** (ADR-0009). `measuredDays` holds one row per
-  (stack, machine, date) with both the usage and the workflow half (ADR-0010); a
-  re-synced day REPLACES that day, days append across syncs, and nothing prunes them
-  server-side. The window-free sets live on `measuredInventory`, one row per (stack,
-  machine, harness) (ADR-0011). General workflow readings stay on one machine: the Git
-  day carries no commit identity. Discord context alone combines context atoms across
-  machines by harness. See the exception in ADR-0009 before changing that fold.
-* **Fit is a number nothing ranks by** (#277). Rows come in the fixed order of
-  `WORKFLOW_ROW_ORDER`, and the first three are the podium. There is no rotation state,
-  no pins or hides, no fit line and no expander.
-* **No LLM anywhere** (ADR-0002). Every sentence the section prints comes from a fixed
-  template over measured numbers.
-* The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips
-  the extraction when it is off, and `getWorkflowByStackSlug` returns null for days
-  already stored. The presence of stored days is not consent.
-* **The rows render inside Actual Usage, `src/features/usage` (#307).** There is no
-  Workflow section and the word appears nowhere on the page. The section renders what the
-  server hands it and ranks nothing; the rows sit in five fixed tabs under the token
-  headline. The owner has no per-row control: `setWorkflowRowOverride` has no consumer on
-  the web. `src/features/workflow` keeps the row bodies, heads and derivations.
-* **The playbook's tracks split on the median measured session, never on intent.** Nothing
-  records what a session was for, so `playbook-rules/v1` names its two tracks the shorter
-  and the longer sessions. A receipt card's head names both sides and claims no direction.
+  shared by the CLI, Convex and web. It holds the versioned extraction rules, daily wire
+  shape and pure folds. Rule changes belong there with tests. No LLM generates readings.
+* **The wire is per-day combinable atoms** (`workflow-aggregates/v3`). Counts, sums,
+  maxes and histograms travel; shares, medians and means do not. Context is optional;
+  older days remain readable beside days with context atoms. No new CLI extraction
+  was required for the Stats redesign.
+* **Storage is per machine/day.** `measuredDays` holds usage and workflow halves per
+  (stack, machine, date), retained server-side (ADR-0010). Complete re-syncs replace
+  that day; partial readings retain prior evidence. Window-free inventory lives on
+  `measuredInventory`, latest per (stack, machine, harness) (ADR-0011).
+* **Web Stats has a fixed 30-day window and automatic scope** (#466, ADR-0009).
+  `getStatsByStackSlug` combines session atoms across machines before deriving routing,
+  context, activity, phases and median-session ranges. Usage totals also combine machines.
+  Current dates are today minus 29 through today UTC; previous dates are minus 59 through
+  minus 30. There is no window or machine selector, machine name, or partial-coverage label.
+  Existing single-machine workflow, public HTTP and Discord contracts remain intact.
+* **Git stays on one coherent source.** Lines changed and Languages use the newest
+  published eligible machine with current-window Git evidence, with deterministic ties.
+  These are not exact all-machine Git totals: the wire has no commit identities.
+  Discord retains its separate context-only aggregation exception.
+* **Inventory shares use counts.** Combine absolute call counts and category denominators,
+  including withheld contributions, before deriving shares. Never average stored shares.
+  Missing counts stay missing; known subtotals render as lower bounds and percentages
+  disappear when their numerator or denominator is incomplete. Withheld names stay private.
+* **Consent is checked at both ends.** `publishWorkflow` gates CLI extraction and the
+  Stats query even for stored days. `publishCost` separately gates dollars; displayed
+  cost retains pricing coverage and sources. Stored evidence is never consent.
+* **Flat blocks replace tabs and scan rows.** Order: token/cost headline; tiles; Models
+  with subagent routing; Harnesses and Context; Skills; MCP servers; Subagent types;
+  The week; Lines changed; Where the time goes and Languages. Missing readings disappear.
+  The five tile candidates are active days, sessions, cache hits, run by subagents and
+  median session. The page ranks nothing by fit and has no per-row owner controls.
+* **Mobile has compact forms and tap details.** Four initial model rows, independent
+  more-model and routing controls, visible context waffles, inventory chips, week
+  marginals with hourly detail, and pricing-source disclosure. Desktop phase hover
+  holds shorter/longer session tracks; mobile shows only the compact phase strip.
+* **Median session is a measured range**, excluding waiting and idle, over at least 20
+  measured sessions. Print the bucket range and any available previous range, never an
+  estimated midpoint or percentage delta. The tile does not require five sessions on
+  each side of the phase-track split; upstream measurement gates still apply.
+* **The cut list applies to details too.** No thinking share, late-night commits, turn
+  length, parallel projects, project workspaces, web searches per day, effort levels,
+  lines-per-commit dots, fan-out records, separate start-hours histogram or duplicate
+  Models tab. Session starts survive in the heatmap marginal. Preserve shared rules,
+  stored atoms and other consumers; removing presentation does not remove measurement.
 
 ## Discord bot
 

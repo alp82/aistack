@@ -1,81 +1,124 @@
-# Measured workflow surface spec
+# Measured workflow and Stats surface spec
 
-Decided on [#166](https://github.com/alp82/aistack/issues/166), part of
-[map #159](https://github.com/alp82/aistack/issues/159). Extraction facts come from
-[docs/research/deterministic-workflow-extractability-2026-08.md](../research/deterministic-workflow-extractability-2026-08.md)
-([#165](https://github.com/alp82/aistack/issues/165)). The surface itself was settled by
-five merged prototypes: [#164](https://github.com/alp82/aistack/issues/164),
-[#175](https://github.com/alp82/aistack/issues/175),
-[#186](https://github.com/alp82/aistack/issues/186),
-[#191](https://github.com/alp82/aistack/issues/191),
-[#193](https://github.com/alp82/aistack/issues/193). Terms are defined in
-[CONTEXT.md](../../CONTEXT.md). Written 2026-08-22.
-
-## Verdict
-
-**Build.** Every prototype landed, the extraction research proves the deterministic
-core, and only execution remains. A follow-up build map owns it, charted through
-[Task: chart the next maps](https://github.com/alp82/aistack/issues/169).
+The current web contract is [Lock the Stats cut list and build spec](https://github.com/alp82/aistack/issues/466#issuecomment-5747486474),
+shipped through [Map: Stats section redesign](https://github.com/alp82/aistack/issues/462).
+It supersedes the earlier podium and tabbed Actual Usage presentations. Terms live in
+[CONTEXT.md](../../CONTEXT.md); aggregation boundaries live in
+[ADR-0009](../adr/0009-a-workflow-reading-is-one-machines.md). Updated 2026-09-20.
 
 ## The product
 
-A measured Workflow section on the stack page. It shows how the person works: the
-metrics, the components, and the phase playbook, every number computed by a fixed
-local rule. The surface uses no LLM anywhere, so every fact and every sentence is
-deterministic. Raw transcripts never leave the machine.
+Stats shows measured AI tool usage on the public stack page. It remains the Actual
+Usage section in `src/features/usage`, with the existing measured anchor. Each block
+answers one question with near-zero prose. Fixed local rules produce the measurements;
+no LLM writes readings, and raw transcripts stay on the machine.
 
-## The section
+## Layout and detail
 
-**Superseded on 2026-08-28 by the merged section**
-([map #302](https://github.com/alp82/aistack/issues/302)). The workflow rows no longer
-have a section of their own. They live inside Actual Usage, section 01, and the word
-Workflow appears nowhere on the page. This chapter records the merged composition; the
-podium composition it replaces was [#191](https://github.com/alp82/aistack/issues/191).
+Desktop is flat and always visible, with no tabs, accordion, group labels or axis.
+The block order is fixed; neither fit nor a reader control ranks it. Side-by-side
+pairs are layout only. A block must make sense before its detail layer is opened.
 
-Settled in [#303](https://github.com/alp82/aistack/issues/303) and
-[#304](https://github.com/alp82/aistack/issues/304):
+| Order | Block | Desktop | Phone |
+| --- | --- | --- | --- |
+| 1 | Token/cost headline | Token history and cost with pricing coverage and sources | Compact in/out/cached header; cost row opens pricing sources |
+| 2 | Tiles | Active days, sessions, cache hits, run by subagents, median session | Compact boxed grid, no empty placeholder |
+| 3 | Models | Existing colored full-width bars and previous-period notches; half-height subagent routing beneath | Four initial models; separate controls for remaining models and routing |
+| 4 | Harnesses and Context per call | Harness pie with previous-period ring beside visible context waffles | Compact harness strip and visible waffles |
+| 5 | Skills | Call-share plates | Chips |
+| 6 | MCP servers | Call-share plates | Chips |
+| 7 | Subagent types | Count columns | Count chips |
+| 8 | The week | Activity heatmap with session-start marginal | Weekday/hour activity marginals and an hourly heatmap disclosure |
+| 9 | Lines changed | Additions/removals over dated readings | Short mirrored bars |
+| 10 | Where the time goes and Languages | Phase strip with shorter/longer tracks on hover; thin language strip | Compact phase and language strips, no phase-track disclosure |
 
-- The header meta holds the one control bar: the range (30d, 7d, 24h), the machine
-  selector, and "checked N ago". Every sum and share in the section follows the range
-  and the machine. Inventory (installed skills, MCP servers, tools) stays window-free.
-- The first screen is a fixed editorial pick and fits one viewport: the token headline
-  (history watermark, cost line, previous-period delta) on the left, "where the tokens
-  went" model rows on the right. Nothing data-driven joins the first screen: fit surfaces
-  the same rows every window, so no metric earns a slot by its number.
-- The rest lives in five tabs under the top block, each with its item count: Time (when
-  work happens, session start times, turn length, active days, late-night commits,
-  session length), Code (lines changed, project workspaces, sessions, languages, parallel
-  projects), Models (models used, effort levels, thinking tokens), Harness (subagents, by
-  harness, cache hits, run by subagents), Skills (skills and MCP, web searches). Questions
-  asked was dropped. Each tab packs a grid with no empty cell: Time, Models and Harness use
-  a 2x2 feature with two items beside it and the rest in three columns; Code uses bands;
-  Skills uses charts on the left with a count rail on the right.
-- A card prints name, figure, caption and the previous-period chip on one line, with the
-  body inline. Lines changed prints no head figure; its green and red pair is the figure.
-- The previous-period chip reads "▲ 12% vs the 30 days before" (7d: "vs the 7 days
-  before", 24h: "vs the day before"). A figure with no per-day rows on either side prints
-  no chip. 24h is today UTC against yesterday; 7d is against the 7 days before; 30d is
-  against 60 to 30 days ago.
-- Pins and hides are gone. The owner has no per-row control; `setWorkflowRowOverride`
-  and the `workflowRowOverrides` table were dropped in #321.
-- A row ships when its measurement exists. A missing measurement stays absent.
-- Start hours are stored in UTC and rendered in the OWNER's local time, labeled as such.
+Missing measurements disappear. Harnesses needs more than one measured harness; a
+single-harness stack can still show Context. Empty inventory categories and categories
+with no permitted names render no block. Missing Git dates leave gaps, not fabricated
+zero readings. A stack without measurements gets the existing owner or visitor empty
+state. A legacy whole-window reading remains approximate and has no previous comparison.
 
-The seven components ([#175](https://github.com/alp82/aistack/issues/175)) are unchanged:
-the phase playbook, model routing, the kit, delegation, the Git Ledger, coding languages,
-and the week/time heatmap.
+Desktop detail uses hover. Phone disclosures are independent and remain usable at
+320px and 390px. Context stays visible on both. Desktop phase detail requires eligible
+shorter/longer tracks; the compact phase mix can exist without them. All charts come
+from `src/features/charts`, server-render SVG marks, use square geometry and follow the
+validated palette rules in AGENTS.md.
 
-The settled page order is Actual Usage 01, Projects 02, Tools 03, Guide 04
-(`src/features/stack-view/pageOrder.ts`). Tools renders only when the stack lists tools.
-The section number is its position among the sections that render. The nav block under
-the hero shows one row per rendered section with a headline figure the section already
-prints; the usage row keeps "N tokens".
+The section order remains Actual Usage, Projects, Tools, Guide. Only rendered sections
+receive a position number; the navigation keeps the usage token headline.
 
-A stack with no measured days and one old 30-day snapshot prints the snapshot's exact 30d
-figure marked approximate, with no previous period, and 7d and 24h read as not measured
-([#306](https://github.com/alp82/aistack/issues/306) rule 6).
+## Window and automatic scope
 
-## Fit
+`measured.getUsageByStackSlug` supplies fixed `30d` usage and
+`workflow.getStatsByStackSlug` supplies the web workflow projection. The route prefetches
+both for initial rendering. An explicit null live query replaces its loader snapshot.
+There is no window selector, machine selector, machine name or partial-coverage label.
+
+Current dates are today minus 29 through today UTC. Previous dates are today minus 59
+through today minus 30. Existing 7d/24h APIs and other consumers remain unchanged.
+Inventory remains window-free.
+
+Usage totals combine machines. Web routing, context, activity, session starts, phase
+time and median-session histograms combine session atoms across machines before
+shares or medians are derived. Never average stored shares or medians. Context reuses
+the context-only fold and deterministic logged-window evidence ordering used by Discord.
+Activity and session starts share the newest available current-window published UTC
+offset, with stable ties. The UI labels local time when known and UTC otherwise.
+Activity cells count events; the session-start marginal counts starts.
+
+Git remains a single-source reading. Select the newest published eligible machine with
+current-window commit or changed-line evidence, with deterministic machine/date/row ties.
+Both Lines changed and Languages fold that machine's days. A source without Git evidence
+cannot displace it. No source means no Git reading. These blocks do not claim exact
+all-machine totals: the wire has no commit identities for cross-machine deduplication.
+
+Inventory uses the latest reading per machine/harness, retaining the legacy untagged
+source eviction. Combine absolute call counts and category denominators, including
+withheld contributions, before computing percentages. Share-only older readings retain
+permitted names and known count subtotals, but incomplete numerators or denominators
+produce no combined percentage. Known subtotals carry a lower-bound sign. A zero
+denominator also has no percentage. Withheld name counts are source-local counts and
+claim no globally unique total. Withheld names never enter the public projection.
+
+## Tiles and comparisons
+
+The five candidates are active days, sessions, cache hits, run by subagents and median
+session. A missing reading leaves no placeholder. Existing first-four-tile comparisons,
+model notches, harness comparisons and per-harness session counts remain available.
+No prior reading means no comparison, not an invented zero baseline.
+
+The median-session tile prints the histogram bucket range, for example `16-32 min`,
+for measured time excluding waiting and idle. It needs at least 20 measured sessions
+and preserves upstream phase measurement gates. It does not require five sessions on
+each side of the shorter/longer track split. Current and previous ranges use the same
+all-machine evidence policy. Print an available previous range rather than a percentage
+change derived from a midpoint or bucket edge.
+
+## Consent and cut list
+
+`publishWorkflow` gates CLI extraction and the Stats query, including already stored
+evidence. `publishCost` independently gates dollars. Cost retains its lower-bound
+presentation, covered token share and price-table sources. Stored numbers imply no
+consent. Published-name filters and withheld denominators remain in effect.
+
+Remove from both the default page and its details: thinking share, late-night commits,
+turn length, parallel projects, project workspaces, web searches per day, effort levels,
+lines-per-commit dots and subagent fan-out records. Thinking/output counters mix provider
+semantics and cannot yield one accurate thinking percentage. Session start hour survives
+only in the heatmap marginal; there is no separate histogram or duplicate Models tab.
+
+The former scan rows, podium, template prose, receipt cards and per-row owner controls
+are absent from Stats. The old tab/accordion/topic/grid presentation is removed.
+Shared rules, server workflow rows, schemas and stored atoms survive for other consumers.
+The retained phase projection still depends on the lead's phase-share derivation.
+
+## Retained measurement rules and history
+
+The remaining sections document extraction rules and earlier projections that continue
+to inform server consumers. Historical presentation descriptions do not override the
+current Stats contract above.
+
+## Retained fit calculation
 
 Fit is coverage times surprise ([#175](https://github.com/alp82/aistack/issues/175)).
 Coverage is the share of synced harnesses the metric counts, and a Git metric counts
@@ -91,7 +134,7 @@ and there is no server state beside the days (pins and hides were dropped in #30
 Every row is computed on the server, over the folded window. The CLI ships atoms and no
 values (see "The wire"), so a rule change is a server deploy and needs no re-sync.
 
-## Phases
+## Phase extraction and retained playbook
 
 The public phase set is **scout, build, verify, handoff**, plus a visible unknown
 (round 3). The anatomy prototype used orient and gate for the first and last phase,
@@ -100,10 +143,11 @@ is the exchange at a blocking human gate.
 
 Versioned rule sets classify recorded tool events, first match wins
 ([#186](https://github.com/alp82/aistack/issues/186)). Each event owns the gap to the
-next event, capped at 5 minutes. The wait at a blocking handoff call renders as a
-striped waiting slice behind a toggle. A rule-set bump reclassifies old sessions from
+next event, capped at 5 minutes. The wait at a blocking handoff call is excluded from
+measured session time. The original anatomy prototype displayed waiting separately;
+Stats has no waiting toggle. A rule-set bump reclassifies old sessions from
 local raw records at the next sync. A session whose raw records are gone keeps its old
-aggregate, and the page shows a mixed-version tag.
+aggregate, and its recorded rule version remains available to consumers.
 
 **The shipping rule set is `phase-rules/v1`**, and it is the set the extraction proof
 arrived at, not the one this spec first described
@@ -151,9 +195,10 @@ records `question`. Each adapter names its own.
 Verify keeps the purple chart slot from the anatomy prototype. It is a validated
 palette slot, and a green verify would read as a pass mark the data does not claim.
 
-The public phase surface is the playbook: two measured shipping tracks with median
-figures, plus receipt cards that pair a habit with its measured payoff. The unknown
-bucket never hides: it prints as small print under the lead, with the rule id.
+The retained playbook calculation produces two measured shipping tracks and receipt
+cards. Stats renders the phase mix with a visible unknown segment and exposes eligible
+tracks only as desktop hover detail. Receipt cards and the prose lead are historical
+presentation, not part of Stats.
 
 **The tracks split on the median measured session** (`playbook-rules/v1`, built in
 [#215](https://github.com/alp82/aistack/issues/215)). Nothing on the wire records what a
@@ -175,7 +220,11 @@ data as rewrite a file, and guessing would cost more truth than it buys.
 The unknown bucket therefore ships as a real number on the page, not as an
 embarrassment to hide.
 
-## The template lead
+## Historical template lead
+
+Stats does not render this prose. The retained server derivation still supplies its
+phase-share projection. The selected-window and annotation rules below describe the
+earlier workflow surface only.
 
 Locked in [#220](https://github.com/alp82/aistack/issues/220). Five figures in four
 lines, versioned as `lead-templates/v1`:
@@ -231,14 +280,14 @@ the section still renders.
 
 One local event reducer per harness. The event graph stays in memory, and only
 versioned aggregates leave the reducer. Explicit markers first, fixed classifiers for
-proxy metrics, and every classifier publishes its version with its result. A metric
-that only some harnesses record carries a coverage tag. A proxy metric names its rule.
-Unsupported facts stay absent.
+proxy metrics, and every classifier publishes its version with its result. The retained
+workflow rows carry source coverage and rule identifiers. Stats preserves
+measurement gates and omits missing readings; it adds no partial-coverage label.
 
 Harness reach per the research: Claude Code and opencode record skills, agents, and
 MCP. Codex records tools and MCP only. Pi records tools and a session tree only.
 
-Local Git history is a source and makes commit and line facts exact
+Local Git history is a source for commit and line facts within the selected machine
 ([#174](https://github.com/alp82/aistack/issues/174)). The CLI reads Git history only
 for working directories that windowed sessions touched. Repository names stay local
 under the name filter. Only aggregate counts and line totals ship.
@@ -325,12 +374,18 @@ draft means nothing to edit. Owner prose lives in the Guide section.
 [ADR-0002](../adr/0002-no-llm-in-the-workflow-surface.md) records the rule and
 supersedes ADR-0001.
 
-## Out of v1
+## Historical v1 scope
 
 - The owner mirror, the local coaching view from the anatomy prototype, parks for a
   later map (round 3).
 - The stat components for the four wire-bump items. The data ships, the display waits.
 
-## Hand-off
+## Release acceptance
 
-The build map rides [Task: chart the next maps](https://github.com/alp82/aistack/issues/169).
+Verify rich and sparse deployed stacks at desktop, 390px and 320px, with no horizontal
+overflow before or after phone disclosures. Check deployed readings, missing data,
+consent and name withholding, cost coverage and sources, retained details, and absence
+of selectors and cut metrics. Keep server aggregation tests for unequal weights,
+duplicate Git histories, missing inventory counts, absent/zero prior values, consent
+and unbalanced median histograms. Deployment uses GitHub Actions; no CLI release or
+new extraction is required by this redesign.
