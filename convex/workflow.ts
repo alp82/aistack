@@ -33,6 +33,7 @@ import {
 	workflowDaysForStack,
 } from './lib/workflow'
 import { GitDay, HarnessDay } from './schema'
+import { readStats } from './lib/stats'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -395,4 +396,70 @@ export const getWorkflowByStackSlug = query({
 				contextReadings === null ? null : { harnesses: contextReadings },
 		}
 	},
+})
+
+
+const MedianSessionRange = v.union(v.object({
+  low: v.number(), high: v.number(), sessions: v.number(),
+}), v.null())
+const StatsInventoryCategory = v.object({
+  totalCalls: v.union(v.number(), v.null()),
+  withheldNames: v.number(),
+  atoms: v.array(v.object({
+    name: v.string(),
+    knownCalls: v.number(),
+    countsComplete: v.boolean(),
+    callShare: v.union(v.number(), v.null()),
+  })),
+})
+const StatsView = v.object({
+  window: v.object({ from: v.string(), to: v.string(), previousFrom: v.string(), previousTo: v.string() }),
+  utcOffsetMinutes: v.union(v.number(), v.null()),
+  medianSession: v.object({ current: MedianSessionRange, previous: MedianSessionRange }),
+  routing: v.union(v.object({
+    main: v.array(v.object({ model: v.string(), tokens: v.number() })),
+    subagents: v.array(v.object({ model: v.string(), tokens: v.number() })),
+  }), v.null()),
+  activity: HarnessDay.fields.activity,
+  startHours: HarnessDay.fields.startHours,
+  phaseShare: v.union(PhaseShare, v.null()),
+  phaseTracks: v.union(v.object({
+    splitMinutes: v.number(),
+    tracks: v.array(v.object({
+      id: v.union(v.literal('shorter'), v.literal('longer')),
+      sessions: v.number(),
+      phaseShare: PhaseShare,
+    })),
+  }), v.null()),
+  context: v.union(v.object({ harnesses: v.array(ContextHarness) }), v.null()),
+  inventory: v.object({ skills: StatsInventoryCategory, mcpServers: StatsInventoryCategory, subagents: StatsInventoryCategory }),
+  git: v.union(v.object({
+    additions: v.number(),
+    removals: v.number(),
+    changedLinesByExtension: GitDay.fields.changedLinesByExtension,
+    withheldExtensionLines: v.number(),
+    days: v.array(v.object({ date: v.string(), additions: v.number(), removals: v.number() })),
+  }), v.null()),
+})
+
+/**
+ * The web Stats contract: all-machine sessions, one coherent Git source, 30 days.
+ * Existing workflow, HTTP and Discord callers retain their own contracts.
+ * No machine identity, cut metrics or full previous workflow travels here.
+ */
+export const getStatsByStackSlug = query({
+  args: { slug: v.string() },
+  returns: v.union(StatsView, v.null()),
+  handler: async (ctx, { slug }) => {
+    const stack = await publicStackBySlug(ctx, slug)
+    if (!stack || stack.publishWorkflow === false) return null
+    const [rows, inventory, catalog] = await Promise.all([
+      workflowDaysForStack(ctx, stack._id),
+      inventoryForStack(ctx, stack._id),
+      loadModelCatalog(ctx),
+    ])
+    if (rows.length === 0 && inventory.length === 0) return null
+    // Shared atom types use readonly arrays; Convex validators use mutable arrays.
+    return readStats(rows, inventory, Date.now(), catalog) as Infer<typeof StatsView>
+  },
 })

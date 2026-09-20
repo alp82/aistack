@@ -9,6 +9,7 @@ import {
 import {
 	buildPlaybook,
 	lengthBuckets,
+	medianSessionRange,
 	MIN_PLAYBOOK_SESSIONS,
 	PLAYBOOK_RULES_V2,
 } from "./playbook.js";
@@ -196,5 +197,25 @@ describe("playbook-rules/v2", () => {
 				openedWithScout: 12,
 			}),
 		]);
+	});
+});
+
+describe("median session range", () => {
+	test("returns measured-minute bounds even when all sessions occupy one bucket", () => {
+		const reading = readingWith([lengthBucket({ bucket: 5, sessions: 20 })]);
+		expect(buildPlaybook(reading)).toBeUndefined();
+		expect(medianSessionRange(reading)).toEqual({
+			low: 16,
+			high: 32,
+			sessions: 20,
+		});
+	});
+	test("keeps the evidence threshold and absence", () => {
+		expect(medianSessionRange(readingWith([]))).toBeUndefined();
+		expect(
+			medianSessionRange(
+				readingWith([lengthBucket({ bucket: 5, sessions: 19 })]),
+			),
+		).toBeUndefined();
 	});
 });

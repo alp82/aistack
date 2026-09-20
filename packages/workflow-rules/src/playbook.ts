@@ -283,3 +283,22 @@ export function buildReceipts(
 
 	return cards;
 }
+
+/** Median measured minutes, independent of whether two phase tracks can ship. */
+export function medianSessionRange(reading: WorkflowReading):
+	| {
+			low: number;
+			high: number;
+			sessions: number;
+	  }
+	| undefined {
+	const rows = lengthBuckets(reading);
+	const sessions = sessionsIn(rows);
+	if (sessions < MIN_PLAYBOOK_SESSIONS) return undefined;
+	const bucket = medianBucket(
+		rows.map((row) => ({ bucket: row.bucket, count: row.sessions })),
+	);
+	return bucket === undefined
+		? undefined
+		: { ...bucketRange(bucket), sessions };
+}
