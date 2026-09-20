@@ -4,6 +4,10 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { ItemIcon } from "../ItemIcon";
+import {
+	removeAllPendingModels,
+	removePendingModel,
+} from "./optimisticUpdates";
 
 /**
  * The price and model import (#337): run it by hand, approve the pending rows
@@ -11,11 +15,18 @@ import { ItemIcon } from "../ItemIcon";
  */
 export function AdminImportTab() {
 	const log = useQuery(api.modelImport.readLog, { limit: 200 });
+	const [actionError, setActionError] = useState<string | null>(null);
 	const pendingModels = useQuery(api.admin.getPendingModels);
 	const runNow = useAction(api.modelImport.runNow);
-	const approveModel = useMutation(api.admin.approveModel);
-	const rejectModel = useMutation(api.admin.rejectModel);
-	const approveAll = useMutation(api.admin.approveAllPendingModels);
+	const approveModel = useMutation(api.admin.approveModel).withOptimisticUpdate(
+		removePendingModel,
+	);
+	const rejectModel = useMutation(api.admin.rejectModel).withOptimisticUpdate(
+		removePendingModel,
+	);
+	const approveAll = useMutation(
+		api.admin.approveAllPendingModels,
+	).withOptimisticUpdate(removeAllPendingModels);
 	const [running, setRunning] = useState(false);
 	const [result, setResult] = useState<string | null>(null);
 
@@ -37,24 +48,38 @@ export function AdminImportTab() {
 	};
 
 	const handleApprove = async (modelId: Id<"models">) => {
+		setActionError(null);
 		try {
 			await approveModel({ modelId });
 		} catch (error) {
-			console.error("Failed to approve model:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to approve model.",
+			);
 		}
 	};
 
 	const handleReject = async (modelId: Id<"models">) => {
+		setActionError(null);
 		try {
 			await rejectModel({ modelId });
 		} catch (error) {
-			console.error("Failed to reject model:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to reject model.",
+			);
 		}
 	};
 
 	return (
 		<div className="py-12 sm:py-16">
 			<div className="mx-auto max-w-6xl px-4 sm:px-6">
+				{actionError && (
+					<p
+						role="alert"
+						className="mx-auto max-w-6xl px-4 py-4 font-mono text-sm text-destructive"
+					>
+						{actionError}
+					</p>
+				)}
 				<div className="mb-8 flex flex-wrap items-center justify-between gap-4">
 					<div>
 						<h2 className="font-mono text-xl font-bold uppercase tracking-wide text-fg-primary">
@@ -94,7 +119,16 @@ export function AdminImportTab() {
 						{pendingModels && pendingModels.length > 0 ? (
 							<button
 								type="button"
-								onClick={() => approveAll({}).catch(console.error)}
+								onClick={() => {
+									setActionError(null);
+									void approveAll({}).catch((error) =>
+										setActionError(
+											error instanceof Error
+												? error.message
+												: "Failed to approve models.",
+										),
+									);
+								}}
 								className="ml-4 inline-flex items-center gap-1.5 border-2 border-accent-lime px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime transition-colors hover:bg-accent-lime hover:text-accent-lime-contrast"
 							>
 								<Check className="size-3.5" />

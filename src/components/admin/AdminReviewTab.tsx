@@ -8,24 +8,45 @@ import { AddBundleModal, type BundleData } from "../AddBundleModal";
 import { AddModelForm, type ModelData } from "../AddModelModal";
 import { AddToolModal, type ToolData } from "../AddToolModal";
 import { Dialog } from "../ui/Dialog";
+import {
+	removePendingTool,
+	removePendingBundle,
+	removePendingModel,
+	removePendingSuggestion,
+} from "./optimisticUpdates";
 
 export function AdminReviewTab() {
 	const pendingTools = useQuery(api.admin.getPendingTools);
 	const pendingBundles = useQuery(api.admin.getPendingBundles);
+	const [actionError, setActionError] = useState<string | null>(null);
 	const pendingModels = useQuery(api.admin.getPendingModels);
 	const pendingEditSuggestions = useQuery(
 		api.admin.getPendingToolEditSuggestions,
 	);
-	const approveTool = useMutation(api.admin.approveTool);
-	const rejectTool = useMutation(api.admin.rejectTool);
-	const approveBundle = useMutation(api.admin.approveBundle);
-	const rejectBundle = useMutation(api.admin.rejectBundle);
-	const approveModel = useMutation(api.admin.approveModel);
-	const rejectModel = useMutation(api.admin.rejectModel);
+	const approveTool = useMutation(api.admin.approveTool).withOptimisticUpdate(
+		removePendingTool,
+	);
+	const rejectTool = useMutation(api.admin.rejectTool).withOptimisticUpdate(
+		removePendingTool,
+	);
+	const approveBundle = useMutation(
+		api.admin.approveBundle,
+	).withOptimisticUpdate(removePendingBundle);
+	const rejectBundle = useMutation(api.admin.rejectBundle).withOptimisticUpdate(
+		removePendingBundle,
+	);
+	const approveModel = useMutation(api.admin.approveModel).withOptimisticUpdate(
+		removePendingModel,
+	);
+	const rejectModel = useMutation(api.admin.rejectModel).withOptimisticUpdate(
+		removePendingModel,
+	);
 	const approveEditSuggestion = useMutation(
 		api.admin.approveToolEditSuggestion,
-	);
-	const rejectEditSuggestion = useMutation(api.admin.rejectToolEditSuggestion);
+	).withOptimisticUpdate(removePendingSuggestion);
+	const rejectEditSuggestion = useMutation(
+		api.admin.rejectToolEditSuggestion,
+	).withOptimisticUpdate(removePendingSuggestion);
 	const updateEditSuggestion = useMutation(api.admin.updateToolEditSuggestion);
 
 	const [editingTool, setEditingTool] = useState<ToolData | null>(null);
@@ -35,75 +56,111 @@ export function AdminReviewTab() {
 	const [editingBundle, setEditingBundle] = useState<BundleData | null>(null);
 
 	const handleApproveTool = async (toolId: Id<"tools">) => {
+		setActionError(null);
 		try {
 			await approveTool({ toolId });
 		} catch (error) {
-			console.error("Failed to approve tool:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to approve tool.",
+			);
 		}
 	};
 
 	const handleRejectTool = async (toolId: Id<"tools">) => {
+		setActionError(null);
 		try {
 			await rejectTool({ toolId });
 		} catch (error) {
-			console.error("Failed to reject tool:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to reject tool.",
+			);
 		}
 	};
 
 	const handleApproveBundle = async (bundleId: Id<"bundles">) => {
+		setActionError(null);
 		try {
 			await approveBundle({ bundleId });
 		} catch (error) {
-			console.error("Failed to approve bundle:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to approve bundle.",
+			);
 		}
 	};
 
 	const handleRejectBundle = async (bundleId: Id<"bundles">) => {
+		setActionError(null);
 		try {
 			await rejectBundle({ bundleId });
 		} catch (error) {
-			console.error("Failed to reject bundle:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to reject bundle.",
+			);
 		}
 	};
 
 	const handleApproveModel = async (modelId: Id<"models">) => {
+		setActionError(null);
 		try {
 			await approveModel({ modelId });
 		} catch (error) {
-			console.error("Failed to approve model:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to approve model.",
+			);
 		}
 	};
 
 	const handleRejectModel = async (modelId: Id<"models">) => {
+		setActionError(null);
 		try {
 			await rejectModel({ modelId });
 		} catch (error) {
-			console.error("Failed to reject model:", error);
+			setActionError(
+				error instanceof Error ? error.message : "Failed to reject model.",
+			);
 		}
 	};
 
 	const handleApproveEditSuggestion = async (
 		suggestionId: Id<"toolEditSuggestions">,
 	) => {
+		setActionError(null);
 		try {
 			await approveEditSuggestion({ suggestionId });
 		} catch (error) {
-			console.error("Failed to approve edit suggestion:", error);
+			setActionError(
+				error instanceof Error
+					? error.message
+					: "Failed to approve edit suggestion.",
+			);
 		}
 	};
 
 	const handleRejectEditSuggestion = async (
 		suggestionId: Id<"toolEditSuggestions">,
 	) => {
+		setActionError(null);
 		try {
 			await rejectEditSuggestion({ suggestionId });
 		} catch (error) {
-			console.error("Failed to reject edit suggestion:", error);
+			setActionError(
+				error instanceof Error
+					? error.message
+					: "Failed to reject edit suggestion.",
+			);
 		}
 	};
 
 	return (
 		<>
+			{actionError && (
+				<p
+					role="alert"
+					className="mx-auto max-w-6xl px-4 py-4 font-mono text-sm text-destructive"
+				>
+					{actionError}
+				</p>
+			)}
 			<AddToolModal
 				open={!!editingTool}
 				onClose={() => {

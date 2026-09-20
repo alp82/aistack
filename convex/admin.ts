@@ -633,6 +633,7 @@ export const getFlaggedStacks = query({
       const creator = await ctx.db.get(stack.creatorId)
       result.push({
         _id: stack._id,
+        _creationTime: stack._creationTime,
         name: stack.name,
         slug: `${stack.slug}-${stack.shortId}`,
         oneLiner: stack.oneLiner,
@@ -685,6 +686,7 @@ export const getLowQualityStacks = query({
     const stacks = await ctx.db
       .query('stacks')
       .withIndex('by_isLowQuality', (q) => q.eq('isLowQuality', true))
+      .order('desc')
       .collect()
 
     return await Promise.all(
@@ -698,6 +700,7 @@ export const getLowQualityStacks = query({
         ).length
         return {
           _id: stack._id,
+        _creationTime: stack._creationTime,
           name: stack.name,
           slug: `${stack.slug}-${stack.shortId}`,
           oneLiner: stack.oneLiner,

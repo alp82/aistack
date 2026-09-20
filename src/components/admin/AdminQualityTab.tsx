@@ -1,16 +1,47 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { Check, Flag, X } from "lucide-react";
+import { useState } from "react";
+import { api } from "../../../convex/_generated/api";
+import {
+	dismissFlags,
+	markLowQuality,
+	unmarkLowQuality,
+} from "./optimisticUpdates";
 
 export function AdminQualityTab() {
 	const flaggedStacks = useQuery(api.admin.getFlaggedStacks);
 	const lowQualityStacks = useQuery(api.admin.getLowQualityStacks);
-	const markStackLowQuality = useMutation(api.admin.markStackLowQuality);
-	const dismissStackFlags = useMutation(api.admin.dismissStackFlags);
-	const unmarkStackLowQuality = useMutation(api.admin.unmarkStackLowQuality);
+	const markStackLowQuality = useMutation(
+		api.admin.markStackLowQuality,
+	).withOptimisticUpdate(markLowQuality);
+	const dismissStackFlags = useMutation(
+		api.admin.dismissStackFlags,
+	).withOptimisticUpdate(dismissFlags);
+	const unmarkStackLowQuality = useMutation(
+		api.admin.unmarkStackLowQuality,
+	).withOptimisticUpdate(unmarkLowQuality);
 
+	const [error, setError] = useState<string | null>(null);
+	const runAction = async (action: () => Promise<unknown>) => {
+		setError(null);
+		try {
+			await action();
+		} catch (error) {
+			setError(
+				error instanceof Error ? error.message : "Could not update stack.",
+			);
+		}
+	};
 	return (
 		<>
+			{error && (
+				<p
+					role="alert"
+					className="mx-auto max-w-6xl px-4 py-4 font-mono text-sm text-destructive"
+				>
+					{error}
+				</p>
+			)}
 			{/* Flagged Stacks Section */}
 			<section className="py-12 sm:py-16">
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -66,7 +97,9 @@ export function AdminQualityTab() {
 										<button
 											type="button"
 											onClick={() =>
-												markStackLowQuality({ stackId: stack._id })
+												runAction(() =>
+													markStackLowQuality({ stackId: stack._id }),
+												)
 											}
 											className="cursor-pointer inline-flex items-center gap-2 border-2 border-orange-500 bg-orange-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-orange-600"
 										>
@@ -76,7 +109,9 @@ export function AdminQualityTab() {
 										<button
 											type="button"
 											onClick={() =>
-												dismissStackFlags({ stackId: stack._id })
+												runAction(() =>
+													dismissStackFlags({ stackId: stack._id }),
+												)
 											}
 											className="cursor-pointer inline-flex items-center gap-2 border-2 border-stroke-strong px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
 										>
@@ -148,7 +183,9 @@ export function AdminQualityTab() {
 										<button
 											type="button"
 											onClick={() =>
-												unmarkStackLowQuality({ stackId: stack._id })
+												runAction(() =>
+													unmarkStackLowQuality({ stackId: stack._id }),
+												)
 											}
 											className="cursor-pointer inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
 										>
