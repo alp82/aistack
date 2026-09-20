@@ -68,3 +68,40 @@ The Discord projection folds only context atoms. It orders evidence by UTC date,
 received timestamp, machine identity and row ID before applying the existing
 last-logged-window inference. Machine identity stays internal; the public reading
 contains harness measurements only.
+
+## Web Stats exception
+
+[Lock the Stats cut list and build spec](https://github.com/alp82/aistack/issues/466#issuecomment-5747486474)
+authorizes a separate web projection, `workflow.getStatsByStackSlug`. It combines
+session atoms across machines for the fixed current 30 UTC days (today minus 29
+through today). Routing, activity events, session starts, phase time and session
+length histograms sum before shares or medians are derived. Upstream phase gates
+remain intact. The median is a bucket range in measured minutes, excluding idle
+and waiting, with at least 20 measured sessions. It does not depend on whether
+the shorter/longer track split has five sessions on each side. Only that range
+is also read for the previous 30 UTC days (today minus 59 through minus 30).
+
+Context uses the same context-only fold and deterministic logged-window ordering
+as Discord. Both activity events and session starts use the newest published
+current-window UTC offset that exists, with stable machine/date/row ties.
+The offset applies to every source; absent offsets remain null.
+
+Git retains its boundary. Select the machine with commit or changed-line evidence in the current window
+and the newest current-window publication, breaking ties by machine, date and row ID.
+Both line changes and extension counts fold that machine's current-window days.
+A newly synced machine with no Git evidence cannot displace it. No source means
+no Git reading. These figures do not claim exact all-machine Git totals.
+Machine identities stay internal to the projection.
+
+Inventory is window-free, latest per machine/harness, with the existing legacy
+untagged-source eviction. Combine absolute counts and category denominators,
+including withheld calls. An unknown denominator means a null total and null
+percentages. Missing per-name counts retain the name and known count subtotal,
+marked incomplete; its percentage is null. A zero denominator has no percentage.
+Withheld name counts sum source-local counts and do not claim global uniqueness.
+
+The query checks `publishWorkflow` before reading stored evidence. It preserves
+published names only and exposes no machine selector. The existing single-machine
+workflow query, server rows, public HTTP and Discord contracts remain intact.
+This exception supersedes the web scope described above; storage remains one row
+per machine/day in `measuredDays` (ADR-0010).

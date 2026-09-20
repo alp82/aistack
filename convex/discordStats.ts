@@ -1,5 +1,4 @@
 import {
-  foldContextDays,
   harnessLabel,
   HARNESS_NAMES,
   type HarnessName,
@@ -14,14 +13,12 @@ import {
 import { orderCreatorStacks } from './lib/creatorOrder'
 import { resolveCreatorAvatarUrl } from './lib/avatar'
 import { loadModelCatalog, type ModelCatalog } from './lib/modelCatalog'
-import {
-  readContextHarness,
-  topModelOf,
-  type WorkflowDayRow,
-} from './lib/workflow'
+import { contextAcrossMachines as contextForDiscord } from './lib/workflow'
 import { readUsageWindow, UsageReading } from './measured'
 import { ContextHarness } from './workflow'
 import { getAppUrl } from './httpCli'
+
+export { contextForDiscord }
 
 const nullableString = v.union(v.string(), v.null())
 export const DiscordTarget = v.object({
@@ -223,58 +220,6 @@ export const searchCreators = internalQuery({
     return choices
   },
 })
-
-export function contextForDiscord(
-  rows: readonly Doc<'measuredDays'>[],
-  catalog: ModelCatalog,
-) {
-  const ordered = rows
-    .filter((r): r is WorkflowDayRow => r.workflow !== undefined)
-    .sort(
-      (a, b) =>
-        a.date.localeCompare(b.date) ||
-        a.receivedAt - b.receivedAt ||
-        (a.machine ?? '').localeCompare(b.machine ?? '') ||
-        a._id.localeCompare(b._id),
-    )
-  const names = [
-    ...new Set(
-      ordered.flatMap((r) =>
-        r.workflow.harnesses.filter((h) => h.context).map((h) => h.harness),
-      ),
-    ),
-  ].sort()
-  return names
-    .flatMap((harness) => {
-      const atoms = ordered.flatMap((r) =>
-        r.workflow.harnesses
-          .filter((h) => h.harness === harness)
-          .flatMap((h) => (h.context ? [h.context] : [])),
-      )
-      const context = foldContextDays(atoms)
-      if (!context.calls.main.some((b) => b.calls > 0)) return []
-      const routing = ordered.flatMap((r) =>
-        r.workflow.harnesses
-          .filter((h) => h.harness === harness)
-          .flatMap((h) => h.routing?.main ?? []),
-      )
-      const totals = new Map<string, number>()
-      for (const row of routing)
-        totals.set(row.model, (totals.get(row.model) ?? 0) + row.tokens)
-      const model = topModelOf(
-        {
-          harness,
-          routing: {
-            main: [...totals].map(([model, tokens]) => ({ model, tokens })),
-            subagents: [],
-          },
-        },
-        ordered,
-      )
-      return [readContextHarness(harness, context, model, catalog)]
-    })
-    .sort((a, b) => b.calls - a.calls || a.harness.localeCompare(b.harness))
-}
 
 export function discordPeriod(
   rows: readonly Doc<'measuredDays'>[],

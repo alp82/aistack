@@ -762,3 +762,212 @@ describe('the Context reading (#358)', () => {
     expect(await t.query(api.workflow.getWorkflowByStackSlug, { slug })).toBeNull()
   })
 })
+
+describe('fixed 30-day all-machine web Stats', () => {
+  const stats = (t: Ctx, slug: string) => t.query(api.workflow.getStatsByStackSlug, { slug })
+
+  test('combines session atoms with unequal weights and keeps one coherent Git source', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const small = day()
+    const large = day()
+    const h = large.harnesses[0]
+    h.activity[0].events = 360
+    h.startHours[0].sessions = 90
+    h.routing!.main[0].tokens = 7200
+    h.phase!.phaseSec = { scout: 0, build: 9000, verify: 0, handoff: 0, unknown: 0 }
+    h.phase!.lengths[0].sessions = 90
+    h.phase!.lengths[0].bucket = 6
+    // Same cloned Git history on both machines must count once.
+    await publish(t, stackId, { machine: 'a', workflow: wire([small]) })
+    await publish(t, stackId, { machine: 'b', workflow: wire([large], { utcOffsetMinutes: -300 }) })
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query('measuredDays').collect()) {
+        await ctx.db.patch(row._id, { receivedAt: row.machine === 'b' ? 20 : 10 })
+      }
+    })
+    const view = await stats(t, slug)
+    expect(view?.routing?.main).toEqual([{ model: 'claude-opus-5', tokens: 8000 }])
+    expect(view?.activity).toEqual([{ weekdayUtc: 1, hourUtc: 21, events: 400 }])
+    expect(view?.startHours).toEqual([{ hourUtc: 21, sessions: 100 }])
+    expect(view?.utcOffsetMinutes).toBe(-300)
+    expect(view?.phaseShare?.build).toBeCloseTo(9180 / 10000)
+    expect(view?.medianSession.current).toEqual({ low: 32, high: 64, sessions: 100 })
+    expect(view?.git).toMatchObject({ additions: 800, removals: 200, withheldExtensionLines: 100 })
+    expect(view?.git?.changedLinesByExtension).toEqual([{ extension: '.ts', changedLines: 900 }])
+    expect(view?.git?.days).toHaveLength(1)
+    expect(view).not.toHaveProperty('machine')
+    expect(view).not.toHaveProperty('thinking')
+    expect(view).not.toHaveProperty('section')
+    // The older consumer still sees just its selected machine.
+    const legacy = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect(legacy?.section.harnesses[0].routing?.main[0].tokens).toBe(7200)
+  })
+
+  test('median ranges use exact disjoint UTC windows and do not need balanced tracks', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    function at(age: number, bucket: number, sessions: number): Day {
+      const d = day({ date: daysAgo(age) })
+      d.harnesses[0].phase!.lengths[0] = {
+        ...d.harnesses[0].phase!.lengths[0], bucket, sessions,
+      }
+      return d
+    }
+    await publish(t, stackId, { machine: 'a', workflow: wire([
+      at(0, 5, 16), at(29, 3, 4), at(30, 2, 10), at(59, 2, 10), at(60, 9, 100),
+    ]) })
+    // Future rows must not enter the current range (insert directly to avoid publish's date gate).
+    await t.run(async ctx => {
+      const row = (await ctx.db.query('measuredDays').collect())[0]
+      const { _id, _creationTime, ...fields } = row
+      await ctx.db.insert('measuredDays', { ...fields, date: daysAgo(-1), workflow: at(-1, 10, 100) })
+    })
+    const view = await stats(t, slug)
+    expect(view?.medianSession).toEqual({
+      current: { low: 16, high: 32, sessions: 20 },
+      previous: { low: 2, high: 4, sessions: 20 },
+    })
+    expect(view?.phaseTracks).toBeNull()
+    expect(view?.window).toEqual({ from: daysAgo(29), to: daysAgo(0), previousFrom: daysAgo(59), previousTo: daysAgo(30) })
+  })
+
+  test('absent phase evidence, fewer than 20 sessions, and missing prior periods stay absent', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId, { machine: 'a' })
+    expect((await stats(t, slug))?.medianSession).toEqual({ current: null, previous: null })
+    const noPhase = day()
+    delete noPhase.harnesses[0].phase
+    await publish(t, stackId, { machine: 'b', workflow: wire([noPhase]) })
+    expect((await stats(t, slug))?.medianSession.current).toBeNull()
+    // Actual measured sub-minute sessions retain the zero lower bound.
+    const zero = day()
+    zero.harnesses[0].phase!.lengths[0].sessions = 20
+    zero.harnesses[0].phase!.lengths[0].bucket = 0
+    await publish(t, stackId, { machine: 'a', workflow: wire([zero]) })
+    expect((await stats(t, slug))?.medianSession.current).toEqual({ low: 0, high: 1, sessions: 20 })
+  })
+
+  test('inventory combines absolute counts and withheld denominators, retaining incomplete counts', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    async function inventory(machine: string, calls: number, total: number) {
+      const p = payload()
+      p.inventory.skills = [{ name: 'tdd', calls, callShare: calls / total }]
+      p.inventory.mcpServers = [{ name: 'docs', calls, callShare: calls / total }]
+      p.inventory.subagents = [{ name: 'review', calls, callShare: calls / total }]
+      p.inventory.withheld.skills = 1
+      p.inventory.calls = { builtinTools: 0, skills: total, mcpServers: total, subagents: total, slashCommands: 0 }
+      await publish(t, stackId, { machine, payload: p })
+    }
+    await inventory('a', 9, 10)
+    await inventory('b', 10, 100)
+    let view = await stats(t, slug)
+    for (const category of ['skills', 'mcpServers', 'subagents'] as const) {
+      expect(view?.inventory[category].totalCalls).toBe(110)
+      expect(view?.inventory[category].atoms[0]).toMatchObject({ knownCalls: 19, countsComplete: true, callShare: 19 / 110 })
+    }
+    expect(view?.inventory.skills.withheldNames).toBe(2)
+    // Latest per source replaces the previous inventory instead of adding it again.
+    await inventory('b', 20, 200)
+    expect((await stats(t, slug))?.inventory.skills.atoms[0].knownCalls).toBe(29)
+    const legacy = payload()
+    legacy.inventory.skills = [{ name: 'tdd', callShare: 0.5 }, { name: 'legacy', callShare: 0.5 }]
+    await publish(t, stackId, { machine: 'old', payload: legacy })
+    view = await stats(t, slug)
+    expect(view?.inventory.skills.totalCalls).toBeNull()
+    expect(view?.inventory.skills.atoms).toEqual([
+      { name: 'tdd', knownCalls: 29, countsComplete: false, callShare: null },
+      { name: 'legacy', knownCalls: 0, countsComplete: false, callShare: null },
+    ])
+    expect(JSON.stringify(view)).not.toContain('withheld-secret')
+  })
+
+  test('Git selects newest eligible publication with stable ties and ignores empty machines', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const other = day()
+    other.git.additions = 77
+    other.git.changedLinesByExtension = [{ extension: '.rs', changedLines: 77 }]
+    await publish(t, stackId, { machine: 'b', workflow: wire([other]) })
+    await publish(t, stackId, { machine: 'a' })
+    const empty = day()
+    empty.git = { ...empty.git, commits: 0, additions: 0, removals: 0, changedLinesByExtension: [], withheldExtensionLines: 0 }
+    await publish(t, stackId, { machine: 'new-empty', workflow: wire([empty]) })
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query('measuredDays').collect())
+        await ctx.db.patch(row._id, { receivedAt: row.machine === 'new-empty' ? 100 : 10 })
+    })
+    expect((await stats(t, slug))?.git?.additions).toBe(800)
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query('measuredDays').collect())
+        if (row.machine === 'b') await ctx.db.patch(row._id, { receivedAt: 20 })
+    })
+    expect((await stats(t, slug))?.git).toMatchObject({ additions: 77, changedLinesByExtension: [{ extension: '.rs', changedLines: 77 }] })
+    // The newest publication of an eligible machine may itself be a zero-commit day.
+    await t.run(async ctx => {
+      const row = (await ctx.db.query('measuredDays').collect()).find(row => row.machine === 'a')!
+      const { _id, _creationTime, ...fields } = row
+      await ctx.db.insert('measuredDays', {
+        ...fields, receivedAt: 200, date: daysAgo(0), workflow: { ...empty, date: daysAgo(0) },
+      })
+    })
+    expect((await stats(t, slug))?.git?.additions).toBe(800)
+
+  })
+
+  test('Context shares Discord evidence ordering and weights first-call measurements', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    for (const [machine, calls, bucket, window] of [
+      ['z', 1, 36, 200000], ['a', 9, 30, 100000],
+    ] as const) {
+      const d = day()
+      d.harnesses[0].context = {
+        bucketRuleVersion: 'log-buckets/v2',
+        calls: { main: [{ bucket, calls }], subagents: [] },
+        firstCalls: { main: [] },
+        firstCallHarnessTokens: calls * (machine === 'z' ? 1000 : 100),
+        firstCallInstructionsTokens: calls * 200,
+        firstCallCount: calls, maxContext: 100000, compactions: calls, window,
+      }
+      await publish(t, stackId, { machine, workflow: wire([d], { aggregateVersion: 'workflow-aggregates/v3' }) })
+    }
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query('measuredDays').collect()) await ctx.db.patch(row._id, { receivedAt: 1 })
+    })
+    const context = (await stats(t, slug))?.context?.harnesses[0]
+    expect(context).toMatchObject({ calls: 10, window: 200000, harnessTokens: 190, instructionsTokens: 200, compactions: 10 })
+    expect(context?.medianCall).toBeLessThan(40000)
+  })
+
+  test('superseded untagged session sources do not inflate tagged readings', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId)
+    await publish(t, stackId, { machine: 'tagged' })
+    expect((await stats(t, slug))?.routing?.main[0].tokens).toBe(800)
+    expect((await stats(t, slug))?.medianSession.current).toBeNull()
+  })
+
+  test('consent gates both stored days and window-free inventory for owner and public', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    expect(await stats(t, slug)).toBeNull()
+    await publish(t, stackId, { machine: 'private-machine' })
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query('measuredDays').collect()) await ctx.db.delete(row._id)
+    })
+    const sparse = await stats(t, slug)
+    expect(sparse?.git).toBeNull()
+    expect(sparse?.context).toBeNull()
+    expect(sparse?.phaseShare).toBeNull()
+    expect(sparse?.routing).toBeNull()
+    expect(sparse?.utcOffsetMinutes).toBeNull()
+    await t.run(async ctx => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await stats(t, slug)).toBeNull()
+    expect(await t.withIdentity(IDENTITY).query(api.workflow.getStatsByStackSlug, { slug })).toBeNull()
+    expect(await stats(t, 'missing')).toBeNull()
+  })
+})
