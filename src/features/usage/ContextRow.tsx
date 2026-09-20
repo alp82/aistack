@@ -26,36 +26,6 @@ import { harnessLabel } from "./HarnessShareRows";
  * row ranks nothing: harnesses print in the server's order.
  */
 
-/** The head line: "118K median call · 12% of the Claude Code window · ...". */
-export function ContextSummary({
-	context,
-}: {
-	context: NonNullable<ContextReading>;
-}) {
-	const first = context.harnesses[0];
-	if (!first) return null;
-	return (
-		<>
-			<span>
-				<b className="font-mono text-accent-lime">
-					{fmtTokens(first.medianCall)}
-				</b>{" "}
-				{first.retainedCallsOnly ? "median retained call" : "median call"}
-			</span>
-			{context.harnesses.map((h) =>
-				h.window === null ? null : (
-					<span key={h.harness}>
-						<b className="font-mono text-fg-primary">
-							{fmtWholeShare(h.medianCall / h.window)}
-						</b>{" "}
-						of the {harnessLabel(h.harness)} window
-					</span>
-				),
-			)}
-		</>
-	);
-}
-
 export function ContextBody({
 	context,
 }: {

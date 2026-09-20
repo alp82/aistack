@@ -134,20 +134,23 @@ export const Route = createFileRoute("/stacks/$slug")({
 	loader: async ({ context, params }) => {
 		// The two measured reads seed the hero tile, the nav stat and section 01
 		// for server rendering: the 30-day all-machines usage fold and the
-		// workflow rows.
-		const [stack, usage] = await Promise.all([
+		// all-machine Stats projection.
+		const [stack, usage, stats] = await Promise.all([
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.getBySlug, { slug: params.slug }),
 			),
 			context.queryClient.ensureQueryData(
-				convexQuery(api.measured.getUsageByStackSlug, { slug: params.slug }),
+				convexQuery(api.measured.getUsageByStackSlug, {
+					slug: params.slug,
+					range: PAGE_RANGE,
+				}),
 			),
 			context.queryClient.ensureQueryData(
-				convexQuery(api.workflow.getWorkflowByStackSlug, { slug: params.slug }),
+				convexQuery(api.workflow.getStatsByStackSlug, { slug: params.slug }),
 			),
 		]);
 		if (!stack) throw notFound();
-		return { stack, usage };
+		return { stack, usage, stats };
 	},
 	head: ({ loaderData }) => {
 		if (!loaderData?.stack) {
@@ -190,7 +193,11 @@ function StackDetailsPage() {
 	// Falls back to the loader snapshot (same pattern as the landing page):
 	// the live query returns undefined until the Convex WebSocket delivers,
 	// and a wedged connection must show the SSR'd stack, not a loading state.
-	const { stack: loadedStack, usage: loadedUsage } = Route.useLoaderData();
+	const {
+		stack: loadedStack,
+		usage: loadedUsage,
+		stats: loadedStats,
+	} = Route.useLoaderData();
 	const stack = useQuery(api.stacks.getBySlug, { slug }) ?? loadedStack;
 	// Deduped daily visitors (#78). Counted on MOUNT and keyed by document id, so
 	// a slug rename keeps the page's history.
@@ -232,7 +239,7 @@ function StackDetailsPage() {
 		slug,
 		range: PAGE_RANGE,
 	});
-	const usage = liveUsage ?? loadedUsage;
+	const usage = liveUsage === undefined ? loadedUsage : liveUsage;
 	const heroReading = heroReadingFrom(usage, PAGE_RANGE);
 	const projects = useQuery(
 		api.projects.listByStack,
@@ -427,6 +434,8 @@ function StackDetailsPage() {
 						isOwner={upvoteStatus?.isOwner ?? false}
 						stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
 						range={PAGE_RANGE}
+						initialUsage={usage}
+						initialStats={loadedStats}
 					/>
 
 					<ProjectsSection
