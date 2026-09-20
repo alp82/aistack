@@ -139,6 +139,20 @@ signed token every send already carries, and it needs no login.
 
 ### Workflow surface
 
+**Block**:
+One always-visible unit in Stats that answers one question. Side-by-side blocks remain
+independent units.
+
+**Tile**:
+A large measured number with a label and no sentence.
+
+**Detail layer**:
+Additional information revealed by hover or a deliberate tap or click. A block's default
+state remains understandable without it.
+
+**Scan row**:
+The retired number-plus-sentence presentation of a workflow reading.
+
 **Project workspace**:
 One local directory where a harness recorded activity. Clones in different directories or on
 different machines are different project workspaces.
@@ -155,12 +169,11 @@ recover the exact union. A lower-bound reading becomes exact when every visible 
 _Avoid_: max (that names the old calculation, not what the value means)
 
 **Pool**:
-The full set of workflow metrics a stack can show. The composed section surfaces a few of
-them and the pool view lists all of them.
-_Avoid_: candidates, extractables
+The historical collection of workflow metrics available to a stack. The former pool view
+is retired from Stats.
 
 **Metric box**:
-One workflow metric rendered as a number with a label and its source rule.
+The historical presentation of one workflow metric as a number, label and source rule.
 
 **Exact metric**:
 A metric the harness records or local Git history proves directly.
@@ -173,9 +186,8 @@ The label on a metric that names the harnesses it counts, when not all synced ha
 record it.
 
 **Template lead**:
-The opening prose of the workflow section. Fixed sentence forms over measured numbers,
-versioned with the metric rules. No LLM writes it.
-_Avoid_: workflow draft (the LLM draft was ruled out, see ADR-0002)
+Fixed opening prose over measured workflow numbers. It belongs to the earlier workflow
+presentation and is absent from Stats.
 
 **Workflow day**:
 One machine's workflow atoms for one UTC date: harness counts, sums, maxes and bucket
@@ -187,7 +199,7 @@ _Avoid_: workflow section (that named the one 30-day section the wire carried be
 One machine's combinable atoms for one UTC date, both halves in one row: the workflow
 atoms and the usage atoms (tokens by kind, cost, sessions). One shape, one version. The
 `publishWorkflow` and `publishCost` bits each gate their own half, at both ends.
-_Avoid_: workflow day, usage day (the row holds both halves; a half is a block, not a row)
+_Avoid_: workflow day, usage day (the row holds both halves; a half is part of the measured day)
 
 **Partial reading**:
 A measured reading from history the machine could not fully reconstruct. It contributes
@@ -206,11 +218,8 @@ Equal fingerprints mean the server already holds that day as the machine sees it
 rule change that bumps the aggregate version changes every fingerprint on purpose.
 
 **Machine inventory**:
-The window-free sets one machine reports per harness: installed tools, MCP servers,
-skills, models seen, and the harness kit, plus when that machine last synced. One row per
-(stack, machine, harness), replaced on every sync. Freshness and the living count read
-it; nothing sums it, and nothing fills a stack from it.
-_Avoid_: snapshot, payload (the old whole-window row this replaces, ADR-0011)
+The latest window-free tools, MCP servers, skills, models and harness kit reported by
+one machine for one harness, including any recorded call counts.
 
 **Legacy figure**:
 The one approximate 30-day figure kept for a stack whose machines published whole-window
@@ -218,20 +227,17 @@ snapshots and never a measured day. It sits on the machine inventory, prints mar
 approximate with no previous period, and 7d and 24h read as not measured beside it.
 
 **Workflow reading**:
-The fold of one machine's workflow days over a window. Every figure the section prints is
-computed over the fold. A reading is never merged with another machine's (ADR-0009).
-_Avoid_: workflow snapshot (that names the measured payload's table, not this one)
+Measured workflow evidence combined over a window. Its scope depends on the projection:
+web Stats combines session evidence across machines while keeping Git on one coherent
+source; the general workflow reading remains single-machine.
 
 **Window**:
-The span of whole UTC days a reading folds: 30 days, 7 days, or the days that touch the
-last 24 hours. The reader selects it on the page.
+The span of UTC dates a reading covers. Web Stats always covers the current 30 days;
+other readings may cover seven days or the dates touching the last 24 hours.
 
 **Fit**:
-Coverage times surprise, carried on every workflow row as a number nothing ranks by.
-Coverage is the share of synced harnesses the metric counts. Surprise is the distance
-from the typical band its rule declares, as `distance / (distance + band width)`, so a
-value inside its band scores zero and one band width outside scores a half. The page
-order is fixed (#277).
+A workflow metric score combining coverage and departure from its typical band. It does
+not determine the order or visibility of Stats blocks.
 
 **Component rule**:
 The versioned rule that gives one of the eight components a headline value and a typical
@@ -239,12 +245,10 @@ band. It derives that value from atoms the machine already shipped and measures 
 new.
 
 **Row override**:
-The owner's pin or hide on one workflow row. A pin puts the row ahead of the fixed order
-and on the podium, and a hide takes it off the public page.
+A retired owner pin or hide on a workflow row. Stats has no per-row owner controls.
 
 **Podium**:
-The workflow section layout. The first three rows in the fixed order, or the pinned rows,
-render as one horizontal band, and thin rows follow in the fixed order.
+The retired workflow layout that gave three rows a prominent horizontal band.
 
 **Phase**:
 One class of session time: scout, build, verify, or handoff, plus a visible unknown.
@@ -252,8 +256,9 @@ Versioned rules assign every recorded event to one phase.
 _Avoid_: orient (now scout), gate as a phase name (now handoff)
 
 **Playbook**:
-The public phase surface: two measured shipping tracks with median figures, plus
-receipt cards. `playbook-rules/v2` computes it from one reading's session length buckets.
+A measured account of session phases, with shorter and longer shipping tracks and paired
+receipt cards. Stats retains the phase mix and desktop track detail from this broader
+reading.
 
 **Shipping track**:
 One half of the playbook's session set. The split is the median measured session, so the

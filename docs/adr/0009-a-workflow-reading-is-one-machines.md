@@ -1,5 +1,10 @@
 # A workflow reading is one machine's, per day
 
+The original decision below records the former web presentation. The **Web Stats
+exception** at the end supersedes its selectors, podium and single-machine session
+scope. The general workflow query remains single-machine; both exceptions preserve
+the Git deduplication boundary. Current storage is `measuredDays` (ADR-0010).
+
 The measured Workflow section shows one machine's reading at a time. `measuredWorkflowDays`
 holds one row per `(stack, machine, UTC date)`, the page folds the rows inside a window
 (30 days, 7 days, or the last 24 hours) and defaults to the machine that synced last, and
