@@ -1,4 +1,7 @@
-/** SVG marks for Stats. Every mark is present during server rendering. */
+/**
+ * SVG marks for Stats. Every mark is present during server rendering.
+ * Keep each title a single string: React cannot server-render mixed title children.
+ */
 import { ACCENT_PAINT } from "./palette";
 
 export type StatsSegment = {
@@ -39,9 +42,7 @@ export function SegmentChart({
 						height={height}
 						fill={s.paint}
 					>
-						<title>
-							{s.label}: {(s.share * 100).toFixed(1)}%
-						</title>
+						<title>{`${s.label}: ${(s.share * 100).toFixed(1)}%`}</title>
 					</rect>
 				);
 			})}
@@ -84,7 +85,7 @@ export function ShareChart({
 					height={height + 8}
 					fill="var(--fg-primary)"
 				>
-					<title>Previous: {(previous * 100).toFixed(1)}%</title>
+					<title>{`Previous: ${(previous * 100).toFixed(1)}%`}</title>
 				</rect>
 			)}
 		</svg>
@@ -119,9 +120,7 @@ export function HarnessPieChart({
 						strokeDasharray={`${Math.max(0, s.share * 40 * Math.PI - 0.4)} ${40 * Math.PI}`}
 						strokeDashoffset={-start * 40 * Math.PI}
 					>
-						<title>
-							{s.label}: {(s.share * 100).toFixed(1)}%
-						</title>
+						<title>{`${s.label}: ${(s.share * 100).toFixed(1)}%`}</title>
 					</circle>
 				);
 			})}
@@ -142,7 +141,7 @@ export function HarnessPieChart({
 						strokeDashoffset={-start * 92 * Math.PI}
 					>
 						<title>
-							{s.label}, previous: {(s.previous * 100).toFixed(1)}%
+							{`${s.label}, previous: ${(s.previous * 100).toFixed(1)}%`}
 						</title>
 					</circle>
 				);
@@ -241,7 +240,7 @@ export function ActivityChart({
 						opacity="0.45"
 					>
 						<title>
-							{String(hour).padStart(2, "0")}:00: {starts[hour]} session starts
+							{`${String(hour).padStart(2, "0")}:00: ${starts[hour]} session starts`}
 						</title>
 					</rect>
 				</g>
@@ -259,8 +258,7 @@ export function ActivityChart({
 						fillOpacity={count ? 0.15 + 0.85 * Math.sqrt(count / max) : 1}
 					>
 						<title>
-							{DAYS[d]} {String(hour).padStart(2, "0")}:00:{" "}
-							{count.toLocaleString("en-US")} activity events
+							{`${DAYS[d]} ${String(hour).padStart(2, "0")}:00: ${count.toLocaleString("en-US")} activity events`}
 						</title>
 					</rect>
 				)),
@@ -290,7 +288,7 @@ export function ActivityMarginals({ cells }: { cells: number[][] }) {
 						fill={ACCENT_PAINT}
 					>
 						<title>
-							{DAYS[i]}: {count.toLocaleString("en-US")} events
+							{`${DAYS[i]}: ${count.toLocaleString("en-US")} events`}
 						</title>
 					</rect>
 					<text
@@ -315,9 +313,7 @@ export function ActivityMarginals({ cells }: { cells: number[][] }) {
 					fill={count ? ACCENT_PAINT : "var(--bg-panel)"}
 					fillOpacity={count ? 0.15 + 0.85 * Math.sqrt(count / maxHour) : 1}
 				>
-					<title>
-						{h}:00: {count.toLocaleString("en-US")} events
-					</title>
+					<title>{`${h}:00: ${count.toLocaleString("en-US")} events`}</title>
 				</rect>
 			))}
 			{[0, 6, 12, 18, 23].map((h) => (
@@ -362,8 +358,7 @@ export function LinesChart({
 				day.additions === null || day.removals === null ? null : (
 					<g key={day.date}>
 						<title>
-							{day.date}: +{day.additions.toLocaleString("en-US")} / -
-							{day.removals.toLocaleString("en-US")} lines
+							{`${day.date}: +${day.additions.toLocaleString("en-US")} / -${day.removals.toLocaleString("en-US")} lines`}
 						</title>
 						<rect
 							x={i * step}
