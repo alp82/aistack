@@ -330,6 +330,7 @@ export function TiptapEditor({
 
 	const editor = useEditor(
 		{
+			immediatelyRender: false,
 			extensions: [
 				Document,
 				Paragraph,
