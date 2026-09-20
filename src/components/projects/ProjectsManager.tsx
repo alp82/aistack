@@ -363,7 +363,8 @@ export function ProjectsManager({
 }
 
 /** Card grid: as many 20rem columns as fit, one column on a phone. */
-const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4";
+const CARD_GRID =
+	"grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4";
 
 function ProjectCard({
 	project,

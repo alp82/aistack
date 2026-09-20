@@ -46,4 +46,14 @@ export {
 	StackedAreaChart,
 	type StackedAreaChartProps,
 } from "./StackedAreaChart";
+export {
+	ActivityChart,
+	ActivityMarginals,
+	HarnessPieChart,
+	LinesChart,
+	SegmentChart,
+	ShareChart,
+	type StatsSegment,
+	WaffleChart,
+} from "./StatsCharts";
 export { TimeSeriesChart, type TimeSeriesChartProps } from "./TimeSeriesChart";
