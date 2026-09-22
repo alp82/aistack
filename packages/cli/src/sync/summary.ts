@@ -13,7 +13,7 @@
 import {
 	foldWorkflowDays,
 	type MeasuredDay,
-	WORKFLOW_AGGREGATES_V3,
+	WORKFLOW_AGGREGATES_V4,
 } from "@aistack/workflow-rules";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
@@ -501,7 +501,7 @@ function workflowBlock(
 ): string[] {
 	const out: string[] = [];
 	const folded = foldWorkflowDays(workflowDays, {
-		aggregateVersion: WORKFLOW_AGGREGATES_V3,
+		aggregateVersion: WORKFLOW_AGGREGATES_V4,
 		utcOffsetMinutes,
 	});
 	const harnesses = folded?.harnesses ?? [];
@@ -512,7 +512,7 @@ function workflowBlock(
 	].filter(Boolean);
 
 	out.push(
-		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V3}`,
+		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V4}`,
 	);
 	const first = folded?.dates[0];
 	const last = folded?.dates.at(-1);
@@ -529,6 +529,34 @@ function workflowBlock(
 			(phase, i) => `${phase} ${fmtPct((seconds[i] ?? 0) / total)}`,
 		).join(" · ");
 		out.push(`          ${mix} · ${ruleVersions.join(", ")}`);
+	}
+
+	// The efficiency atoms (v4): call gaps and per-session counts, cache
+	// re-warm and orphan-write sums, tool-result sizes by built-in tool name,
+	// content block counts. Every one is a count, a sum or a bucket; no
+	// tool name outside the fixed vocabulary and no result content.
+	const efficiency = harnesses.flatMap((h) =>
+		h.efficiency ? [h.efficiency] : [],
+	);
+	if (efficiency.length > 0) {
+		const calls = efficiency.reduce(
+			(a, e) =>
+				a +
+				e.callGaps.reduce((n, b) => n + b.calls, 0) +
+				e.sessionCalls.reduce((n, b) => n + b.sessions, 0),
+			0,
+		);
+		const afterGap = efficiency.reduce((a, e) => a + e.callsAfterGap, 0);
+		const results = efficiency.reduce(
+			(a, e) => a + e.toolResults.reduce((n, t) => n + t.results, 0),
+			0,
+		);
+		const tools = [
+			...new Set(efficiency.flatMap((e) => e.toolResults.map((t) => t.tool))),
+		].sort();
+		out.push(
+			`          efficiency: ${calls} calls, ${afterGap} after a break · ${results} tool result sizes${tools.length ? ` (${tools.join(", ")})` : ""}`,
+		);
 	}
 
 	const git = folded?.git;

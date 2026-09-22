@@ -446,3 +446,96 @@ describe("per-call context (#358)", () => {
 		expect(calls(context?.calls.main)).toBe(1);
 	});
 });
+
+describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+	it("sizes a function_call_output under its call's tool and splits the call's tokens", () => {
+		const agg = createAggregate();
+		const state = createFileState();
+		const at = (offsetSec: number) =>
+			new Date(Date.UTC(2026, 6, 20, 12, 0, offsetSec)).toISOString();
+		const lines: unknown[] = [
+			{
+				type: "session_meta",
+				timestamp: at(0),
+				payload: { id: "sess-eff", cwd: "/secret/repo", cli_version: "0.1.0" },
+			},
+			{
+				type: "turn_context",
+				timestamp: at(1),
+				payload: { model: "gpt-5-codex" },
+			},
+			{
+				type: "event_msg",
+				timestamp: at(5),
+				payload: {
+					type: "token_count",
+					info: {
+						last_token_usage: {
+							input_tokens: 1_000,
+							cached_input_tokens: 800,
+							output_tokens: 20,
+						},
+						total_token_usage: {
+							input_tokens: 1_000,
+							cached_input_tokens: 800,
+							output_tokens: 20,
+						},
+					},
+				},
+			},
+			{
+				type: "response_item",
+				timestamp: at(6),
+				payload: {
+					type: "function_call",
+					name: "shell",
+					call_id: "call_1",
+					arguments: "{}",
+				},
+			},
+			{
+				type: "response_item",
+				timestamp: at(7),
+				payload: {
+					type: "function_call_output",
+					call_id: "call_1",
+					output: "z".repeat(3_000),
+				},
+			},
+			{
+				type: "event_msg",
+				timestamp: at(5 + 1800),
+				payload: {
+					type: "token_count",
+					info: {
+						last_token_usage: {
+							input_tokens: 4_000,
+							cached_input_tokens: 0,
+							output_tokens: 20,
+						},
+						total_token_usage: {
+							input_tokens: 5_000,
+							cached_input_tokens: 800,
+							output_tokens: 40,
+						},
+					},
+				},
+			},
+		];
+		for (const line of lines) ingestLine(agg, line, state);
+		const efficiency = agg.workflow.finish().days[0]?.efficiency;
+		expect(efficiency?.callsAfterGap).toBe(1);
+		expect(efficiency?.inputAfterGap).toBe(4_000);
+		expect(efficiency?.cacheWriteAfterGap).toBe(0);
+		expect(efficiency?.orphanCacheWrites).toBe(0);
+		expect(efficiency?.blocks).toBeUndefined();
+		expect(efficiency?.toolResults).toEqual([
+			{
+				tool: "shell",
+				results: 1,
+				bytes: 3_000,
+				buckets: [{ bucket: 24, results: 1 }],
+			},
+		]);
+	});
+});

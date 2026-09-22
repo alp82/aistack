@@ -1,4 +1,5 @@
 import {
+	CACHE_TTL_SEC,
 	classifyEvent,
 	deriveSessionPhases,
 	EFFORT_LEVELS,
@@ -15,12 +16,14 @@ import {
 	PHASES,
 	type PhaseId,
 	type SessionLengthBucket,
+	SHORT_SESSION_CALLS,
+	toolResultName,
 	UNKNOWN_GATE,
-	WORKFLOW_AGGREGATES_V3,
+	WORKFLOW_AGGREGATES_V4,
 } from "@aistack/workflow-rules";
 import { sanitizeModelId } from "../harness/shared/payload.js";
 
-export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V3;
+export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V4;
 
 /**
  * The first call of a session, split (#358). `harnessTokens` is what the
@@ -56,10 +59,22 @@ export type WorkflowObservation = {
 			contextWindow?: number;
 			/** Present on the first call of the session only. */
 			firstCall?: FirstCallSplit;
+			/** The efficiency split of the request (v4): fresh input, cache reads, cache writes. */
+			inputTokens?: number;
+			cacheReadTokens?: number;
+			cacheWriteTokens?: number;
+			/** Content blocks of the response, when the harness logs them (Claude Code). */
+			blocks?: { thinking: number; text: number };
 	  }
 	| { type: "turn"; turnId?: string; questionBack: boolean }
 	/** A compaction boundary the harness logged. Lands on the day of the event. */
 	| { type: "compaction" }
+	/**
+	 * One tool result (v4): the tool's name and the byte length of what it
+	 * returned. The adapter sizes the content at the read site and hands over
+	 * the number only.
+	 */
+	| { type: "toolResult"; tool: string; bytes: number }
 );
 
 /** One harness's reading for one UTC day, with the day it belongs to. */
@@ -112,9 +127,14 @@ type SessionState = {
 			contextTokens?: number;
 			contextWindow?: number;
 			firstCall?: FirstCallSplit;
+			inputTokens?: number;
+			cacheReadTokens?: number;
+			cacheWriteTokens?: number;
+			blocks?: { thinking: number; text: number };
 			tsMs: number;
 		}
 	>;
+	compacted: boolean;
 	nextAnonymousResponse: number;
 	turns: Map<string, boolean>;
 	nextAnonymousTurn: number;
@@ -223,6 +243,7 @@ function shellIncludes(arg: string, head: string): boolean {
 
 function sessionState(): SessionState {
 	return {
+		compacted: false,
 		events: [],
 		responses: new Map(),
 		nextAnonymousResponse: 0,
@@ -281,6 +302,26 @@ type DayState = {
 		window: { tsMs: number; window: number } | undefined;
 	};
 	hasContext: boolean;
+	efficiency: {
+		callGaps: Map<number, number>;
+		callsAfterGap: number;
+		cacheWriteAfterGap: number;
+		inputAfterGap: number;
+		orphanCacheWrites: number;
+		orphanCacheWriteTokens: number;
+		sessionMaxContext: Map<number, number>;
+		sessionCalls: Map<number, number>;
+		shortSessions: number;
+		shortSessionFirstCallTokens: number;
+		sessionsCompacted: number;
+		toolResults: Map<
+			string,
+			{ results: number; bytes: number; buckets: Map<number, number> }
+		>;
+		blocks: { thinking: number; text: number };
+		hasBlocks: boolean;
+	};
+	hasEfficiency: boolean;
 };
 
 function dayState(): DayState {
@@ -328,6 +369,23 @@ function dayState(): DayState {
 			window: undefined,
 		},
 		hasContext: false,
+		efficiency: {
+			callGaps: new Map(),
+			callsAfterGap: 0,
+			cacheWriteAfterGap: 0,
+			inputAfterGap: 0,
+			orphanCacheWrites: 0,
+			orphanCacheWriteTokens: 0,
+			sessionMaxContext: new Map(),
+			sessionCalls: new Map(),
+			shortSessions: 0,
+			shortSessionFirstCallTokens: 0,
+			sessionsCompacted: 0,
+			toolResults: new Map(),
+			blocks: { thinking: 0, text: 0 },
+			hasBlocks: false,
+		},
+		hasEfficiency: false,
 	};
 }
 
@@ -355,6 +413,13 @@ export function createHarnessWorkflowReducer(
 	const eventCells = new Map<string, Map<string, number>>();
 	const webSearchesByDate = new Map<string, number>();
 	const compactionsByDate = new Map<string, number>();
+	const toolResultsByDate = new Map<
+		string,
+		Map<
+			string,
+			{ results: number; bytes: number; buckets: Map<number, number> }
+		>
+	>();
 	const eventDates = new Set<string>();
 	let finished: HarnessWorkflowAggregate | undefined;
 
@@ -436,6 +501,29 @@ export function createHarnessWorkflowReducer(
 								},
 							}
 						: {}),
+					...(observation.inputTokens !== undefined
+						? { inputTokens: finiteNonnegative(observation.inputTokens) }
+						: {}),
+					...(observation.cacheReadTokens !== undefined
+						? {
+								cacheReadTokens: finiteNonnegative(observation.cacheReadTokens),
+							}
+						: {}),
+					...(observation.cacheWriteTokens !== undefined
+						? {
+								cacheWriteTokens: finiteNonnegative(
+									observation.cacheWriteTokens,
+								),
+							}
+						: {}),
+					...(observation.blocks
+						? {
+								blocks: {
+									thinking: finiteNonnegative(observation.blocks.thinking),
+									text: finiteNonnegative(observation.blocks.text),
+								},
+							}
+						: {}),
 				};
 				const existing = state.responses.get(responseId);
 				const magnitude = (value: typeof response): number =>
@@ -448,7 +536,27 @@ export function createHarnessWorkflowReducer(
 				const turnId =
 					observation.turnId ?? `anonymous:${state.nextAnonymousTurn++}`;
 				state.turns.set(turnId, observation.questionBack);
+			} else if (observation.type === "toolResult") {
+				const bytes = finiteNonnegative(observation.bytes);
+				const byDate =
+					toolResultsByDate.get(date) ??
+					new Map<
+						string,
+						{ results: number; bytes: number; buckets: Map<number, number> }
+					>();
+				const name = toolResultName(observation.tool);
+				const row = byDate.get(name) ?? {
+					results: 0,
+					bytes: 0,
+					buckets: new Map<number, number>(),
+				};
+				row.results++;
+				row.bytes += bytes;
+				bump(row.buckets, logBucketV2(bytes));
+				byDate.set(name, row);
+				toolResultsByDate.set(date, byDate);
 			} else {
+				state.compacted = true;
 				bump(compactionsByDate, date);
 			}
 		},
@@ -604,6 +712,55 @@ export function createHarnessWorkflowReducer(
 						context.firstCallCount++;
 					}
 				}
+
+				// Token-efficiency atoms (v4), main sessions only, on the start
+				// day. A CALL here is a response that carried its context; the
+				// calls of a session sort by time so a gap is the seconds since
+				// the previous call of the SAME session.
+				if (routing === "main") {
+					const calls = responses
+						.filter((response) => response.contextTokens !== undefined)
+						.sort((a, b) => a.tsMs - b.tsMs);
+					for (const response of responses) {
+						if (!response.blocks) continue;
+						day.hasEfficiency = true;
+						day.efficiency.hasBlocks = true;
+						day.efficiency.blocks.thinking += response.blocks.thinking;
+						day.efficiency.blocks.text += response.blocks.text;
+					}
+					if (calls.length > 0) {
+						day.hasEfficiency = true;
+						const eff = day.efficiency;
+						let peak = 0;
+						calls.forEach((call, i) => {
+							const context = call.contextTokens ?? 0;
+							peak = Math.max(peak, context);
+							const previous = calls[i - 1];
+							if (!previous) return;
+							const gapSec = (call.tsMs - previous.tsMs) / 1000;
+							bump(eff.callGaps, logBucket(gapSec));
+							if (gapSec > CACHE_TTL_SEC) {
+								eff.callsAfterGap++;
+								eff.cacheWriteAfterGap += call.cacheWriteTokens ?? 0;
+								eff.inputAfterGap += call.inputTokens ?? 0;
+							}
+							if (
+								(call.cacheWriteTokens ?? 0) > 0 &&
+								(call.cacheReadTokens ?? 0) === 0
+							) {
+								eff.orphanCacheWrites++;
+								eff.orphanCacheWriteTokens += call.cacheWriteTokens ?? 0;
+							}
+						});
+						bump(eff.sessionMaxContext, logBucketV2(peak));
+						bump(eff.sessionCalls, logBucket(calls.length));
+						if (calls.length <= SHORT_SESSION_CALLS) {
+							eff.shortSessions++;
+							eff.shortSessionFirstCallTokens += calls[0]?.contextTokens ?? 0;
+						}
+						if (state.compacted) eff.sessionsCompacted++;
+					}
+				}
 			}
 
 			// Compactions, on the day of the boundary.
@@ -611,6 +768,24 @@ export function createHarnessWorkflowReducer(
 				const day = dayOf(date);
 				day.hasContext = true;
 				day.context.compactions += compactions;
+			}
+
+			// Tool results, on the day of the result.
+			for (const [date, rows] of toolResultsByDate) {
+				const day = dayOf(date);
+				day.hasEfficiency = true;
+				for (const [tool, row] of rows) {
+					const held = day.efficiency.toolResults.get(tool) ?? {
+						results: 0,
+						bytes: 0,
+						buckets: new Map<number, number>(),
+					};
+					held.results += row.results;
+					held.bytes += row.bytes;
+					for (const [bucket, results] of row.buckets)
+						bump(held.buckets, bucket, results);
+					day.efficiency.toolResults.set(tool, held);
+				}
 			}
 
 			// Event cells and web searches, on the day of the event.
@@ -805,12 +980,54 @@ export function createHarnessWorkflowReducer(
 									},
 								}
 							: {}),
+						...(day.hasEfficiency
+							? {
+									efficiency: {
+										countBucketRuleVersion: LOG_BUCKETS_V1,
+										sizeBucketRuleVersion: LOG_BUCKETS_V2,
+										callGaps: asBuckets(day.efficiency.callGaps, "calls"),
+										callsAfterGap: day.efficiency.callsAfterGap,
+										cacheWriteAfterGap: day.efficiency.cacheWriteAfterGap,
+										inputAfterGap: day.efficiency.inputAfterGap,
+										orphanCacheWrites: day.efficiency.orphanCacheWrites,
+										orphanCacheWriteTokens:
+											day.efficiency.orphanCacheWriteTokens,
+										sessionMaxContext: asBuckets(
+											day.efficiency.sessionMaxContext,
+											"sessions",
+										),
+										sessionCalls: asBuckets(
+											day.efficiency.sessionCalls,
+											"sessions",
+										),
+										shortSessions: day.efficiency.shortSessions,
+										shortSessionFirstCallTokens:
+											day.efficiency.shortSessionFirstCallTokens,
+										sessionsCompacted: day.efficiency.sessionsCompacted,
+										toolResults: [...day.efficiency.toolResults]
+											.map(([tool, row]) => ({
+												tool,
+												results: row.results,
+												bytes: row.bytes,
+												buckets: asBuckets(row.buckets, "results"),
+											}))
+											.sort(
+												(a, b) =>
+													b.bytes - a.bytes || a.tool.localeCompare(b.tool),
+											),
+										...(day.efficiency.hasBlocks
+											? { blocks: day.efficiency.blocks }
+											: {}),
+									},
+								}
+							: {}),
 					})),
 			};
 			sessions.clear();
 			eventCells.clear();
 			webSearchesByDate.clear();
 			compactionsByDate.clear();
+			toolResultsByDate.clear();
 			eventDates.clear();
 			return finished;
 		},

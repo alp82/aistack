@@ -31,6 +31,14 @@ export const WORKFLOW_AGGREGATES_V2 = "workflow-aggregates/v2";
  */
 export const WORKFLOW_AGGREGATES_V3 = "workflow-aggregates/v3";
 
+/**
+ * `workflow-aggregates/v4` adds the optional `efficiency` block to a harness
+ * day: the token-efficiency atoms (idle gaps, orphan cache writes, per-session
+ * peaks, tool-result sizes, content block counts). Every other atom is
+ * unchanged, so a v3 day folds beside a v4 day.
+ */
+export const WORKFLOW_AGGREGATES_V4 = "workflow-aggregates/v4";
+
 /** The bucket rule both histograms cite. A bump changes what a bucket index means. */
 export const LOG_BUCKETS_V1 = "log-buckets/v1";
 
@@ -131,6 +139,122 @@ export type HarnessDay = {
 	 * block or a harness that logs no per-call usage.
 	 */
 	context?: ContextDay;
+	/**
+	 * Token-efficiency atoms (`workflow-aggregates/v4`). Absent on a day from
+	 * a client that predates the block or a harness that logs no per-call usage.
+	 */
+	efficiency?: EfficiencyDay;
+};
+
+/**
+ * The 5-minute prompt cache TTL, in seconds. A main call that lands more than
+ * this after the previous call of its session pays to rebuild the cached
+ * prefix; the day counts those calls and sums what they wrote.
+ */
+export const CACHE_TTL_SEC = 300;
+
+/**
+ * A session with at most this many main calls is SHORT: it paid the startup
+ * prefix for one or two answers.
+ */
+export const SHORT_SESSION_CALLS = 2;
+
+/**
+ * The fixed vocabulary a tool-result row may be named with. Vendor-assigned
+ * tool names only: built-in Claude Code tools, built-in Codex tools, `mcp`
+ * for any MCP tool (never the server), and `other` for the rest. A name a
+ * user chose never travels here.
+ */
+export const TOOL_RESULT_NAMES: readonly string[] = [
+	"Agent",
+	"Bash",
+	"Edit",
+	"Glob",
+	"Grep",
+	"MultiEdit",
+	"NotebookEdit",
+	"NotebookRead",
+	"Read",
+	"Skill",
+	"ToolSearch",
+	"WebFetch",
+	"WebSearch",
+	"Write",
+	"apply_patch",
+	"exec_command",
+	"grep_command",
+	"list_dir",
+	"local_shell",
+	"read_file",
+	"shell",
+	"tool_search",
+	"unified_exec",
+	"view_image",
+	"web_search",
+	"write_stdin",
+	"mcp",
+	"other",
+];
+
+/** The wire name of a tool result: the tool's own name if built in, `mcp`, or `other`. */
+export function toolResultName(tool: string | undefined): string {
+	if (!tool) return "other";
+	if (tool.startsWith("mcp__")) return "mcp";
+	if (tool === "Task") return "Agent";
+	if (TOOL_RESULT_NAMES.includes(tool)) return tool;
+	if (tool.includes("__")) return "mcp";
+	return "other";
+}
+
+/**
+ * One day of token-efficiency atoms for one harness. Combinable atoms only:
+ * counts, sums and bucket histograms, so a fold across days and machines is
+ * addition. Every figure printed (shares, medians, dollars) is computed after
+ * the fold by the rules in `efficiency.ts`.
+ *
+ * MAIN CALLS ONLY, except where a field says otherwise: a subagent has its
+ * own context window, its own first call and its own gaps, and none of the
+ * levers here acts on it.
+ */
+export type EfficiencyDay = {
+	/** The rule for `callGaps` (seconds) and `sessionCalls` (calls): `log-buckets/v1`. */
+	countBucketRuleVersion: string;
+	/** The rule for token and byte histograms: `log-buckets/v2`. */
+	sizeBucketRuleVersion: string;
+	/** Main calls by the seconds since the previous main call of the same session. */
+	callGaps: readonly { bucket: number; calls: number }[];
+	/** Main calls whose gap exceeded `CACHE_TTL_SEC`. */
+	callsAfterGap: number;
+	/** Cache-write tokens those calls carried: the re-warm cost. */
+	cacheWriteAfterGap: number;
+	/** Fresh input tokens those calls carried (the re-warm cost on a harness with no cache writes). */
+	inputAfterGap: number;
+	/** Main calls after the first that wrote cache and read none: a prefix invalidated mid-session. */
+	orphanCacheWrites: number;
+	orphanCacheWriteTokens: number;
+	/** Main sessions that started this day, by the largest context any of their calls carried. */
+	sessionMaxContext: readonly { bucket: number; sessions: number }[];
+	/** Main sessions that started this day, by their number of main calls. */
+	sessionCalls: readonly { bucket: number; sessions: number }[];
+	/** Main sessions that started this day with at most `SHORT_SESSION_CALLS` calls. */
+	shortSessions: number;
+	/** The context of those sessions' first calls, summed: what they paid to start. */
+	shortSessionFirstCallTokens: number;
+	/** Sessions that started this day holding at least one compaction boundary. */
+	sessionsCompacted: number;
+	/**
+	 * Tool results on this day by wire name (`toolResultName`), each a count,
+	 * a byte sum and a histogram of result sizes. Only the byte length of a
+	 * result is read; its content is discarded at the read site.
+	 */
+	toolResults: readonly {
+		tool: string;
+		results: number;
+		bytes: number;
+		buckets: readonly { bucket: number; results: number }[];
+	}[];
+	/** Content blocks per type over the day's responses. Absent on a harness that logs no blocks. */
+	blocks?: { thinking: number; text: number };
 };
 
 /**
@@ -480,6 +604,62 @@ export function foldContextDays(days: readonly ContextDay[]): ContextDay {
 	};
 }
 
+/** Add efficiency days together: histograms merge by bucket, sums and counts add. */
+export function foldEfficiencyDays(
+	days: readonly EfficiencyDay[],
+): EfficiencyDay {
+	const versions = (values: readonly string[]): string =>
+		[...new Set(values)].sort().join(" · ");
+	const sum = (pick: (day: EfficiencyDay) => number): number =>
+		days.reduce((total, day) => total + pick(day), 0);
+	const blocks = days.flatMap((day) => (day.blocks ? [day.blocks] : []));
+	return {
+		countBucketRuleVersion: versions(days.map((d) => d.countBucketRuleVersion)),
+		sizeBucketRuleVersion: versions(days.map((d) => d.sizeBucketRuleVersion)),
+		callGaps: foldCountBuckets(
+			days.flatMap((d) => d.callGaps),
+			"calls",
+		),
+		callsAfterGap: sum((d) => d.callsAfterGap),
+		cacheWriteAfterGap: sum((d) => d.cacheWriteAfterGap),
+		inputAfterGap: sum((d) => d.inputAfterGap),
+		orphanCacheWrites: sum((d) => d.orphanCacheWrites),
+		orphanCacheWriteTokens: sum((d) => d.orphanCacheWriteTokens),
+		sessionMaxContext: foldCountBuckets(
+			days.flatMap((d) => d.sessionMaxContext),
+			"sessions",
+		),
+		sessionCalls: foldCountBuckets(
+			days.flatMap((d) => d.sessionCalls),
+			"sessions",
+		),
+		shortSessions: sum((d) => d.shortSessions),
+		shortSessionFirstCallTokens: sum((d) => d.shortSessionFirstCallTokens),
+		sessionsCompacted: sum((d) => d.sessionsCompacted),
+		toolResults: sumBy(
+			days.flatMap((d) => d.toolResults),
+			(row) => row.tool,
+			(into, from) => {
+				into.results += from.results;
+				into.bytes += from.bytes;
+				into.buckets = foldCountBuckets(
+					[...into.buckets, ...from.buckets],
+					"results",
+				);
+			},
+			(row) => ({ ...row, buckets: [...row.buckets] }),
+		).sort((a, b) => b.bytes - a.bytes || a.tool.localeCompare(b.tool)),
+		...(blocks.length > 0
+			? {
+					blocks: {
+						thinking: blocks.reduce((n, b) => n + b.thinking, 0),
+						text: blocks.reduce((n, b) => n + b.text, 0),
+					},
+				}
+			: {}),
+	};
+}
+
 function foldLengths(
 	rows: readonly SessionLengthBucket[],
 ): SessionLengthBucket[] {
@@ -640,6 +820,12 @@ export function foldHarnessDays(days: readonly HarnessDay[]): HarnessDay {
 
 	const contexts = days.flatMap((day) => (day.context ? [day.context] : []));
 	if (contexts.length > 0) out.context = foldContextDays(contexts);
+
+	const efficiencies = days.flatMap((day) =>
+		day.efficiency ? [day.efficiency] : [],
+	);
+	if (efficiencies.length > 0)
+		out.efficiency = foldEfficiencyDays(efficiencies);
 
 	return out;
 }

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import {
 	bucketMid,
 	bucketMidV2,
@@ -6,6 +6,7 @@ import {
 	bucketRangeV2,
 	effortLevelOf,
 	foldContextDays,
+	foldEfficiencyDays,
 	foldGitDays,
 	foldHarnessDays,
 	foldWorkflowDays,
@@ -15,10 +16,12 @@ import {
 	median,
 	medianBucket,
 	quantileBucket,
+	toolResultName,
 	WORKFLOW_AGGREGATES_V2,
 } from "./daily.js";
 import {
 	contextDay,
+	efficiencyDay,
 	gitDay,
 	harnessDay,
 	lengthBucket,
@@ -408,5 +411,66 @@ describe("foldWorkflowDays", () => {
 			"claude-code",
 			"codex",
 		]);
+	});
+});
+
+describe("foldEfficiencyDays (workflow-aggregates/v4)", () => {
+	it("adds counts and sums, merges histograms by bucket, and merges tool rows by name", () => {
+		const folded = foldEfficiencyDays([
+			efficiencyDay(),
+			efficiencyDay({
+				callGaps: [{ bucket: 10, calls: 1 }],
+				toolResults: [
+					{
+						tool: "Bash",
+						results: 1,
+						bytes: 500_000,
+						buckets: [{ bucket: 40, results: 1 }],
+					},
+				],
+				blocks: undefined,
+			}),
+		]);
+		expect(folded.callGaps).toEqual([
+			{ bucket: 5, calls: 6 },
+			{ bucket: 10, calls: 5 },
+		]);
+		expect(folded.callsAfterGap).toBe(8);
+		expect(folded.cacheWriteAfterGap).toBe(400_000);
+		expect(folded.orphanCacheWriteTokens).toBe(60_000);
+		expect(folded.shortSessions).toBe(6);
+		expect(folded.sessionsCompacted).toBe(2);
+		// Tool rows sort by bytes, largest first: Read holds 800 KB, Bash 550 KB.
+		expect(folded.toolResults.map((t) => t.tool)).toEqual(["Read", "Bash"]);
+		expect(folded.toolResults[0]?.results).toBe(20);
+		expect(folded.toolResults[0]?.bytes).toBe(800_000);
+		expect(folded.toolResults[1]).toEqual({
+			tool: "Bash",
+			results: 11,
+			bytes: 550_000,
+			buckets: [
+				{ bucket: 25, results: 10 },
+				{ bucket: 40, results: 1 },
+			],
+		});
+		// Blocks are present when any day carried them.
+		expect(folded.blocks).toEqual({ thinking: 40, text: 60 });
+	});
+
+	it("rides on the harness fold and stays absent when no day carried it", () => {
+		const bare = harnessDay({ efficiency: undefined });
+		expect(foldHarnessDays([bare, bare]).efficiency).toBeUndefined();
+		expect(
+			foldHarnessDays([bare, harnessDay()]).efficiency?.shortSessions,
+		).toBe(3);
+	});
+
+	it("names tool results from the fixed vocabulary only", () => {
+		expect(toolResultName("Read")).toBe("Read");
+		expect(toolResultName("Task")).toBe("Agent");
+		expect(toolResultName("mcp__acme-billing__query")).toBe("mcp");
+		expect(toolResultName("acme-billing__query")).toBe("mcp");
+		expect(toolResultName("my-secret-tool")).toBe("other");
+		expect(toolResultName(undefined)).toBe("other");
 	});
 });

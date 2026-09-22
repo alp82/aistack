@@ -78,7 +78,7 @@ const phaseTotals = () => ({
 /** One machine's extraction, with every optional block present. */
 function extraction(): WorkflowExtraction {
 	return {
-		aggregateVersion: "workflow-aggregates/v3",
+		aggregateVersion: "workflow-aggregates/v4",
 		utcOffsetMinutes: 120,
 		days: [
 			{
@@ -142,6 +142,30 @@ function extraction(): WorkflowExtraction {
 							maxContext: 261_390,
 							compactions: 3,
 							window: 258_400,
+						},
+						efficiency: {
+							countBucketRuleVersion: "log-buckets/v1",
+							sizeBucketRuleVersion: "log-buckets/v2",
+							callGaps: [{ bucket: 5, calls: 30 }],
+							callsAfterGap: 4,
+							cacheWriteAfterGap: 200_000,
+							inputAfterGap: 400,
+							orphanCacheWrites: 1,
+							orphanCacheWriteTokens: 30_000,
+							sessionMaxContext: [{ bucket: 35, sessions: 42 }],
+							sessionCalls: [{ bucket: 3, sessions: 42 }],
+							shortSessions: 3,
+							shortSessionFirstCallTokens: 60_000,
+							sessionsCompacted: 2,
+							toolResults: [
+								{
+									tool: "Read",
+									results: 20,
+									bytes: 800_000,
+									buckets: [{ bucket: 33, results: 20 }],
+								},
+							],
+							blocks: { thinking: 40, text: 60 },
 						},
 					},
 				],

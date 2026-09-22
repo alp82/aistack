@@ -34,6 +34,7 @@ import {
 } from './lib/workflow'
 import { GitDay, HarnessDay } from './schema'
 import { readStats } from './lib/stats'
+import { readEfficiency } from './lib/efficiency'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -461,5 +462,75 @@ export const getStatsByStackSlug = query({
     if (rows.length === 0 && inventory.length === 0) return null
     // Shared atom types use readonly arrays; Convex validators use mutable arrays.
     return readStats(rows, inventory, Date.now(), catalog) as Infer<typeof StatsView>
+  },
+})
+
+const EfficiencyLever = v.union(
+  v.literal('cache'),
+  v.literal('switches'),
+  v.literal('tools'),
+  v.literal('context'),
+  v.literal('routing'),
+  v.literal('startup'),
+  v.literal('effort'),
+  v.literal('sessions'),
+)
+const EfficiencySeverity = v.union(
+  v.literal('high'),
+  v.literal('medium'),
+  v.literal('low'),
+  v.literal('ok'),
+)
+const EfficiencyTile = v.object({
+  id: v.string(),
+  lever: EfficiencyLever,
+  harness: v.string(),
+  severity: EfficiencySeverity,
+  meter: v.number(),
+  fix: v.string(),
+  verdict: v.string(),
+  keep: v.string(),
+  figure: v.object({ value: v.string(), label: v.string() }),
+  evidence: v.array(v.object({ label: v.string(), value: v.string() })),
+  why: v.string(),
+  action: v.string(),
+  usd: v.union(v.number(), v.null()),
+  usdNote: v.union(v.string(), v.null()),
+})
+const EfficiencyView = v.object({
+  window: v.object({ from: v.string(), to: v.string() }),
+  rulesVersion: v.string(),
+  tiles: v.array(EfficiencyTile),
+  recoverableUsd: v.union(v.number(), v.null()),
+  pricingTables: v.array(v.string()),
+})
+
+/**
+ * The owner's token-efficiency scorecard (`workflow-aggregates/v4`): one tile
+ * per lever over the fixed 30-day all-machine fold. OWNER ONLY: a viewer who
+ * is not the stack's creator reads null, exactly as a stack with no reading.
+ * `publishWorkflow` gates the atoms and `publishCost` gates the dollars, as
+ * everywhere else.
+ */
+export const getEfficiencyByStackSlug = query({
+  args: { slug: v.string() },
+  returns: v.union(EfficiencyView, v.null()),
+  handler: async (ctx, { slug }) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return null
+    const userId = identity.tokenIdentifier.split('|')[1]
+    const stack = await publicStackBySlug(ctx, slug)
+    if (!stack || stack.publishWorkflow === false) return null
+    const creator = await ctx.db.get(stack.creatorId)
+    if (!creator || creator.userId !== userId) return null
+    const [rows, catalog] = await Promise.all([
+      workflowDaysForStack(ctx, stack._id),
+      loadModelCatalog(ctx),
+    ])
+    if (rows.length === 0) return null
+    // Shared rule types use readonly arrays; Convex validators use mutable arrays.
+    return readEfficiency(rows, Date.now(), catalog, stack.publishCost !== false) as Infer<
+      typeof EfficiencyView
+    > | null
   },
 })

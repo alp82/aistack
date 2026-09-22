@@ -403,3 +403,172 @@ describe("per-call context (#358)", () => {
 		expect(days[1]?.context).toBeUndefined();
 	});
 });
+
+describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+	it("reads gaps, re-warms, orphan writes, peaks, short sessions and compactions per main session", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		const call = (
+			session: string,
+			id: string,
+			offsetSec: number,
+			tokens: { input: number; read: number; write: number },
+			extra: Record<string, unknown> = {},
+		) =>
+			reducer.ingest({
+				type: "response",
+				session,
+				tsMs: start + offsetSec * 1000,
+				responseId: id,
+				model: "claude-opus-5",
+				contextTokens: tokens.input + tokens.read + tokens.write,
+				inputTokens: tokens.input,
+				cacheReadTokens: tokens.read,
+				cacheWriteTokens: tokens.write,
+				blocks: { thinking: 1, text: 1 },
+				...extra,
+			});
+		// A long session: a warm call 10 s later, a call after a 20-minute
+		// break that rewrites the prefix, and a mid-session switch that writes
+		// cache and reads none.
+		call("long", "l1", 0, { input: 100, read: 0, write: 20_000 });
+		call("long", "l2", 10, { input: 50, read: 20_000, write: 500 });
+		call("long", "l3", 10 + 1200, { input: 50, read: 0, write: 21_000 });
+		call("long", "l4", 10 + 1200 + 30, { input: 50, read: 21_000, write: 900 });
+		call("long", "l5", 10 + 1200 + 60, { input: 50, read: 0, write: 30_000 });
+		reducer.ingest({
+			type: "compaction",
+			session: "long",
+			tsMs: start + 2000 * 1000,
+		});
+		// A one-call session.
+		call("short", "s1", 3600, { input: 200, read: 0, write: 40_000 });
+		// A subagent session stays out of every main atom.
+		call(
+			"long:agent:a",
+			"a1",
+			5,
+			{ input: 10, read: 0, write: 5_000 },
+			{ parentSession: "long", sidechain: true },
+		);
+		call(
+			"long:agent:a",
+			"a2",
+			5 + 900,
+			{ input: 10, read: 0, write: 5_000 },
+			{ parentSession: "long", sidechain: true },
+		);
+		// A duration-only response is not a call.
+		reducer.ingest({
+			type: "response",
+			session: "long",
+			tsMs: start + 3000 * 1000,
+			responseId: "duration:x",
+			durationSec: 12,
+		});
+
+		const day = reducer.finish().days[0];
+		expect(day?.efficiency).toEqual({
+			countBucketRuleVersion: "log-buckets/v1",
+			sizeBucketRuleVersion: "log-buckets/v2",
+			// Gaps of 10 s (bucket 4), 1200 s (bucket 11), 30 s (bucket 5), 30 s.
+			callGaps: [
+				{ bucket: 4, calls: 1 },
+				{ bucket: 5, calls: 2 },
+				{ bucket: 11, calls: 1 },
+			],
+			callsAfterGap: 1,
+			cacheWriteAfterGap: 21_000,
+			inputAfterGap: 50,
+			// l3 (after the break) and l5 (the switch) wrote cache and read none.
+			orphanCacheWrites: 2,
+			orphanCacheWriteTokens: 51_000,
+			// Peaks: long 30,050 (bucket 30), short 40,200 (bucket 31).
+			sessionMaxContext: [
+				{ bucket: 30, sessions: 1 },
+				{ bucket: 31, sessions: 1 },
+			],
+			// 5 calls (bucket 3) and 1 call (bucket 1).
+			sessionCalls: [
+				{ bucket: 1, sessions: 1 },
+				{ bucket: 3, sessions: 1 },
+			],
+			shortSessions: 1,
+			shortSessionFirstCallTokens: 40_200,
+			sessionsCompacted: 1,
+			toolResults: [],
+			blocks: { thinking: 6, text: 6 },
+		});
+	});
+
+	it("sizes tool results by wire name on the day of the result and never keeps a user name", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		const result = (tool: string, bytes: number, offsetDays = 0) =>
+			reducer.ingest({
+				type: "toolResult",
+				session: "s",
+				tsMs: start + offsetDays * 86_400_000,
+				tool,
+				bytes,
+			});
+		result("Read", 50_000);
+		result("Read", 1_000);
+		result("Task", 900);
+		result("mcp__acme-billing__query", 3_000);
+		result("acme-internal-tool", 10);
+		result("Bash", 2_000, 1);
+		const days = reducer.finish().days;
+		expect(days[0]?.efficiency?.toolResults).toEqual([
+			{
+				tool: "Read",
+				results: 2,
+				bytes: 51_000,
+				buckets: [
+					{ bucket: 20, results: 1 },
+					{ bucket: 32, results: 1 },
+				],
+			},
+			{
+				tool: "mcp",
+				results: 1,
+				bytes: 3_000,
+				buckets: [{ bucket: 24, results: 1 }],
+			},
+			{
+				tool: "Agent",
+				results: 1,
+				bytes: 900,
+				buckets: [{ bucket: 20, results: 1 }],
+			},
+			{
+				tool: "other",
+				results: 1,
+				bytes: 10,
+				buckets: [{ bucket: 7, results: 1 }],
+			},
+		]);
+		expect(days[1]?.efficiency?.toolResults).toEqual([
+			{
+				tool: "Bash",
+				results: 1,
+				bytes: 2_000,
+				buckets: [{ bucket: 22, results: 1 }],
+			},
+		]);
+		expect(JSON.stringify(days)).not.toContain("acme");
+	});
+
+	it("omits the block on a day with no calls, results or blocks", () => {
+		const reducer = createHarnessWorkflowReducer("cursor");
+		reducer.ingest({
+			type: "response",
+			session: "s",
+			tsMs: Date.UTC(2026, 7, 24, 10, 0),
+			responseId: "r1",
+			model: "gpt-5",
+			routingTokens: 100,
+		});
+		expect(reducer.finish().days[0]?.efficiency).toBeUndefined();
+	});
+});

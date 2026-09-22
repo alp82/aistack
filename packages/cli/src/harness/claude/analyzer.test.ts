@@ -636,3 +636,78 @@ describe("per-call context (#358)", () => {
 		expect(agg.workflow.finish().days[0]?.context?.compactions).toBe(1);
 	});
 });
+
+describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+	const usage = (input: number, cacheWrite: number, cacheRead: number) => ({
+		input_tokens: input,
+		output_tokens: 10,
+		cache_creation_input_tokens: cacheWrite,
+		cache_read_input_tokens: cacheRead,
+	});
+
+	it("splits each call's tokens, counts content blocks, and sizes tool results under the tool's name", () => {
+		const agg = createAggregate();
+		ingest(
+			agg,
+			assistant({
+				id: "msg_1",
+				sessionId: "sess-eff",
+				timestamp: "2026-07-20T12:00:00.000Z",
+				usage: usage(100, 20_000, 0),
+				content: [
+					{ type: "thinking", thinking: "SECRET reasoning" },
+					{ type: "text", text: "hello" },
+					toolUse("Read", { file_path: "/secret/a.ts" }, "toolu_read"),
+					toolUse("mcp__acme-billing__query", {}, "toolu_mcp"),
+				],
+			}),
+			{
+				type: "user",
+				timestamp: "2026-07-20T12:00:05.000Z",
+				sessionId: "sess-eff",
+				message: {
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_read",
+							content: "x".repeat(50_000),
+						},
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_mcp",
+							content: [{ type: "text", text: "y".repeat(2_000) }],
+						},
+					],
+				},
+			},
+			// A call 20 minutes later rewrites the prefix.
+			assistant({
+				id: "msg_2",
+				sessionId: "sess-eff",
+				timestamp: "2026-07-20T12:20:05.000Z",
+				usage: usage(50, 21_000, 0),
+				content: [{ type: "text", text: "done" }],
+			}),
+		);
+		const efficiency = agg.workflow.finish().days[0]?.efficiency;
+		expect(efficiency).toBeDefined();
+		expect(efficiency?.callsAfterGap).toBe(1);
+		expect(efficiency?.cacheWriteAfterGap).toBe(21_000);
+		expect(efficiency?.inputAfterGap).toBe(50);
+		expect(efficiency?.orphanCacheWrites).toBe(1);
+		expect(efficiency?.blocks).toEqual({ thinking: 1, text: 2 });
+		expect(
+			efficiency?.toolResults.map((t) => [t.tool, t.results, t.bytes]),
+		).toEqual([
+			["Read", 1, 50_000],
+			[
+				"mcp",
+				1,
+				Buffer.byteLength(
+					JSON.stringify([{ type: "text", text: "y".repeat(2_000) }]),
+				),
+			],
+		]);
+		expect(JSON.stringify(efficiency)).not.toMatch(/acme|SECRET|secret/);
+	});
+});

@@ -10,10 +10,11 @@ import { getFunctionName } from "convex/server";
 import { afterEach, expect, it, vi } from "vitest";
 import { api } from "../../../../convex/_generated/api";
 import type { UsageRead } from "../copy";
+import type { EfficiencyRead } from "../EfficiencyBlock";
 import type { StatsRead } from "../stats";
 import { UsageSection } from "../UsageSection";
 import { contextReading, noDaysUsage, reading, usage } from "./fixture";
-import { stats } from "./stats-fixture";
+import { efficiency, stats } from "./stats-fixture";
 
 const queryMock = vi.fn();
 vi.mock("convex/react", () => ({
@@ -32,9 +33,16 @@ function setup(
 	u: UsageRead | null | undefined = usage(),
 	s: StatsRead | null | undefined = stats(),
 	owner = false,
+	e: EfficiencyRead | null | undefined = null,
 ) {
-	queryMock.mockImplementation((ref: Parameters<typeof getFunctionName>[0]) =>
-		getFunctionName(ref).startsWith("measured:") ? u : s,
+	queryMock.mockImplementation(
+		(ref: Parameters<typeof getFunctionName>[0], args: unknown) => {
+			const name = getFunctionName(ref);
+			if (name.startsWith("measured:")) return u;
+			if (name.endsWith("getEfficiencyByStackSlug"))
+				return args === "skip" ? undefined : e;
+			return s;
+		},
 	);
 	return render(
 		<UsageSection
@@ -210,4 +218,63 @@ it("renders loader readings before the live query and honors a later null", () =
 	expect(
 		screen.getByText("This stack has not been measured yet."),
 	).toBeInTheDocument();
+});
+
+it("shows the token-efficiency scorecard to the owner only, fix first, lime for a pass", () => {
+	setup(usage(), stats(), true, efficiency());
+	expect(queryMock).toHaveBeenCalledWith(
+		api.workflow.getEfficiencyByStackSlug,
+		{
+			slug: "alp",
+		},
+	);
+	const block = screen.getByRole("region", { name: "Token efficiency" });
+	expect(within(block).getByText("2 changes would save tokens")).toBeTruthy();
+	const tiles = within(block).getAllByRole("button");
+	expect(tiles.map((t) => t.textContent)).toEqual([
+		expect.stringContaining("Use the 1h cache TTL"),
+		expect.stringContaining("Read with offset and limit"),
+	]);
+	// The fix leads, the dollar bound prints on its tile, the detail waits for a click.
+	expect(tiles[0]?.textContent).toContain("Fix this");
+	expect(tiles[0]?.textContent).toContain("$79");
+	expect(tiles[0]?.textContent).not.toContain("Set the cache TTL");
+	fireEvent.click(tiles[0] as HTMLElement);
+	expect(tiles[0]?.textContent).toContain("Set the cache TTL");
+	expect(tiles[0]?.textContent).toContain("claude-opus-5 rates");
+	// The passing rule is a two-row card: the keep line plus one figure.
+	expect(
+		within(block).getByText("Keep quick questions inside running sessions"),
+	).toBeTruthy();
+	expect(
+		within(block).queryByText("Sessions are worth their startup"),
+	).toBeNull();
+	expect(within(block).getByText(/modelPrices\/42-abc/)).toBeTruthy();
+});
+it("never asks for the scorecard on another creator's page", () => {
+	setup(usage(), stats(), false, efficiency());
+	expect(queryMock).toHaveBeenCalledWith(
+		api.workflow.getEfficiencyByStackSlug,
+		"skip",
+	);
+	expect(screen.queryByRole("region", { name: "Token efficiency" })).toBeNull();
+});
+it("prints no dollars on the scorecard when cost is kept private", () => {
+	setup(
+		usage(),
+		stats(),
+		true,
+		efficiency({
+			recoverableUsd: null,
+			pricingTables: [],
+			tiles: efficiency().tiles.map((t) => ({
+				...t,
+				usd: null,
+				usdNote: null,
+			})),
+		}),
+	);
+	const block = screen.getByRole("region", { name: "Token efficiency" });
+	expect(block.textContent).not.toContain("$");
+	expect(block.textContent).not.toContain("Price tables");
 });
