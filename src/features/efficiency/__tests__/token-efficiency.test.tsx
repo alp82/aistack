@@ -78,9 +78,8 @@ const read: EfficiencyRead = {
 	pricingTables: ["modelPrices/1-a"],
 };
 const answer = (value: EfficiencyRead | null) =>
-	queryMock.mockImplementation(
-		(_ref: unknown, args: unknown) =>
-			args === "skip" ? undefined : value,
+	queryMock.mockImplementation((_ref: unknown, args: unknown) =>
+		args === "skip" ? undefined : value,
 	);
 
 it("names the findings on the stack page for the owner and links to settings", () => {
@@ -140,4 +139,5 @@ it("says so when there is nothing to read yet", () => {
 	answer(null);
 	render(<TokenEfficiencyPage />);
 	expect(screen.getByText("No findings yet.")).toBeTruthy();
+	expect(document.body.textContent).toContain("npx @use-aistack/cli sync");
 });

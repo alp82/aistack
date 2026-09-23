@@ -3,7 +3,8 @@ import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { fmtUSD } from "@/features/measured/copy";
+import { CommandBlock } from "@/features/measured/CommandLine";
+import { fmtUSD, SYNC_CMD, SYNC_CMD_COMMENT } from "@/features/measured/copy";
 import { harnessLabel } from "@/features/usage/HarnessShareRows";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
@@ -223,8 +224,14 @@ export function TokenEfficiencyPage() {
 				<div className="mt-8 border-2 border-stroke-strong bg-bg-panel p-6">
 					<p className="font-mono text-sm text-fg-primary">No findings yet.</p>
 					<p className="mt-2 text-sm text-fg-secondary">
-						Findings appear after a sync from a CLI that measures them.
+						Run a sync with the latest CLI. Your findings appear here after it
+						publishes.
 					</p>
+					<div className="mt-5 max-w-xl">
+						<CommandBlock
+							commands={[{ cmd: SYNC_CMD, comment: SYNC_CMD_COMMENT }]}
+						/>
+					</div>
 				</div>
 			) : (
 				<>
