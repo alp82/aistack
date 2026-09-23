@@ -6,6 +6,7 @@
 
 import {
 	type ContextDay,
+	type EfficiencyDay,
 	foldWorkflowDays,
 	type GitDay,
 	type HarnessDay,
@@ -99,6 +100,7 @@ export function harnessDay(over: Partial<HarnessDay> = {}): HarnessDay {
 		questions: { asked: 2, turns: 20 },
 		webSearches: 3,
 		context: contextDay(),
+		efficiency: efficiencyDay(),
 		...over,
 	};
 }
@@ -120,6 +122,55 @@ export function contextDay(over: Partial<ContextDay> = {}): ContextDay {
 		firstCallCount: 10,
 		maxContext: 180_000,
 		compactions: 1,
+		...over,
+	};
+}
+
+/** One day of token-efficiency atoms (`workflow-aggregates/v4`). */
+export function efficiencyDay(
+	over: Partial<EfficiencyDay> = {},
+): EfficiencyDay {
+	return {
+		countBucketRuleVersion: LOG_BUCKETS_V1,
+		sizeBucketRuleVersion: LOG_BUCKETS_V2,
+		callGaps: [
+			{ bucket: 5, calls: 6 },
+			{ bucket: 10, calls: 4 },
+		],
+		callsAfterGap: 4,
+		cacheWriteAfterGap: 200_000,
+		inputAfterGap: 400,
+		orphanCacheWrites: 1,
+		orphanCacheWriteTokens: 30_000,
+		sessionMaxContext: [
+			{ bucket: 32, sessions: 6 },
+			{ bucket: 35, sessions: 4 },
+		],
+		sessionCalls: [
+			{ bucket: 2, sessions: 3 },
+			{ bucket: 5, sessions: 7 },
+		],
+		shortSessions: 3,
+		shortSessionFirstCallTokens: 60_000,
+		sessionsCompacted: 1,
+		toolResults: [
+			{
+				tool: "Read",
+				results: 20,
+				bytes: 800_000,
+				buckets: [
+					{ bucket: 27, results: 10 },
+					{ bucket: 33, results: 10 },
+				],
+			},
+			{
+				tool: "Bash",
+				results: 10,
+				bytes: 50_000,
+				buckets: [{ bucket: 25, results: 10 }],
+			},
+		],
+		blocks: { thinking: 40, text: 60 },
 		...over,
 	};
 }

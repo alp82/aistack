@@ -78,6 +78,9 @@ code, .font-mono {
   --destructive: oklch(0.63 0.2 26);
   --destructive-foreground: oklch(0.97 0.01 26);
   --destructive-fill: oklch(0.50 0.2 26);
+  /* The "worth a look" status between destructive and lime. Hue 65 sits away
+     from every chart slot, so a status never looks like a series. */
+  --warning: oklch(0.76 0.16 65);
   --border: var(--stroke-subtle);
   --input: var(--stroke-subtle);
   --ring: var(--accent-lime);
@@ -140,6 +143,7 @@ code, .font-mono {
   --shadow-color: oklch(0.02 0 0 / 0.12);
   --bg-section-dark: oklch(0.94 0.004 256);
   --bg-section-light: oklch(0.99 0.002 256);
+  --warning: oklch(0.6 0.16 65);
   /* Light steps of the categorical chart palette. Chosen for the light
      surface, never flipped from the dark ones: worst adjacent CVD dE 14.2,
      normal-vision dE 16.7, every slot above 3:1 on both #ffffff and #f4f5f7.
@@ -335,6 +339,7 @@ code, .font-mono {
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-fill: var(--destructive-fill);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

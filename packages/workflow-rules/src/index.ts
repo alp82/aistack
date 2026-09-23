@@ -4,6 +4,7 @@
 export * from "./componentRules.js";
 export * from "./context.js";
 export * from "./daily.js";
+export * from "./efficiency.js";
 export * from "./metricRules.js";
 export * from "./phaseRules.js";
 export * from "./playbook.js";

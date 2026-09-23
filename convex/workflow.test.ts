@@ -971,3 +971,108 @@ describe('fixed 30-day all-machine web Stats', () => {
     expect(await stats(t, 'missing')).toBeNull()
   })
 })
+
+describe('owner-only token efficiency (workflow-aggregates/v4)', () => {
+  const OTHER = { tokenIdentifier: 'convex|user_other', subject: 'user_other' }
+  const efficiency = (t: Ctx, slug: string, identity?: typeof IDENTITY) =>
+    (identity ? t.withIdentity(identity) : t).query(api.workflow.getEfficiencyByStackSlug, { slug })
+  const efficientDay = () => {
+    const d = day()
+    d.harnesses[0].efficiency = {
+      countBucketRuleVersion: 'log-buckets/v1',
+      sizeBucketRuleVersion: 'log-buckets/v2',
+      callGaps: [
+        { bucket: 5, calls: 60 },
+        { bucket: 11, calls: 30 },
+      ],
+      callsAfterGap: 30,
+      cacheWriteAfterGap: 3_000_000,
+      inputAfterGap: 3_000,
+      orphanCacheWrites: 0,
+      orphanCacheWriteTokens: 0,
+      sessionMaxContext: [{ bucket: 32, sessions: 10 }],
+      sessionCalls: [{ bucket: 4, sessions: 10 }],
+      shortSessions: 0,
+      shortSessionFirstCallTokens: 0,
+      sessionsCompacted: 0,
+      toolResults: [
+        { tool: 'Read', results: 40, bytes: 4_000_000, buckets: [{ bucket: 34, results: 40 }] },
+      ],
+      blocks: { thinking: 10, text: 20 },
+    }
+    return d
+  }
+
+  test('answers the owner with one ranked tile per lever and nobody else', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId, { machine: 'a', workflow: wire([efficientDay()]) })
+    await publish(t, stackId, { machine: 'b', workflow: wire([efficientDay()]) })
+    expect(await efficiency(t, slug)).toBeNull()
+    expect(await efficiency(t, slug, OTHER)).toBeNull()
+    const view = await efficiency(t, slug, IDENTITY)
+    expect(view?.rulesVersion).toBe('efficiency-rules/v1')
+    const levers = view?.tiles.map((tile) => tile.lever) ?? []
+    expect(new Set(levers).size).toBe(levers.length)
+    expect(levers).toContain('cache')
+    expect(levers).toContain('tools')
+    // Two machines combine: 60 calls after a break over 180 main calls.
+    const cache = view?.tiles.find((tile) => tile.lever === 'cache')
+    expect(cache?.figure).toEqual({ value: '60', label: 'calls after a break' })
+    expect(cache?.severity).toBe('high')
+    expect(cache?.harness).toBe('claude-code')
+    const tools = view?.tiles.find((tile) => tile.lever === 'tools')
+    expect(tools?.fix).toBe('Read with offset and limit')
+    expect(JSON.stringify(view)).not.toContain('machine')
+  })
+
+  test('prices a bound only under publishCost and cites the table', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId, { workflow: wire([efficientDay()]) })
+    const priced = await efficiency(t, slug, IDENTITY)
+    const cache = priced?.tiles.find((tile) => tile.lever === 'cache')
+    expect(cache?.usd).toBeGreaterThan(0)
+    expect(cache?.usdNote).toContain('claude-opus-5')
+    expect(priced?.recoverableUsd).toBeGreaterThan(0)
+    expect(priced?.pricingTables.length).toBe(1)
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishCost: false }))
+    const unpriced = await efficiency(t, slug, IDENTITY)
+    expect(unpriced?.tiles.find((tile) => tile.lever === 'cache')?.usd).toBeNull()
+    expect(unpriced?.recoverableUsd).toBeNull()
+    expect(unpriced?.pricingTables).toEqual([])
+  })
+
+  test('the account read folds the signed-in creator\'s stacks and answers nobody else', async () => {
+    const t = convexTest(schema, modules)
+    const mine = (identity?: typeof IDENTITY) =>
+      (identity ? t.withIdentity(identity) : t).query(api.workflow.getMyEfficiency, {})
+    expect(await mine(IDENTITY)).toBeNull()
+    const { stackId } = await seedStack(t)
+    await publish(t, stackId, { workflow: wire([efficientDay()]) })
+    expect(await mine()).toBeNull()
+    expect(await mine(OTHER)).toBeNull()
+    const view = await mine(IDENTITY)
+    expect(view?.tiles.find((tile) => tile.lever === 'cache')?.figure.value).toBe('30')
+    // A passing rule never prints a dollar bound.
+    for (const tile of view?.tiles ?? []) {
+      if (tile.severity === 'ok') expect(tile.usd).toBeNull()
+    }
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishCost: false }))
+    expect((await mine(IDENTITY))?.recoverableUsd).toBeNull()
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await mine(IDENTITY)).toBeNull()
+  })
+
+  test('consent and an old wire both read as nothing', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    // A v3 day carries no efficiency block: no tiles.
+    await publish(t, stackId, { workflow: wire([day()]) })
+    expect(await efficiency(t, slug, IDENTITY)).toBeNull()
+    await publish(t, stackId, { workflow: wire([efficientDay()]) })
+    expect(await efficiency(t, slug, IDENTITY)).not.toBeNull()
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await efficiency(t, slug, IDENTITY)).toBeNull()
+  })
+})

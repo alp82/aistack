@@ -92,6 +92,8 @@ export type FileState = {
 	forked: boolean;
 	/** True once a genuine (non-replayed, nonzero) response was seen, in window or not. */
 	sawResponse: boolean;
+	/** `call_id` -> tool name, so a `function_call_output` is sized under its tool (v4). */
+	callNames: Map<string, string>;
 };
 
 export function createFileState(): FileState {
@@ -107,6 +109,7 @@ export function createFileState(): FileState {
 		metaTsMs: null,
 		forked: false,
 		sawResponse: false,
+		callNames: new Map(),
 	};
 }
 
@@ -316,6 +319,9 @@ function ingestEvent(
 			// the fresh part is the instructions: AGENTS.md, environment,
 			// skills and the first prompt. Same method as Claude Code (#358).
 			contextTokens: counts.input + counts.cacheRead,
+			inputTokens: counts.input,
+			cacheReadTokens: counts.cacheRead,
+			cacheWriteTokens: 0,
 			...(contextWindow > 0 ? { contextWindow } : {}),
 			...(firstCall && !state.forked
 				? {
@@ -368,10 +374,15 @@ function ingestItem(
 	tsMs: number | null,
 ): void {
 	const type = asStr(payload.type);
+	if (type === "function_call_output" || type === "custom_tool_call_output") {
+		ingestToolResult(agg, payload, state, tsMs);
+		return;
+	}
 	if (type === "function_call" || type === "custom_tool_call") {
 		const name = asName(payload.name);
 		if (!name) return;
 		const callId = asStr(payload.call_id) ?? asStr(payload.id);
+		if (callId) state.callNames.set(callId, name);
 		ingestCall(agg, name, callId);
 		ingestWorkflowCall(agg, payload, name, callId, state, tsMs);
 		return;
@@ -380,6 +391,7 @@ function ingestItem(
 	// CODEX_BUILTIN_TOOLS, so they survive the fail-closed filter.
 	if (type === "local_shell_call") {
 		const callId = asStr(payload.call_id) ?? asStr(payload.id);
+		if (callId) state.callNames.set(callId, "local_shell");
 		ingestCall(agg, "local_shell", callId);
 		ingestWorkflowCall(agg, payload, "local_shell", callId, state, tsMs);
 	} else if (type === "web_search_call") {
@@ -404,6 +416,35 @@ function ingestItem(
 			tsMs,
 		);
 	}
+}
+
+/**
+ * Size one tool output (v4): the byte length of `output` under the name of
+ * the call it answers. The output text is measured here and never kept.
+ */
+function ingestToolResult(
+	agg: Aggregate,
+	payload: Obj,
+	state: FileState,
+	tsMs: number | null,
+): void {
+	if (tsMs === null || !state.sessionId) return;
+	const callId = asStr(payload.call_id) ?? asStr(payload.id);
+	const output = payload.output;
+	const bytes =
+		typeof output === "string"
+			? Buffer.byteLength(output)
+			: output === undefined || output === null
+				? 0
+				: Buffer.byteLength(JSON.stringify(output));
+	agg.workflow.ingest({
+		type: "toolResult",
+		session: state.sessionId,
+		projectWorkspace: state.cwd ?? undefined,
+		tsMs,
+		tool: (callId && state.callNames.get(callId)) || "other",
+		bytes,
+	});
 }
 
 function ingestWorkflowCall(

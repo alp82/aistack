@@ -8,6 +8,7 @@ import {
   inDateRange,
   previousRangeDates,
   rangeDates,
+  TOOL_RESULT_NAMES,
   totalOfTokens,
 } from '@aistack/workflow-rules'
 import { type Infer, v } from 'convex/values'
@@ -285,6 +286,8 @@ const WORKFLOW_LIMITS = {
   extensions: 128,
   routingModels: 64,
   effortLevels: 4,
+  /** Tool-result rows per day: the fixed vocabulary in `TOOL_RESULT_NAMES`. */
+  toolResults: 32,
 } as const
 
 const UTC_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -392,6 +395,33 @@ export function checkWorkflowDays(wire: Infer<typeof WorkflowWire>): void {
           WORKFLOW_LIMITS.buckets,
           `${here}.context.firstCalls.main`
         )
+      }
+      if (harness.efficiency) {
+        const eff = harness.efficiency
+        requireName(eff.countBucketRuleVersion, `${here}.efficiency.countBucketRuleVersion`)
+        requireName(eff.sizeBucketRuleVersion, `${here}.efficiency.sizeBucketRuleVersion`)
+        requireSize(eff.callGaps.length, WORKFLOW_LIMITS.buckets, `${here}.efficiency.callGaps`)
+        requireSize(
+          eff.sessionMaxContext.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.efficiency.sessionMaxContext`
+        )
+        requireSize(eff.sessionCalls.length, WORKFLOW_LIMITS.buckets, `${here}.efficiency.sessionCalls`)
+        requireSize(eff.toolResults.length, WORKFLOW_LIMITS.toolResults, `${here}.efficiency.toolResults`)
+        eff.toolResults.forEach((row, j) => {
+          // Fail closed: a tool name outside the fixed vocabulary is a name
+          // a user chose, and it never lands in the table.
+          if (!TOOL_RESULT_NAMES.includes(row.tool)) {
+            throw new Error(
+              `${here}.efficiency.toolResults[${j}].tool must be one of the fixed tool names`
+            )
+          }
+          requireSize(
+            row.buckets.length,
+            WORKFLOW_LIMITS.buckets,
+            `${here}.efficiency.toolResults[${j}].buckets`
+          )
+        })
       }
     })
 

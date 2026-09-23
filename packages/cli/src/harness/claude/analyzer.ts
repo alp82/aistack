@@ -114,6 +114,13 @@ export type Aggregate = SharedAggregate<SeenEntry> & {
 	 * seen without an id, or before the window opened (`noteRecordBeforeWindow`).
 	 */
 	contextFirstCall: Map<string, string | null>;
+	/**
+	 * `tool_use` block id -> tool name, so a `tool_result` block in a later
+	 * user record can be sized under its tool's wire name (v4). Names here are
+	 * the harness's own; `toolResultName` reduces them to the fixed vocabulary
+	 * before anything leaves the reducer.
+	 */
+	workflowToolNames: Map<string, string>;
 };
 
 export function createAggregate(): Aggregate {
@@ -124,6 +131,7 @@ export function createAggregate(): Aggregate {
 		workflowSeenCalls: new Set<string>(),
 		workflowSeenTurns: new Set<string>(),
 		contextFirstCall: new Map<string, string | null>(),
+		workflowToolNames: new Map<string, string>(),
 	});
 }
 
@@ -207,8 +215,10 @@ export function ingestRecord(
 	if (type === "assistant") {
 		ingestClaudeWorkflow(agg, rec, ctx, tsMs);
 		ingestAssistant(agg, rec, tsMs);
-	} else if (type === "user") ingestUser(agg, rec);
-	else if (type === "system") {
+	} else if (type === "user") {
+		ingestUser(agg, rec);
+		ingestClaudeToolResults(agg, rec, ctx, tsMs);
+	} else if (type === "system") {
 		ingestClaudeTurnDuration(agg, rec, ctx, tsMs);
 		ingestClaudeCompaction(agg, rec, ctx, tsMs);
 	}
@@ -296,12 +306,26 @@ function ingestClaudeWorkflow(
 	const newTurn = messageId ? !agg.workflowSeenTurns.has(messageId) : true;
 	if (messageId) agg.workflowSeenTurns.add(messageId);
 
+	// Content blocks by type (v4): counts only, the text is never read. The
+	// records of one streamed response each carry their own blocks, and the
+	// reducer keeps the largest record's figures per response id.
+	const blocks = { thinking: 0, text: 0 };
+	for (const rawBlock of asArr(msg.content)) {
+		const block = asObj(rawBlock);
+		const kind = block ? asStr(block.type) : null;
+		if (kind === "thinking") blocks.thinking++;
+		else if (kind === "text") blocks.text++;
+	}
+
 	// Per-call context (#358). The first call of a session is the first API
 	// call seen under its key; every record of that response carries the split
 	// (the records of one response share one context), and a response seen
 	// before the window opened has already claimed the slot with `null`.
 	let context: {
 		contextTokens: number;
+		inputTokens: number;
+		cacheReadTokens: number;
+		cacheWriteTokens: number;
 		firstCall?: { harnessTokens: number; instructionsTokens: number };
 	} | null = null;
 	if (counts && isApiCall(rec)) {
@@ -313,6 +337,10 @@ function ingestClaudeWorkflow(
 		} else if (held !== null && held === messageId) first = true;
 		context = {
 			contextTokens: contextOf(counts),
+			inputTokens: counts.input,
+			cacheReadTokens: counts.cacheRead,
+			cacheWriteTokens:
+				counts.cacheWrite5m + counts.cacheWrite1h + counts.cacheWriteUnsplit,
 			...(first
 				? {
 						firstCall: {
@@ -339,6 +367,7 @@ function ingestClaudeWorkflow(
 			? { effort: (asStr(rec.effort) ?? asStr(msg.effort)) as string }
 			: {}),
 		...(context ?? {}),
+		...(blocks.thinking + blocks.text > 0 && isApiCall(rec) ? { blocks } : {}),
 	});
 
 	const tools: Obj[] = [];
@@ -348,11 +377,12 @@ function ingestClaudeWorkflow(
 	}
 	for (const block of tools) {
 		const id = asStr(block.id);
+		const name = asName(block.name);
+		if (id && name) agg.workflowToolNames.set(id, name);
 		if (id) {
 			if (agg.workflowSeenCalls.has(id)) continue;
 			agg.workflowSeenCalls.add(id);
 		}
-		const name = asName(block.name);
 		if (!name) continue;
 		const input = asObj(block.input) ?? {};
 		let arg = "";
@@ -691,6 +721,47 @@ function ingestToolUse(agg: Aggregate, block: Obj): void {
 }
 
 const SLASH_RE = /<command-name>\/?([^<\n\r]{1,64})<\/command-name>/g;
+
+/**
+ * Size every `tool_result` block of a user record (v4). Only the byte length
+ * of the content reaches the reducer, under the tool name the matching
+ * `tool_use` block carried; the content itself is measured and dropped here.
+ */
+function ingestClaudeToolResults(
+	agg: Aggregate,
+	rec: Obj,
+	ctx: IngestContext,
+	tsMs: number | null,
+): void {
+	if (tsMs === null) return;
+	const session = workflowSessionKey(rec);
+	const msg = asObj(rec.message);
+	if (!session || !msg) return;
+	const sidechain = rec.isSidechain === true;
+	const parentSession = sidechain ? asStr(rec.sessionId) : null;
+	for (const rawBlock of asArr(msg.content)) {
+		const block = asObj(rawBlock);
+		if (!block || asStr(block.type) !== "tool_result") continue;
+		const toolUseId = asStr(block.tool_use_id);
+		const content = block.content;
+		const bytes =
+			typeof content === "string"
+				? Buffer.byteLength(content)
+				: content === undefined || content === null
+					? 0
+					: Buffer.byteLength(JSON.stringify(content));
+		agg.workflow.ingest({
+			type: "toolResult",
+			session,
+			projectWorkspace: projectWorkspaceDirectory(rec) ?? ctx.projectDir,
+			tsMs,
+			sidechain,
+			...(parentSession ? { parentSession } : {}),
+			tool: (toolUseId && agg.workflowToolNames.get(toolUseId)) || "other",
+			bytes,
+		});
+	}
+}
 
 function ingestUser(agg: Aggregate, rec: Obj): void {
 	const msg = asObj(rec.message);

@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import type { ModelItemData } from "@/components/ModelItem";
 import { ProjectsSection } from "@/components/ProjectsSection";
+import { SaveTokensBar } from "@/features/efficiency/TokenEfficiency";
 import {
 	type BundleLookupData,
 	EditorProvider,
@@ -405,6 +406,12 @@ function StackDetailsPage() {
 					/>
 				</div>
 				<div className="bg-bg-canvas">
+					{/* Owner only: the door to the token-efficiency findings. */}
+					<SaveTokensBar
+						slug={stack.slug}
+						isOwner={upvoteStatus?.isOwner ?? false}
+						className="mx-auto mb-3 max-w-7xl px-6"
+					/>
 					<OwnerToolsDrawer
 						stackId={stack._id}
 						stackSlug={stack.slug}

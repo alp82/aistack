@@ -31,6 +31,7 @@ import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupI
 import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
+import { Route as SettingsTokenEfficiencyRouteImport } from './routes/settings.token-efficiency'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
 import { Route as PrototypeDiscordRepliesRouteImport } from './routes/prototype.discord-replies'
@@ -166,6 +167,11 @@ const StacksNewRoute = StacksNewRouteImport.update({
 const StacksSlugRoute = StacksSlugRouteImport.update({
   id: '/stacks/$slug',
   path: '/stacks/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsTokenEfficiencyRoute = SettingsTokenEfficiencyRouteImport.update({
+  id: '/settings/token-efficiency',
+  path: '/settings/token-efficiency',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsMachinesRoute = SettingsMachinesRouteImport.update({
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
+  '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
+  '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
+  '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools_/new': typeof ToolsNewRoute
@@ -481,6 +490,7 @@ export interface FileRouteTypes {
     | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
+    | '/settings/token-efficiency'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -531,6 +541,7 @@ export interface FileRouteTypes {
     | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
+    | '/settings/token-efficiency'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -581,6 +592,7 @@ export interface FileRouteTypes {
     | '/prototype/discord-replies'
     | '/settings/analytics'
     | '/settings/machines'
+    | '/settings/token-efficiency'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools_/new'
@@ -632,6 +644,7 @@ export interface RootRouteChildren {
   PrototypeDiscordRepliesRoute: typeof PrototypeDiscordRepliesRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
+  SettingsTokenEfficiencyRoute: typeof SettingsTokenEfficiencyRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
   ToolsNewRoute: typeof ToolsNewRoute
@@ -808,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/stacks/$slug'
       fullPath: '/stacks/$slug'
       preLoaderRoute: typeof StacksSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/token-efficiency': {
+      id: '/settings/token-efficiency'
+      path: '/settings/token-efficiency'
+      fullPath: '/settings/token-efficiency'
+      preLoaderRoute: typeof SettingsTokenEfficiencyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/machines': {
@@ -1035,6 +1055,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrototypeDiscordRepliesRoute: PrototypeDiscordRepliesRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
+  SettingsTokenEfficiencyRoute: SettingsTokenEfficiencyRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
   ToolsNewRoute: ToolsNewRoute,

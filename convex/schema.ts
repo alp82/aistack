@@ -376,6 +376,38 @@ export const HarnessDay = v.object({
       window: v.optional(v.number()),
     })
   ),
+  /**
+   * Token-efficiency atoms (`workflow-aggregates/v4`). Absent on a day from a
+   * client that predates the block. Main-session call gaps and per-session
+   * peaks as histograms; cache re-warm, orphan-write and short-session sums;
+   * tool-result sizes under a fixed tool vocabulary; content block counts.
+   */
+  efficiency: v.optional(
+    v.object({
+      countBucketRuleVersion: v.string(),
+      sizeBucketRuleVersion: v.string(),
+      callGaps: v.array(v.object({ bucket: v.number(), calls: v.number() })),
+      callsAfterGap: v.number(),
+      cacheWriteAfterGap: v.number(),
+      inputAfterGap: v.number(),
+      orphanCacheWrites: v.number(),
+      orphanCacheWriteTokens: v.number(),
+      sessionMaxContext: v.array(v.object({ bucket: v.number(), sessions: v.number() })),
+      sessionCalls: v.array(v.object({ bucket: v.number(), sessions: v.number() })),
+      shortSessions: v.number(),
+      shortSessionFirstCallTokens: v.number(),
+      sessionsCompacted: v.number(),
+      toolResults: v.array(
+        v.object({
+          tool: v.string(),
+          results: v.number(),
+          bytes: v.number(),
+          buckets: v.array(v.object({ bucket: v.number(), results: v.number() })),
+        })
+      ),
+      blocks: v.optional(v.object({ thinking: v.number(), text: v.number() })),
+    })
+  ),
 })
 
 /**

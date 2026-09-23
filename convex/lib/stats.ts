@@ -32,7 +32,7 @@ function newestFirst(a: WorkflowDayRow, b: WorkflowDayRow): number {
 }
 
 /** Evict legacy untagged harness evidence when a tagged source exists in this window. */
-function sessionRows(rows: readonly WorkflowDayRow[]): WorkflowDayRow[] {
+export function sessionRows(rows: readonly WorkflowDayRow[]): WorkflowDayRow[] {
   const visible = visibleSources(
     rows.flatMap((row) =>
       row.workflow.harnesses.map((h) => ({
