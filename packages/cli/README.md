@@ -12,7 +12,12 @@ npx @use-aistack/cli sync
 
 ### `npx @use-aistack/cli sync`
 
-The default command. Scan your local transcripts (rolling 30 days), review the full summary, and publish the measured layer to your stack. Nothing leaves your machine without your explicit approval at the prompt. Raw transcripts, prompts, and paths never leave at all - only aggregates.
+The default command. Scan your local transcripts (rolling 30 days), review a short summary, and publish the measured layer to your stack. To read every name that would publish, choose **Show details** at the prompt. Nothing is sent until you choose **Publish**.
+
+Your prompts, responses, code, and file paths never leave your machine. aistack publishes only statistics: counts, models, and the names of tools you use. Nothing sensitive is shown in public.
+
+- **Sent:** session and token counts, model names, tool and skill names, time per workflow phase, and Git line counts.
+- **Never sent:** your prompts, responses, code, file paths, and repo names.
 
 ```sh
 npx @use-aistack/cli sync

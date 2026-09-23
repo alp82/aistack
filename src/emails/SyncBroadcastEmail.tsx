@@ -284,9 +284,10 @@ export function SyncBroadcastEmail(props: {
 								paddingTop: 20,
 							}}
 						>
-							The CLI only reads token and session statistics. Your chat data
-							never leaves your machine. You'll see the full summary in your
-							terminal, and you have to confirm the sync before publishing.
+							Your prompts, responses, code, and file paths never leave your
+							machine. aistack publishes only statistics: counts, models, and
+							the names of tools you use. You confirm every sync in your
+							terminal before anything is sent.
 						</Text>
 					</Section>
 

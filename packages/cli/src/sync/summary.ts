@@ -150,18 +150,83 @@ export function withheldCount(payload: MeasuredPayload): number {
 // Beat two - the elicitation message. Copy locked in #48; keep it SHORT.
 // ---------------------------------------------------------------------------
 
-export function buildGateDialog(ctx: GateContext): string {
-	const { payloads, keptPrivate } = ctx.body;
-	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
-	const lines = ["Publish to aistack?"];
-	if (n > 0) {
-		lines.push(
-			keptPrivate === undefined
-				? `${n} name${n === 1 ? "" : "s"} stay${n === 1 ? "s" : ""} on this machine`
-				: `${n} private review name${n === 1 ? "" : "s"} will be stored`,
+export function buildGateDialog(_ctx: GateContext): string {
+	return `Publish to aistack?\n${PUBLIC_LINE}`;
+}
+
+/** What never leaves the machine, in the words every surface uses. */
+export const NEVER_SENT =
+	"your prompts, responses, code, file paths, and repo names";
+
+/** The one line about what the public sees. */
+export const PUBLIC_LINE = "Nothing sensitive is shown in public.";
+
+// ---------------------------------------------------------------------------
+// The brief - what the terminal gate prints by default.
+//
+// The full summary below is one keypress away (Show details) and is what the
+// MCP preview returns. The brief says where the reading goes, what kind of
+// data it is, and what never leaves the machine. Tokens only: no dollars.
+// ---------------------------------------------------------------------------
+
+export function buildGateBrief(ctx: GateContext): string {
+	const { body, config, source, baseUrl } = ctx;
+	const host = baseUrl.replace(/^https?:\/\//, "");
+	const out: string[] = [];
+
+	if (config.stack === null) {
+		out.push("No linked stack, so publish is unavailable.");
+	} else {
+		out.push(`Publishing to ${config.stack.name}`);
+		out.push(`${host}/stacks/${config.stack.slug}`);
+	}
+	out.push("");
+
+	const measured = body.payloads.filter((p) => p.activity.totalTokens > 0);
+	const sessions = measured.reduce((a, p) => a + p.activity.sessions, 0);
+	const tokens = measured.reduce((a, p) => a + p.activity.totalTokens, 0);
+	const windowDays = body.payloads[0]?.window.days ?? 30;
+	const counts = [
+		`${measured.length} harness${measured.length === 1 ? "" : "es"}`,
+		`${sessions.toLocaleString("en-US")} session${sessions === 1 ? "" : "s"}`,
+		`${fmtTokens(tokens)} tokens`,
+		`last ${windowDays} days`,
+	];
+
+	const workflow = config.publishWorkflow
+		? (body.measuredDays?.days ?? []).some((d) => d.workflow)
+		: false;
+	const kinds = [
+		...(body.payloads.some((p) => p.models.length > 0) ? ["model names"] : []),
+		...(body.payloads.some((p) =>
+			NAME_CATEGORIES.some((c) => p.inventory[c].length > 0),
+		)
+			? ["tool and skill names"]
+			: []),
+		...(workflow ? ["time per phase", "git line counts"] : []),
+	];
+
+	out.push("Sent: statistics about your usage");
+	out.push(`  ${counts.join(" · ")}`);
+	if (kinds.length > 0) out.push(`  ${kinds.join(", ")}`);
+	out.push(`Never sent: ${NEVER_SENT}`);
+	out.push(PUBLIC_LINE);
+
+	if (body.autoSync !== undefined) {
+		out.push("");
+		out.push(
+			`Auto-sync: ${body.autoSync.enabled ? `on, about every ${body.autoSync.frequencyHours} hours` : "off"}`,
 		);
 	}
-	return lines.join("\n");
+
+	if (source === "bundled") {
+		out.push("");
+		out.push(
+			"! Could not fetch your settings from aistack, so this publishes less.",
+		);
+	}
+
+	return out.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -723,11 +788,11 @@ export function buildGateSummary(ctx: GateContext): string {
 				? `, ...${rows.length - shown.length} more`
 				: "";
 		out.push(
-			`private   ${n} review name${n === 1 ? "" : "s"} · ${examples}${more}`,
+			`private   ${n} unapproved name${n === 1 ? "" : "s"} · ${examples}${more}`,
 		);
 		if (body.keptPrivate !== undefined && config.stack !== null) {
 			out.push(
-				`          stored privately for your review at ${host}/stacks/${config.stack.slug}/changes`,
+				`          never shown in public, only you see them at ${host}/stacks/${config.stack.slug}/changes`,
 			);
 			out.push(
 				"          (turn off: Review kept-private names, on your stack)",

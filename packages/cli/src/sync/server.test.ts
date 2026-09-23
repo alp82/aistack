@@ -34,6 +34,7 @@ function makeStaged(over: Partial<StagedSend> = {}): StagedSend {
 		body,
 		keptPrivate: EMPTY_KEPT,
 		summary: "SUMMARY",
+		brief: "BRIEF",
 		dialog: "Publish to aistack? 1 tokens · 30 days",
 		config: {
 			allowlist: {

@@ -165,7 +165,7 @@ export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the ma
 export const OWNER_NOT_MEASURED_TITLE = "Your stack has not been measured yet.";
 export const OWNER_NOT_MEASURED_BODY = `One command reads your ${HARNESS} history on your machine, shows you the full summary first, and publishes only what you approve.`;
 export const PRIVACY_FOOTNOTE =
-	"runs on your machine · you see everything before it sends · cancel sends nothing";
+	"prompts and code never leave your machine · you approve every sync · nothing sensitive is shown in public";
 
 /**
  * The one mention automation gets before a first sync exists (#107 decision 3).

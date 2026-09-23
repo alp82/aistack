@@ -48,6 +48,7 @@ function stagedOk(): StagedSend {
 		body: {} as StagedSend["body"],
 		keptPrivate: {} as StagedSend["keptPrivate"],
 		summary: "",
+		brief: "",
 		dialog: "",
 		config: {} as StagedSend["config"],
 		token: "tok",
