@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/alp82/aistack/compare/cli-v0.18.0...cli-v0.18.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **cli:** mark partial syncs per harness so complete readings replace stored days ([#478](https://github.com/alp82/aistack/issues/478)) ([128b87c](https://github.com/alp82/aistack/commit/128b87c75cbb05e569b9e747f9b7722860c8c1c0))
+
 ## [0.18.0](https://github.com/alp82/aistack/compare/cli-v0.17.0...cli-v0.18.0) (2026-09-23)
 
 
