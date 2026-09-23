@@ -24,12 +24,27 @@ function covers(next: Model, held: Model): boolean {
   return held.usd === undefined || (next.usd !== undefined && next.usd >= held.usd)
 }
 
-/** Extend a partial reading without deleting stored evidence or summing copies. */
-export function retainPartialDay(held: Day, next: Day): Day {
+/**
+ * Extend a partial reading without deleting stored evidence or summing copies.
+ *
+ * `partialHarnesses` names the harnesses whose scan was incomplete. A harness
+ * outside it scanned completely, so its incoming reading replaces the stored
+ * one in both halves. `undefined` (an older client) treats every harness as
+ * partial. A partial harness keeps its stored workflow reading but gains any
+ * block it lacked, such as a block a newer client measures: adding a block
+ * the stored reading never had cannot double count anything.
+ */
+export function retainPartialDay(
+  held: Day,
+  next: Day,
+  partialHarnesses?: ReadonlySet<string>,
+): Day {
+  const isPartial = (harness: string) =>
+    partialHarnesses === undefined || partialHarnesses.has(harness)
   const harnesses = new Map((held.usage?.harnesses ?? []).map(h => [h.harness, h]))
   for (const candidate of next.usage?.harnesses ?? []) {
     const previous = harnesses.get(candidate.harness)
-    if (!previous) {
+    if (!previous || !isPartial(candidate.harness)) {
       harnesses.set(candidate.harness, candidate)
       continue
     }
@@ -54,7 +69,9 @@ export function retainPartialDay(held: Day, next: Day): Day {
   // partial sessions. Keep recorded harnesses and Git, and add newly seen ones.
   const workflowHarnesses = new Map((held.workflow?.harnesses ?? []).map(h => [h.harness, h]))
   for (const h of next.workflow?.harnesses ?? []) {
-    if (!workflowHarnesses.has(h.harness)) workflowHarnesses.set(h.harness, h)
+    const stored = workflowHarnesses.get(h.harness)
+    if (!stored || !isPartial(h.harness)) workflowHarnesses.set(h.harness, h)
+    else workflowHarnesses.set(h.harness, { ...h, ...stored })
   }
   const previousWorkflow = held.workflow ?? next.workflow
   const workflow = previousWorkflow ? {

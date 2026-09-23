@@ -485,6 +485,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		`historical harnesses (${retentionDays} days): ${historical.map((a) => a.name).join(", ") || "none"}`,
 	);
 	let dayScansComplete = true;
+	// The harnesses whose history scan was incomplete. The server lets every
+	// other harness replace its stored reading, so an unreadable Cursor source
+	// no longer freezes complete Claude Code and Codex readings.
+	const partialHarnesses = new Set<string>();
 	const sessionDatesByHarness = new Map<string, Map<string, Set<string>>>();
 	for (const { adapter, recent } of readings) {
 		if (!recent) continue;
@@ -511,8 +515,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			scanComplete === false ||
 			history.stats.filesUnreadable > 0 ||
 			aggregate.parseErrors > 0
-		)
+		) {
 			dayScansComplete = false;
+			partialHarnesses.add(adapter.name);
+		}
 		if (adapter.name === "grok-build" || adapter.name === "cursor")
 			sessionDatesByHarness.set(adapter.name, sessionDates ?? new Map());
 		workflowScans.push({ aggregate: workflow, local: workflowLocal });
@@ -583,8 +589,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			for (const date of dates) correctionDates.add(date);
 		for (const dates of Object.values(current))
 			for (const date of dates) correctionDates.add(date);
-		if (Object.keys(previous).some((id) => !(id in current)))
+		if (Object.keys(previous).some((id) => !(id in current))) {
 			dayScansComplete = false;
+			partialHarnesses.add(harness);
+		}
 		acknowledgements.push(() => saveGrokDateHints(scope, current));
 	}
 	if (acknowledgements.length && dayScansComplete)
@@ -616,7 +624,9 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		historical.length > 0
 			? {
 					aggregateVersion: MEASURED_DAYS_V1,
-					...(!dayScansComplete ? { partial: true } : {}),
+					...(!dayScansComplete
+						? { partial: true, partialHarnesses: [...partialHarnesses].sort() }
+						: {}),
 					utcOffsetMinutes:
 						workflow?.utcOffsetMinutes ?? machineUtcOffsetMinutes(),
 					days: days.send,

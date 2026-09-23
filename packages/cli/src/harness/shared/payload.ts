@@ -619,6 +619,8 @@ export function toPayloadWorkflow(
 export type PayloadMeasuredDays = {
 	/** Retain stored evidence when a scan cannot reconstruct the full history. */
 	partial?: boolean;
+	/** The harnesses whose scan was incomplete; every other harness is complete. */
+	partialHarnesses?: string[];
 	aggregateVersion: typeof MEASURED_DAYS_V1;
 	/** Minutes EAST of UTC, as `PayloadWorkflow` carried it (#218). */
 	utcOffsetMinutes: number;
@@ -722,6 +724,9 @@ export function buildSyncBody(
 					aggregateVersion: MEASURED_DAYS_V1,
 					utcOffsetMinutes: measuredDays.utcOffsetMinutes,
 					...(measuredDays.partial ? { partial: true } : {}),
+					...(measuredDays.partial && measuredDays.partialHarnesses
+						? { partialHarnesses: measuredDays.partialHarnesses }
+						: {}),
 					days: applyDayConsent(measuredDays.days, syncConfig),
 				},
 			}

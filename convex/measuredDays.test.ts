@@ -139,8 +139,19 @@ function usageDay(over: UsageOver = {}): UsageDay {
 
 type DayIn = { date: string; usage?: UsageDay; workflow?: WorkflowDay }
 
-function dayWire(days: DayIn[], utcOffsetMinutes = 120, partial = false) {
-  return { ...(partial ? { partial: true } : {}), aggregateVersion: 'measured-days/v1', utcOffsetMinutes, days }
+function dayWire(
+  days: DayIn[],
+  utcOffsetMinutes = 120,
+  partial = false,
+  partialHarnesses?: string[],
+) {
+  return {
+    ...(partial ? { partial: true } : {}),
+    ...(partialHarnesses ? { partialHarnesses } : {}),
+    aggregateVersion: 'measured-days/v1',
+    utcOffsetMinutes,
+    days,
+  }
 }
 
 async function seedStack(t: Ctx, over: Partial<Doc<'stacks'>> = {}) {
@@ -662,4 +673,71 @@ test('partial syncs grow covered models but retain incomparable token buckets an
   row = (await storedDays(t))[0]
   expect(row.usage?.harnesses[0]).toEqual(fuller.harnesses[0])
   expect(row.usage?.harnesses[1]).toEqual(held.harnesses[1])
+})
+
+describe('partial syncs per harness', () => {
+  const date = '2026-08-28'
+  const efficiency = {
+    countBucketRuleVersion: 'log-buckets/v1',
+    sizeBucketRuleVersion: 'log-buckets/v2',
+    callGaps: [{ bucket: 5, calls: 3 }],
+    callsAfterGap: 1,
+    cacheWriteAfterGap: 2_000,
+    inputAfterGap: 10,
+    orphanCacheWrites: 0,
+    orphanCacheWriteTokens: 0,
+    sessionMaxContext: [{ bucket: 30, sessions: 2 }],
+    sessionCalls: [{ bucket: 2, sessions: 2 }],
+    shortSessions: 1,
+    shortSessionFirstCallTokens: 30_000,
+    sessionsCompacted: 0,
+    toolResults: [],
+  }
+  /** One day holding a Claude Code and a Cursor harness in both halves. */
+  function twoHarnessDay(sessions: number, withEfficiency = false): DayIn {
+    const usage = usageDay({ sessions, input: 1000 * sessions })
+    usage.harnesses.push(...usageDay({ harness: 'cursor', sessions, input: 10 }).harnesses)
+    const workflow = workflowDay(date)
+    workflow.harnesses[0].sessions = sessions
+    if (withEfficiency) workflow.harnesses[0].efficiency = efficiency
+    workflow.harnesses.push({ ...workflow.harnesses[0], harness: 'cursor', efficiency: undefined })
+    delete workflow.harnesses[1].efficiency
+    return { date, usage, workflow }
+  }
+
+  test('a complete harness replaces its stored reading while an incomplete one only adds', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([twoHarnessDay(2)]) })
+    const next = twoHarnessDay(5, true)
+    await publish(t, stackId, {
+      machine: 'laptop',
+      measuredDays: dayWire([next], 120, true, ['cursor']),
+    })
+    const row = (await storedDays(t))[0]
+    const claude = row.workflow?.harnesses.find((h: { harness: string }) => h.harness === 'claude-code')
+    const cursor = row.workflow?.harnesses.find((h: { harness: string }) => h.harness === 'cursor')
+    // Claude Code scanned completely: the new reading, efficiency included.
+    expect(claude?.sessions).toBe(5)
+    expect(claude?.efficiency).toEqual(efficiency)
+    expect(row.usage?.harnesses.find((h: { harness: string }) => h.harness === 'claude-code')?.sessions).toBe(5)
+    // Cursor did not: its stored workflow reading stays.
+    expect(cursor?.sessions).toBe(2)
+  })
+
+  test('an older client still adds a block the stored harness never had', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await publish(t, stackId, { machine: 'laptop', measuredDays: dayWire([twoHarnessDay(2)]) })
+    await publish(t, stackId, {
+      machine: 'laptop',
+      measuredDays: dayWire([twoHarnessDay(5, true)], 120, true),
+    })
+    const claude = (await storedDays(t))[0].workflow?.harnesses.find(
+      (h: { harness: string }) => h.harness === 'claude-code',
+    )
+    // Every harness is partial: the stored figures stay, the new block lands.
+    expect(claude?.sessions).toBe(2)
+    expect(claude?.efficiency).toEqual(efficiency)
+  })
 })

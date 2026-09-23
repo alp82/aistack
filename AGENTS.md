@@ -224,7 +224,9 @@ The measured workflow atoms feed Stats (the Actual Usage section,
   was required for the Stats redesign.
 * **Storage is per machine/day.** `measuredDays` holds usage and workflow halves per
   (stack, machine, date), retained server-side (ADR-0010). Complete re-syncs replace
-  that day; partial readings retain prior evidence. Window-free inventory lives on
+  that day; partial readings retain prior evidence, but only
+  for the harnesses the CLI names in `partialHarnesses`; every other harness replaces
+  its stored reading. Window-free inventory lives on
   `measuredInventory`, latest per (stack, machine, harness) (ADR-0011).
 * **Web Stats has a fixed 30-day window and automatic scope** (#466, ADR-0009).
   `getStatsByStackSlug` combines session atoms across machines before deriving routing,
