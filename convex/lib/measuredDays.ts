@@ -143,6 +143,20 @@ export function checkMeasuredDays(wire: MeasuredDayWireInput): void {
       `measuredDays.days must hold at most ${MEASURED_DAYS_PER_PUBLISH} entries`
     )
   }
+  if (wire.partialHarnesses) {
+    if (wire.partialHarnesses.length > USAGE_LIMITS.harnesses) {
+      throw new Error(
+        `measuredDays.partialHarnesses must hold at most ${USAGE_LIMITS.harnesses} entries`
+      )
+    }
+    wire.partialHarnesses.forEach((name, i) => {
+      if (!isDisplaySafeName(name)) {
+        throw new Error(
+          `measuredDays.partialHarnesses[${i}] must be 1-${NAME_MAX} characters and carry no control or bidi characters`
+        )
+      }
+    })
+  }
   const seen = new Set<string>()
   wire.days.forEach((day, d) => {
     const at = `measuredDays.days[${d}]`
@@ -233,9 +247,15 @@ export async function storeMeasuredDays(
   checkMeasuredDays(args.wire)
   let replaced = 0
   let inserted = 0
+  const partialHarnesses = args.wire.partialHarnesses
+    ? new Set(args.wire.partialHarnesses)
+    : undefined
   for (const incoming of args.wire.days) {
     const existing = await findMeasuredDay(ctx, args.stackId, args.machine, incoming.date)
-    const day = args.wire.partial && existing ? retainPartialDay(existing, incoming) : incoming
+    const day =
+      args.wire.partial && existing
+        ? retainPartialDay(existing, incoming, partialHarnesses)
+        : incoming
     // Retaining old entries can enlarge the union. Reject an oversized result
     // rather than silently dropping previously recorded models or projects.
     if (args.wire.partial && day.usage) checkUsageDay(day.usage, `retained day ${day.date}`)

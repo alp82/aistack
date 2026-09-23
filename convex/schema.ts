@@ -525,6 +525,13 @@ export const UsageDay = v.object({ harnesses: v.array(UsageHarnessDay) })
 export const MeasuredDayWire = v.object({
   /** Partial history adds evidence without reducing stored readings. */
   partial: v.optional(v.boolean()),
+  /**
+   * The harnesses whose scan was incomplete, when `partial` is set. A harness
+   * outside this list scanned completely and replaces its stored reading; one
+   * inside it only adds evidence. Absent from an older client: every harness
+   * of a partial sync is treated as partial.
+   */
+  partialHarnesses: v.optional(v.array(v.string())),
   /** `measured-days/v1`. */
   aggregateVersion: v.string(),
   /** Minutes east of UTC on the publishing machine; see `WorkflowWire`. */

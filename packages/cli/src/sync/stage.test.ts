@@ -521,6 +521,10 @@ test("Cursor corrections rebuild a former date and partial reads publish observe
 	expect(
 		incomplete.body.measuredDays?.days[0].usage?.harnesses[0].models.length,
 	).toBeGreaterThan(0);
+	// Only the harness whose scan was incomplete is named partial.
+	expect(incomplete.body.measuredDays?.partial).toBe(true);
+	expect(incomplete.body.measuredDays?.partialHarnesses).toEqual(["cursor"]);
+	expect(staged.body.measuredDays?.partialHarnesses).toBeUndefined();
 	expect(incomplete.summary).toContain(
 		"coverage  partial history: publishing the dated evidence available",
 	);
