@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/alp82/aistack/compare/cli-v0.16.11...cli-v0.17.0) (2026-09-23)
+
+
+### Features
+
+* **cli:** publish token-efficiency atoms (v4) and show the owner their findings ([#474](https://github.com/alp82/aistack/issues/474)) ([fc465f6](https://github.com/alp82/aistack/commit/fc465f6173229f3cd211709d1a7164a716565fb1))
+
 ## [0.16.11](https://github.com/alp82/aistack/compare/cli-v0.16.10...cli-v0.16.11) (2026-09-16)
 
 
