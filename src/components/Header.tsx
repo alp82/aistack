@@ -16,6 +16,7 @@ import {
 	Sun,
 	Wrench,
 	X,
+	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
@@ -344,6 +345,15 @@ export default function Header() {
 											>
 												<ChartLine className="size-3.5" />
 												Views
+											</Link>
+											{/* The only way into the token-efficiency findings. */}
+											<Link
+												to="/settings/token-efficiency"
+												onClick={() => setMenuOpen(false)}
+												className="flex w-full items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
+											>
+												<Zap className="size-3.5" />
+												Token efficiency
 											</Link>
 											{/* The only way into the revoke surface (#49). */}
 											<Link

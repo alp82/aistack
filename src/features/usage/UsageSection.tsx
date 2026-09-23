@@ -30,12 +30,6 @@ export function UsageSection({
 		range: "30d",
 	});
 	const liveStats = useQuery(api.workflow.getStatsByStackSlug, { slug });
-	// Owner only: the query answers null for anyone else, and a guest never
-	// asks. It has no loader snapshot, so it fills in after the page.
-	const efficiency = useQuery(
-		api.workflow.getEfficiencyByStackSlug,
-		isOwner ? { slug } : "skip",
-	);
 	const usage = liveUsage === undefined ? initialUsage : liveUsage;
 	const stats = liveStats === undefined ? initialStats : liveStats;
 	const answered = usage !== undefined && stats !== undefined;
@@ -78,12 +72,7 @@ export function UsageSection({
 							{NO_DAYS_IN_RANGE("30d")}
 						</p>
 					)}
-					<StatsBlocks
-						key={slug}
-						usage={usage ?? null}
-						stats={stats ?? null}
-						efficiency={isOwner ? (efficiency ?? null) : null}
-					/>
+					<StatsBlocks key={slug} usage={usage ?? null} stats={stats ?? null} />
 				</>
 			)}
 		</Section>

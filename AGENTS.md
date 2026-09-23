@@ -256,18 +256,20 @@ The measured workflow atoms feed Stats (the Actual Usage section,
   measured sessions. Print the bucket range and any available previous range, never an
   estimated midpoint or percentage delta. The tile does not require five sessions on
   each side of the phase-track split; upstream measurement gates still apply.
-* **Token efficiency is the owner's block** (`workflow-aggregates/v4`). The CLI
-  ships `efficiency` atoms per harness day: main-call gap and per-session peak
-  histograms, cache re-warm and orphan-write sums, short-session counts,
-  tool-result sizes under the fixed vocabulary `TOOL_RESULT_NAMES` (`mcp` and
-  `other` for the rest, never a server or user name), and content block counts.
-  `getEfficiencyByStackSlug` answers only the stack's creator; everyone else
-  reads null. The eight rules live in `packages/workflow-rules/src/efficiency.ts`
-  with placeholder thresholds that should become measured population
-  percentiles. Tiles lead with the fix; lime is reserved for a passing rule;
-  `--warning` is the "worth a look" edge. Dollars need `publishCost` and price
-  at the harness's top model rate. Deploy the backend before the CLI release:
-  the day validator rejects a block it has no field for.
+* **Token efficiency is owner-only and lives in settings** (`workflow-aggregates/v4`).
+  The CLI ships `efficiency` atoms per harness day: main-call gap and per-session peak
+  histograms, cache re-warm and orphan-write sums, short-session counts, tool-result
+  sizes under the fixed vocabulary `TOOL_RESULT_NAMES` (`mcp` and `other` for the
+  rest, never a server or user name), and content block counts. The eight rules live
+  in `packages/workflow-rules/src/efficiency.ts`; thresholds are placeholders that
+  should become measured population percentiles. The findings render on
+  `/settings/token-efficiency` (`workflow.getMyEfficiency`, no target argument) as
+  one tile grid, passing rules inside it. The stack page links there with an
+  owner-only bar ("Save tokens: N findings", `getEfficiencyByStackSlug`), the profile
+  with compact boxes. Nothing reaches the public Stats section. A tile leads with the
+  fix; `--warning` is the "look" edge and lime marks a passing rule, which prints no
+  dollars. Dollars need `publishCost`. Deploy the backend before the CLI release: the
+  day validator rejects a block it has no field for.
 * **The cut list applies to details too.** No thinking share, late-night commits, turn
   length, parallel projects, project workspaces, web searches per day, effort levels,
   lines-per-commit dots, fan-out records, separate start-hours histogram or duplicate

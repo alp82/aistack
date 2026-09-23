@@ -1043,6 +1043,27 @@ describe('owner-only token efficiency (workflow-aggregates/v4)', () => {
     expect(unpriced?.pricingTables).toEqual([])
   })
 
+  test('the account read folds the signed-in creator\'s stacks and answers nobody else', async () => {
+    const t = convexTest(schema, modules)
+    const mine = (identity?: typeof IDENTITY) =>
+      (identity ? t.withIdentity(identity) : t).query(api.workflow.getMyEfficiency, {})
+    expect(await mine(IDENTITY)).toBeNull()
+    const { stackId } = await seedStack(t)
+    await publish(t, stackId, { workflow: wire([efficientDay()]) })
+    expect(await mine()).toBeNull()
+    expect(await mine(OTHER)).toBeNull()
+    const view = await mine(IDENTITY)
+    expect(view?.tiles.find((tile) => tile.lever === 'cache')?.figure.value).toBe('30')
+    // A passing rule never prints a dollar bound.
+    for (const tile of view?.tiles ?? []) {
+      if (tile.severity === 'ok') expect(tile.usd).toBeNull()
+    }
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishCost: false }))
+    expect((await mine(IDENTITY))?.recoverableUsd).toBeNull()
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await mine(IDENTITY)).toBeNull()
+  })
+
   test('consent and an old wire both read as nothing', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)

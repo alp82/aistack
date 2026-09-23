@@ -534,3 +534,42 @@ export const getEfficiencyByStackSlug = query({
     > | null
   },
 })
+
+/**
+ * The signed-in creator's token efficiency across every stack they own, for
+ * `/settings/token-efficiency` and the profile preview. Takes no target, so
+ * it cannot be pointed at anyone else. A stack with `publishWorkflow` off
+ * contributes nothing; dollars appear only when every contributing stack
+ * publishes cost.
+ */
+export const getMyEfficiency = query({
+  args: {},
+  returns: v.union(EfficiencyView, v.null()),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return null
+    const userId = identity.tokenIdentifier.split('|')[1]
+    const creator = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .first()
+    if (!creator) return null
+    const stacks = (
+      await ctx.db
+        .query('stacks')
+        .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+        .collect()
+    ).filter((stack) => stack.publishWorkflow !== false)
+    if (stacks.length === 0) return null
+    const [rowSets, catalog] = await Promise.all([
+      Promise.all(stacks.map((stack) => workflowDaysForStack(ctx, stack._id))),
+      loadModelCatalog(ctx),
+    ])
+    const rows = rowSets.flat()
+    if (rows.length === 0) return null
+    const publishCost = stacks.every((stack) => stack.publishCost !== false)
+    return readEfficiency(rows, Date.now(), catalog, publishCost) as Infer<
+      typeof EfficiencyView
+    > | null
+  },
+})

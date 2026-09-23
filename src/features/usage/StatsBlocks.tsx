@@ -18,7 +18,6 @@ import { fmtPercent, MEASURED_TIME_NOTE } from "@/features/workflow/copy";
 import { cn } from "@/lib/utils";
 import { CONTEXT_PAINT, type ContextHarness, waffleCells } from "./context";
 import type { UsageRead, UsageReading } from "./copy";
-import { EfficiencyBlock, type EfficiencyRead } from "./EfficiencyBlock";
 import { harnessLabel } from "./HarnessShareRows";
 import {
 	activityData,
@@ -687,12 +686,9 @@ function Phases({ stats }: { stats: StatsRead }) {
 export function StatsBlocks({
 	usage,
 	stats,
-	efficiency = null,
 }: {
 	usage: UsageRead | null;
 	stats: StatsRead | null;
-	/** The owner's scorecard. Null for every other viewer and for an old wire. */
-	efficiency?: EfficiencyRead | null;
 }) {
 	const current = usage?.hasDays ? usage.current : null;
 	const previous = usage?.previous ?? null;
@@ -705,7 +701,6 @@ export function StatsBlocks({
 		<div className="space-y-8 md:space-y-12">
 			{usage && current && <Headline usage={usage} current={current} />}
 			<Tiles current={current} previous={previous} stats={stats} />
-			{efficiency && <EfficiencyBlock read={efficiency} />}
 			{usage && <Models usage={usage} stats={stats} />}
 			{(showHarnesses || context) && (
 				<div

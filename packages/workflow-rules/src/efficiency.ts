@@ -545,11 +545,18 @@ export function efficiencyScorecard(
 		if (!held || insight.meter > held.meter)
 			byLever.set(insight.lever, insight);
 	}
-	return [...byLever.values()].sort(
-		(a, b) =>
-			SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
-			(b.usd ?? 0) - (a.usd ?? 0) ||
-			b.meter - a.meter ||
-			EFFICIENCY_LEVERS.indexOf(a.lever) - EFFICIENCY_LEVERS.indexOf(b.lever),
-	);
+	// A passing rule prints no dollar bound: there is nothing to save.
+	return [...byLever.values()]
+		.map((insight) =>
+			insight.severity === "ok"
+				? { ...insight, usd: null, usdNote: null }
+				: insight,
+		)
+		.sort(
+			(a, b) =>
+				SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+				(b.usd ?? 0) - (a.usd ?? 0) ||
+				b.meter - a.meter ||
+				EFFICIENCY_LEVERS.indexOf(a.lever) - EFFICIENCY_LEVERS.indexOf(b.lever),
+		);
 }
