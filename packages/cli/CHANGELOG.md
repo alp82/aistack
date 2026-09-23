@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/alp82/aistack/compare/cli-v0.17.0...cli-v0.18.0) (2026-09-23)
+
+
+### Features
+
+* **cli:** shorten the sync gate and say what never leaves the machine ([#476](https://github.com/alp82/aistack/issues/476)) ([770e05e](https://github.com/alp82/aistack/commit/770e05e59d218513f4939cd12408f2d520ab2dc1))
+
 ## [0.17.0](https://github.com/alp82/aistack/compare/cli-v0.16.11...cli-v0.17.0) (2026-09-23)
 
 
