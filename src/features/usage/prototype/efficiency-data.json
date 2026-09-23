@@ -1,0 +1,401 @@
+{
+	"generatedAt": "2026-09-22T18:53:47.641Z",
+	"windowDays": 30,
+	"harnesses": [
+		{
+			"harness": "claude-code",
+			"sessions": 203,
+			"responses": 22846,
+			"tokens": {
+				"input": 1344610,
+				"output": 10022978,
+				"cacheRead": 2956005204,
+				"cacheWrite5m": 45346714,
+				"cacheWrite1h": 44989581,
+				"cacheWriteUnsplit": 0
+			},
+			"usd": 1836.367009500004,
+			"unpricedTokens": 1204238481,
+			"byModel": {
+				"claude-fable-5-1": {
+					"tokens": {
+						"input": 865907,
+						"output": 2938216,
+						"cacheRead": 1157624084,
+						"cacheWrite5m": 27283259,
+						"cacheWrite1h": 15527015,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 0,
+					"responses": 8146
+				},
+				"claude-opus-5": {
+					"tokens": {
+						"input": 22824,
+						"output": 5173440,
+						"cacheRead": 1436196866,
+						"cacheWrite5m": 14151249,
+						"cacheWrite1h": 18589745,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 1121.8913092500009,
+					"responses": 11412
+				},
+				"claude-fable-5": {
+					"tokens": {
+						"input": 455347,
+						"output": 1877891,
+						"cacheRead": 354828904,
+						"cacheWrite5m": 3403864,
+						"cacheWrite1h": 10774720,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 711.3196240000013,
+					"responses": 3143
+				},
+				"claude-haiku-4-5-20251001": {
+					"tokens": {
+						"input": 322,
+						"output": 64,
+						"cacheRead": 2104210,
+						"cacheWrite5m": 82051,
+						"cacheWrite1h": 0,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 0.31362675000000007,
+					"responses": 40
+				},
+				"claude-sonnet-5": {
+					"tokens": {
+						"input": 210,
+						"output": 33367,
+						"cacheRead": 5251140,
+						"cacheWrite5m": 426291,
+						"cacheWrite1h": 98101,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 2.842449500000001,
+					"responses": 105
+				}
+			},
+			"subagent": {
+				"tokens": {
+					"input": 958497,
+					"output": 806756,
+					"cacheRead": 1233431156,
+					"cacheWrite5m": 45346714,
+					"cacheWrite1h": 10170,
+					"cacheWriteUnsplit": 0
+				},
+				"usd": 452.697758099999,
+				"byModel": {
+					"claude-opus-5": 432488964,
+					"claude-fable-5": 98641678,
+					"claude-fable-5-1": 742767120,
+					"claude-haiku-4-5-20251001": 2186647,
+					"claude-sonnet-5": 4468884
+				}
+			},
+			"gaps": {
+				"edges": [60, 300, 1800, 7200, 28800],
+				"counts": [10499, 718, 352, 99, 39, 12],
+				"sum": 1985945.4869999948,
+				"n": 11719
+			},
+			"rewarm": {
+				"crossings": 502,
+				"cacheWrite": 17722852,
+				"usd": 141.07210999999992,
+				"input": 1785
+			},
+			"warm": {
+				"requests": 11217,
+				"cacheWrite": 21642883,
+				"usd": 205.27863200000058
+			},
+			"orphanWrites": {
+				"count": 84,
+				"tokens": 14829597
+			},
+			"firstTurnInput": {
+				"edges": [
+					2000, 5000, 10000, 20000, 40000, 80000, 120000, 160000, 200000
+				],
+				"counts": [0, 0, 0, 0, 58, 142, 1, 0, 0, 2],
+				"sum": 9410807,
+				"n": 203
+			},
+			"peakContext": {
+				"edges": [
+					2000, 5000, 10000, 20000, 40000, 80000, 120000, 160000, 200000
+				],
+				"counts": [0, 0, 0, 0, 7, 38, 50, 42, 18, 48],
+				"sum": 30449384,
+				"n": 203
+			},
+			"turnsPerSession": {
+				"edges": [2, 5, 10, 25, 50, 100],
+				"counts": [3, 10, 10, 36, 61, 48, 35],
+				"sum": 11922,
+				"n": 203
+			},
+			"tinySessions": {
+				"count": 6,
+				"startupTokens": 222181,
+				"usd": 0.543174
+			},
+			"toolResults": {
+				"Bash": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [11545, 5849, 2793, 1086, 235, 0, 0, 0],
+					"sum": 54115164,
+					"n": 21508
+				},
+				"Read": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [70, 96, 96, 78, 87, 137, 276, 95],
+					"sum": 121456034,
+					"n": 935
+				},
+				"ToolSearch": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [192, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 12111,
+					"n": 192
+				},
+				"WebFetch": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [361, 585, 19, 17, 8, 8, 0, 0],
+					"sum": 2024525,
+					"n": 998
+				},
+				"WebSearch": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [4, 207, 2, 0, 0, 0, 0, 0],
+					"sum": 562497,
+					"n": 213
+				},
+				"Monitor": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [78, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 17220,
+					"n": 78
+				},
+				"Write": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [1032, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 208778,
+					"n": 1032
+				},
+				"Agent": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [5, 324, 0, 0, 0, 0, 0, 0],
+					"sum": 357220,
+					"n": 329
+				},
+				"Skill": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [209, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 5673,
+					"n": 209
+				},
+				"Edit": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [1048, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 215232,
+					"n": 1048
+				},
+				"other": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [73, 38, 0, 0, 0, 0, 0, 0],
+					"sum": 98454,
+					"n": 111
+				},
+				"TaskOutput": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [1, 2, 0, 0, 0, 0, 0, 0],
+					"sum": 4579,
+					"n": 3
+				}
+			},
+			"toolResultBytesTotal": 179077487,
+			"hugeResults": 516,
+			"compactions": {
+				"events": 0,
+				"sessions": 0
+			},
+			"effort": {
+				"medium": 9068,
+				"high": 6280,
+				"low": 7458
+			},
+			"thinkingBlocks": 12868,
+			"modelSwitchesInSession": 3,
+			"responsesByHour": [
+				570, 600, 333, 803, 894, 615, 1095, 1136, 1660, 763, 1165, 887, 1797,
+				1588, 662, 991, 836, 573, 1264, 1126, 654, 1430, 837, 567
+			]
+		},
+		{
+			"harness": "codex",
+			"sessions": 822,
+			"responses": 170595,
+			"tokens": {
+				"input": 369256754,
+				"output": 34401270,
+				"cacheRead": 18290448640,
+				"cacheWrite5m": 0,
+				"cacheWrite1h": 0,
+				"cacheWriteUnsplit": 0
+			},
+			"usd": 8042.76941120009,
+			"unpricedTokens": 2614213813,
+			"byModel": {
+				"gpt-5.6-sol": {
+					"tokens": {
+						"input": 303458396,
+						"output": 26477092,
+						"cacheRead": 15748337024,
+						"cacheWrite5m": 0,
+						"cacheWrite1h": 0,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 8042.710233600092,
+					"responses": 143215
+				},
+				"gpt-5-codex": {
+					"tokens": {
+						"input": 9455218,
+						"output": 790274,
+						"cacheRead": 545740800,
+						"cacheWrite5m": 0,
+						"cacheWrite1h": 0,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 0,
+					"responses": 4539
+				},
+				"gpt-6-astra": {
+					"tokens": {
+						"input": 56229610,
+						"output": 7128535,
+						"cacheRead": 1994869376,
+						"cacheWrite5m": 0,
+						"cacheWrite1h": 0,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 0,
+					"responses": 22818
+				},
+				"gpt-5.6-luna": {
+					"tokens": {
+						"input": 113530,
+						"output": 5369,
+						"cacheRead": 1501440,
+						"cacheWrite5m": 0,
+						"cacheWrite1h": 0,
+						"cacheWriteUnsplit": 0
+					},
+					"usd": 0.05917760000000001,
+					"responses": 23
+				}
+			},
+			"subagent": {
+				"tokens": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite5m": 0,
+					"cacheWrite1h": 0,
+					"cacheWriteUnsplit": 0
+				},
+				"usd": 0,
+				"byModel": {}
+			},
+			"gaps": {
+				"edges": [60, 300, 1800, 7200, 28800],
+				"counts": [166005, 2779, 605, 228, 112, 44],
+				"sum": 6539659.07499995,
+				"n": 169773
+			},
+			"rewarm": {
+				"crossings": 989,
+				"cacheWrite": 0,
+				"usd": 38.519511999999985,
+				"input": 21732652
+			},
+			"warm": {
+				"requests": 168784,
+				"cacheWrite": 0,
+				"usd": 0
+			},
+			"orphanWrites": {
+				"count": 0,
+				"tokens": 0
+			},
+			"firstTurnInput": {
+				"edges": [
+					2000, 5000, 10000, 20000, 40000, 80000, 120000, 160000, 200000
+				],
+				"counts": [0, 0, 0, 482, 296, 15, 9, 12, 7, 1],
+				"sum": 20361659,
+				"n": 822
+			},
+			"peakContext": {
+				"edges": [
+					2000, 5000, 10000, 20000, 40000, 80000, 120000, 160000, 200000
+				],
+				"counts": [0, 0, 0, 7, 80, 283, 160, 84, 60, 148],
+				"sum": 89286018,
+				"n": 822
+			},
+			"turnsPerSession": {
+				"edges": [2, 5, 10, 25, 50, 100],
+				"counts": [7, 17, 82, 256, 169, 105, 186],
+				"sum": 170595,
+				"n": 822
+			},
+			"tinySessions": {
+				"count": 12,
+				"startupTokens": 392780,
+				"usd": 0.7571511999999999
+			},
+			"toolResults": {
+				"shell": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [29825, 8008, 5179, 3806, 2900, 1149, 167, 92],
+					"sum": 385395201,
+					"n": 51126
+				},
+				"other": {
+					"edges": [1000, 4000, 10000, 20000, 40000, 100000, 400000],
+					"counts": [49, 0, 0, 0, 0, 0, 0, 0],
+					"sum": 4275,
+					"n": 49
+				}
+			},
+			"toolResultBytesTotal": 385399476,
+			"hugeResults": 1408,
+			"compactions": {
+				"events": 585,
+				"sessions": 150
+			},
+			"effort": {
+				"low": 61,
+				"medium": 5649
+			},
+			"thinkingBlocks": 0,
+			"modelSwitchesInSession": 0,
+			"responsesByHour": [
+				965, 1168, 1566, 2755, 2096, 2757, 2431, 14647, 7737, 8252, 3960, 7254,
+				7923, 4299, 1859, 1115, 1769, 7076, 6628, 14856, 13689, 32608, 12203,
+				10982
+			]
+		}
+	],
+	"rates": {
+		"opusInput": 5,
+		"sonnetInput": 3,
+		"haikuInput": 1
+	}
+}
