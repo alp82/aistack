@@ -273,7 +273,7 @@ export function createSyncServer(
 							);
 						} else if (res.keptPrivate.stored > 0) {
 							lines.push(
-								`${res.keptPrivate.stored} private review name${res.keptPrivate.stored === 1 ? "" : "s"} stored at ${res.url}/changes`,
+								`${res.keptPrivate.stored} unapproved name${res.keptPrivate.stored === 1 ? "" : "s"} visible only to you at ${res.url}/changes, never shown in public`,
 							);
 						}
 						if (res.keptPrivate.machineStored > 0) {

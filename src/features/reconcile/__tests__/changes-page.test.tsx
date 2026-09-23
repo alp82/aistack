@@ -441,7 +441,7 @@ describe("the Kept private view", () => {
 		expect(screen.getByText("Review kept-private names here")).toBeTruthy();
 		expect(
 			screen.getByText(
-				"Your machine sends them so you can publish them. Off means we never see them.",
+				"Your machine sends them so you can publish them. They are never shown in public. Off means we never see them.",
 			),
 		).toBeTruthy();
 

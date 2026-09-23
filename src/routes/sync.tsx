@@ -28,7 +28,7 @@ export const Route = createFileRoute("/sync")({
 		meta: seoMeta({
 			title: "Show what actually ran - AI Stack",
 			description:
-				"Publish the sessions, models, tokens, and cost behind your stack, straight from your own machine. One command with an approval gate.",
+				"Publish the sessions, models, tokens, and cost behind your stack, straight from your own machine. Your prompts, responses, code, and file paths never leave your machine.",
 			url: "/sync",
 		}),
 	}),
@@ -47,9 +47,9 @@ const PUBLISHES = [
 ];
 
 const STAYS = [
-	"prompts and transcripts",
+	"prompts and responses",
+	"your code",
 	"file paths and repo names",
-	"names you have not approved",
 	"anything, when you cancel",
 ];
 
@@ -70,6 +70,11 @@ function SyncPage() {
 				<p className="mt-3 text-sm text-fg-muted">
 					Publish the sessions, models, tokens, and cost behind your stack,
 					straight from your own machine.
+				</p>
+				<p className="mt-2 text-sm text-fg-primary">
+					Your prompts, responses, code, and file paths never leave your
+					machine. aistack publishes only statistics: counts, models, and the
+					names of tools you use.
 				</p>
 
 				<CommandHero />
@@ -95,6 +100,7 @@ function SyncPage() {
 								<li key={x}>· {x}</li>
 							))}
 						</ul>
+						<p className="mt-3">Nothing sensitive is shown in public.</p>
 					</Fold>
 					<Fold label="what never leaves your machine">
 						<ul className="space-y-1.5">

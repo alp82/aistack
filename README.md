@@ -62,6 +62,13 @@ flowchart LR
 - Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, and MCP configs to your stack.
 - Share the stack link. On another machine, run `npx @use-aistack/cli create` to write that AI setup into the current directory.
 
+**What leaves your machine:**
+
+Your prompts, responses, code, and file paths never leave your machine. aistack publishes only statistics: counts, models, and the names of tools you use. You approve every sync in your terminal, and nothing sensitive is shown in public.
+
+- **Sent:** session and token counts, model names, tool and skill names, time per workflow phase, and Git line counts.
+- **Never sent:** your prompts, responses, code, file paths, and repo names.
+
 ## 💻 CLI
 
 The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli). Run it on demand with `npx` - no install required:

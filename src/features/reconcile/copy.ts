@@ -81,7 +81,7 @@ export function headline(args: {
 export const KEPT_PRIVATE = {
 	SWITCH: "Review kept-private names here",
 	SWITCH_HELP:
-		"Your machine sends them so you can publish them. Off means we never see them.",
+		"Your machine sends them so you can publish them. They are never shown in public. Off means we never see them.",
 	TAB: "Kept private",
 	PUBLISH: "publish",
 	PUBLISH_ALL: "publish all",

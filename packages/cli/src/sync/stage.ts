@@ -85,7 +85,11 @@ import {
 	mapToHints,
 	saveGrokDateHints,
 } from "./grokDateCache.js";
-import { buildGateDialog, buildGateSummary } from "./summary.js";
+import {
+	buildGateBrief,
+	buildGateDialog,
+	buildGateSummary,
+} from "./summary.js";
 
 const utcDate = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 
@@ -97,6 +101,8 @@ export type StagedSend = {
 	body: SyncBody;
 	keptPrivate: Record<NameCategory, KeptPrivateAtom[]>;
 	summary: string;
+	/** The short form the terminal gate prints first; `summary` is the detail. */
+	brief: string;
 	dialog: string;
 	config: SyncConfig;
 	token: string | null;
@@ -668,6 +674,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		body,
 		keptPrivate,
 		summary: buildGateSummary(ctx),
+		brief: buildGateBrief(ctx),
 		dialog: buildGateDialog(ctx),
 		config,
 		token,

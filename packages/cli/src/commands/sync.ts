@@ -27,7 +27,6 @@ import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
 import { loadSyncConfig } from "../harness/shared/allowlist.js";
 import { createBoard } from "../sync/board.js";
 import { stageSync } from "../sync/stage.js";
-import { fmtReceivedAt } from "../sync/summary.js";
 import {
 	bold,
 	dim,
@@ -218,11 +217,11 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	board.stop();
 	const s = p.spinner();
 
-	// Beat one - the same full summary the MCP preview returns, verbatim,
-	// printed behind the clack bar so it reads as one flow. The text is the
-	// bytes' description and stays plain; the color is added here, by line
-	// shape, so the MCP preview and a pipe get the same characters.
-	p.log.message(staged.summary.split("\n").map(styleSummaryLine).join("\n"));
+	// Beat one - the brief. The full summary (the same text the MCP preview
+	// returns) is one choice away, so every name that publishes can still be
+	// read before the send. The color is added here, by line shape, so the MCP
+	// preview and a pipe get the same characters.
+	p.log.message(staged.brief.split("\n").map(styleBriefLine).join("\n"));
 
 	if (staged.blockedReason !== null) {
 		outroError(staged.blockedReason);
@@ -230,20 +229,24 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		return;
 	}
 
-	// Beat two - the same short dialog text, as a select. The enum mirrors the
-	// elicitation's {publish, cancel}; publish is the initial value.
-	const decision = await p.select({
-		message: staged.dialog.split("\n").join(dim(" · ")),
-		options: [
-			{
-				value: "publish",
-				label: "Publish",
-				hint: "no sensitive data is shared",
-			},
-			{ value: "cancel", label: "Cancel", hint: "nothing leaves this machine" },
-		],
-		initialValue: "publish",
-	});
+	// Beat two - a select. Publish is the initial value; Show details prints
+	// the full summary and asks again without offering it twice.
+	let showedDetails = false;
+	let decision: string | symbol;
+	for (;;) {
+		decision = await p.select({
+			message: "Publish to aistack?",
+			options: [
+				{ value: "publish", label: "Publish" },
+				...(showedDetails ? [] : [{ value: "details", label: "Show details" }]),
+				{ value: "cancel", label: "Cancel", hint: "nothing is sent" },
+			],
+			initialValue: "publish",
+		});
+		if (decision !== "details") break;
+		showedDetails = true;
+		p.log.message(staged.summary.split("\n").map(styleSummaryLine).join("\n"));
+	}
 
 	if (p.isCancel(decision) || decision !== "publish") {
 		outroCancel("nothing was sent");
@@ -255,27 +258,12 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		const res = await syncPublish(staged.token as string, staged.bodyJson);
 		staged.acknowledgePublish?.();
 		s.stop("Published");
-		// The last thing read is the result, not a receipt (#130): the stamp is
-		// human-form, and the link gets its own line under a sentence that names
-		// the proof. The path stays in the terminal - no browser is opened.
-		const lines = [
-			`Snapshot received ${fmtReceivedAt(res.receivedAt)}`,
-			"",
-			"Your stack now shows what actually ran:",
-			lime(res.url),
-		];
+		// The last thing read is the result, not a receipt (#130): the link, on
+		// its own line. No browser is opened.
+		const lines = ["See your stack:", lime(res.url)];
 		if (res.keptPrivate.refused && staged.body.keptPrivate !== undefined) {
 			lines.push(
-				"Note: the server refused the kept-private names because its review switch is off. They stayed on this machine.",
-			);
-		} else if (res.keptPrivate.stored > 0) {
-			lines.push(
-				`${res.keptPrivate.stored} private review name${res.keptPrivate.stored === 1 ? "" : "s"} stored at ${res.url}/changes`,
-			);
-		}
-		if (res.keptPrivate.machineStored > 0) {
-			lines.push(
-				"This machine's private label was stored for the same review.",
+				"Note: the server refused the unapproved names because its review switch is off. They stayed on this machine.",
 			);
 		}
 		p.log.message(lines.join("\n"));
@@ -296,6 +284,16 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		outroError(e instanceof Error ? e.message : String(e));
 		process.exitCode = 1;
 	}
+}
+
+/** Colors one brief line: the labels dim, the stack URL lime. */
+export function styleBriefLine(line: string): string {
+	const labelled = /^(Sent:|Never sent:|Auto-sync:)(.*)$/.exec(line);
+	if (labelled) return `${dim(labelled[1] ?? "")}${labelled[2] ?? ""}`;
+	if (line.startsWith("Publishing to ")) return bold(line);
+	if (/^\S+\/stacks\//.test(line)) return lime(line);
+	if (line.startsWith("  ")) return dim(line);
+	return line;
 }
 
 /**

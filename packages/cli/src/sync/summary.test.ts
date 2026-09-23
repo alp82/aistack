@@ -18,6 +18,7 @@ import type {
 import { emptyScanStats } from "../harness/shared/window.js";
 import type { DaySelection } from "../usage/diff.js";
 import {
+	buildGateBrief,
 	buildGateDialog,
 	buildGateSummary,
 	fmtReceivedAt,
@@ -270,15 +271,12 @@ describe("totalUSD - never a dollar without its pricing table (#46)", () => {
 });
 
 describe("beat two - the dialog (binding copy, #48)", () => {
-	test("names the destination, then the review line", () => {
+	test("asks, then says nothing sensitive is shown in public", () => {
 		expect(buildGateDialog(ctx({ withKeptPrivateHalf: true }))).toBe(
-			"Publish to aistack?\n" + "67 private review names will be stored",
+			"Publish to aistack?\nNothing sensitive is shown in public.",
 		);
-	});
-
-	test("names staying local say so instead", () => {
 		expect(buildGateDialog(ctx({}))).toBe(
-			"Publish to aistack?\n67 names stay on this machine",
+			buildGateDialog(ctx({ keptPrivate: KEPT })),
 		);
 	});
 
@@ -290,29 +288,49 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 		expect(dialog).not.toContain("$");
 	});
 
-	test("zero withheld names drops the second line entirely", () => {
-		const dialog = buildGateDialog(
-			ctx({
-				payload: {
-					inventory: {
-						...payload().inventory,
-						withheld: {
-							builtinTools: 0,
-							mcpServers: 0,
-							skills: 0,
-							subagents: 0,
-							slashCommands: 0,
-						},
-					},
-				},
-			}),
-		);
-		expect(dialog).toBe("Publish to aistack?");
-	});
-
 	test("stays two lines - a long dialog is an unanswerable gate (#35 1H)", () => {
 		const dialog = buildGateDialog(ctx({ withKeptPrivateHalf: true }));
 		expect(dialog.split("\n").length).toBeLessThanOrEqual(2);
+	});
+});
+
+describe("the brief - the terminal's default view", () => {
+	test("names the stack, the counts, and what is never sent", () => {
+		const brief = buildGateBrief(ctx({}));
+		expect(brief.split("\n")).toEqual([
+			"Publishing to Alp's Daily Driver",
+			"aistack.to/stacks/alps-daily-driver",
+			"",
+			"Sent: statistics about your usage",
+			"  1 harness · 382 sessions · 4.27B tokens · last 30 days",
+			"  model names, tool and skill names",
+			"Never sent: your prompts, responses, code, file paths, and repo names",
+			"Nothing sensitive is shown in public.",
+		]);
+	});
+
+	test("prints tokens and never dollars", () => {
+		expect(buildGateBrief(ctx({}))).not.toContain("$");
+	});
+
+	test("names the workflow kinds only when the section publishes", () => {
+		expect(buildGateBrief(ctx({ measuredDays: measuredDays() }))).toContain(
+			"time per phase, git line counts",
+		);
+		expect(
+			buildGateBrief(
+				ctx({
+					measuredDays: measuredDays(),
+					config: { publishWorkflow: false },
+				}),
+			),
+		).not.toContain("time per phase");
+	});
+
+	test("says the stack is missing instead of a destination", () => {
+		expect(buildGateBrief(ctx({ config: { stack: null } }))).toContain(
+			"No linked stack, so publish is unavailable.",
+		);
 	});
 });
 
@@ -371,7 +389,7 @@ describe("beat one - the summary", () => {
 			"to        Alp's Daily Driver · aistack.to/stacks/alps-daily-driver",
 		);
 		expect(summary).toContain(
-			"stored privately for your review at aistack.to/stacks/alps-daily-driver/changes",
+			"never shown in public, only you see them at aistack.to/stacks/alps-daily-driver/changes",
 		);
 	});
 
@@ -385,7 +403,7 @@ describe("beat one - the summary", () => {
 	test("kept private renders grouped rows with name counts, per the locked copy", () => {
 		const summary = buildGateSummary(ctx({ keptPrivate: KEPT }));
 		expect(summary).toContain(
-			"private   67 review names · alp-river ×2, internal-proxy, stripe",
+			"private   67 unapproved names · alp-river ×2, internal-proxy, stripe",
 		);
 		// The half is NOT in the body, so the names stay local and say so.
 		expect(summary).toContain("they stay on this machine");
