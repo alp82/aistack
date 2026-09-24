@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/alp82/aistack/compare/cli-v0.18.1...cli-v0.19.0) (2026-09-24)
+
+
+### Features
+
+* **cli:** measure token waste per cache lifetime and rate findings by spend ([#480](https://github.com/alp82/aistack/issues/480)) ([a2b6cc0](https://github.com/alp82/aistack/commit/a2b6cc09456ebe2639044026efb1de6fe50accc5))
+
 ## [0.18.1](https://github.com/alp82/aistack/compare/cli-v0.18.0...cli-v0.18.1) (2026-09-23)
 
 
