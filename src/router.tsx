@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { ConvexProvider } from "convex/react";
+import { RouteError } from "./components/RouteError";
 import { routeTree } from "./routeTree.gen";
 
 // Create a new router instance
@@ -36,6 +37,7 @@ export const getRouter = () => {
 		defaultPreload: "viewport",
 		defaultPreloadStaleTime: 30_000,
 		scrollRestoration: true,
+		defaultErrorComponent: RouteError,
 		Wrap: ({ children }) => (
 			<ConvexProvider client={convexQueryClient.convexClient}>
 				{children}

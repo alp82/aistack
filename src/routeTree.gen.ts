@@ -40,6 +40,7 @@ import { Route as NewsSlugRouteImport } from './routes/news.$slug'
 import { Route as LinkDiscordRouteImport } from './routes/link.discord'
 import { Route as EmailPreferencesRouteImport } from './routes/email.preferences'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
+import { Route as AssetsSplatRouteImport } from './routes/assets.$'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as ApiPricesRouteImport } from './routes/api.prices'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -215,6 +216,11 @@ const CliAuthRoute = CliAuthRouteImport.update({
   path: '/cli/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssetsSplatRoute = AssetsSplatRouteImport.update({
+  id: '/assets/$',
+  path: '/assets/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSyncConfigRoute = ApiSyncConfigRouteImport.update({
   id: '/api/sync-config',
   path: '/api/sync-config',
@@ -326,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
@@ -377,6 +384,7 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
   '/link/discord': typeof LinkDiscordRoute
@@ -482,6 +491,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/prices'
     | '/api/sync-config'
+    | '/assets/$'
     | '/cli/auth'
     | '/email/preferences'
     | '/link/discord'
@@ -533,6 +543,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/prices'
     | '/api/sync-config'
+    | '/assets/$'
     | '/cli/auth'
     | '/email/preferences'
     | '/link/discord'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/prices'
     | '/api/sync-config'
+    | '/assets/$'
     | '/cli/auth'
     | '/email/preferences'
     | '/link/discord'
@@ -636,6 +648,7 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiPricesRoute: typeof ApiPricesRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
+  AssetsSplatRoute: typeof AssetsSplatRoute
   CliAuthRoute: typeof CliAuthRoute
   EmailPreferencesRoute: typeof EmailPreferencesRoute
   LinkDiscordRoute: typeof LinkDiscordRoute
@@ -886,6 +899,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CliAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assets/$': {
+      id: '/assets/$'
+      path: '/assets/$'
+      fullPath: '/assets/$'
+      preLoaderRoute: typeof AssetsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sync-config': {
       id: '/api/sync-config'
       path: '/api/sync-config'
@@ -1047,6 +1067,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiPricesRoute: ApiPricesRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
+  AssetsSplatRoute: AssetsSplatRoute,
   CliAuthRoute: CliAuthRoute,
   EmailPreferencesRoute: EmailPreferencesRoute,
   LinkDiscordRoute: LinkDiscordRoute,

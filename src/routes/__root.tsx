@@ -4,6 +4,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
+	type ErrorComponentProps,
 	HeadContent,
 	Link,
 	Outlet,
@@ -15,6 +16,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { AlertCircle, Home } from "lucide-react";
 import { Footer } from "../components/Footer";
 import Header from "../components/Header";
+import { RouteError } from "../components/RouteError";
 import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { getToken } from "../lib/auth-server";
@@ -114,6 +116,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		};
 	},
 	component: RootComponent,
+	errorComponent: RootError,
 	notFoundComponent: NotFound,
 });
 
@@ -183,6 +186,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<Scripts />
 			</body>
 		</html>
+	);
+}
+
+// The root's own error replaces RootComponent, so it has to bring the
+// document along. Child routes use the router's defaultErrorComponent and
+// keep the header and footer.
+function RootError(props: ErrorComponentProps) {
+	return (
+		<RootDocument>
+			<RouteError {...props} />
+		</RootDocument>
 	);
 }
 
