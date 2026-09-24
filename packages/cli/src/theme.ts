@@ -1,4 +1,5 @@
 import * as p from "@clack/prompts";
+import { CLI_VERSION } from "./version.js";
 
 const esc = (code: string) => `\x1b[${code}m`;
 const reset = esc("0");
@@ -19,9 +20,10 @@ export const red = (s: string) => `${esc(`38;2;${RED}`)}${s}${reset}`;
 export const dim = (s: string) => `${esc(`38;2;${MUTED}`)}${s}${reset}`;
 export const bold = (s: string) => `${esc("1")}${s}${reset}`;
 
-// ■ logo square in lime + AISTACK in bold on lime bg
+// ■ logo square in lime + AISTACK in bold on lime bg, then the command and
+// the running version, so a pasted log says which CLI produced it.
 export const banner = (cmd: string) =>
-	`${lime("■")} ${bgLime(` AISTACK `)} ${bold(cmd.toUpperCase())}`;
+	`${lime("■")} ${bgLime(` AISTACK `)} ${bold(cmd.toUpperCase())} ${dim(`v${CLI_VERSION}`)}`;
 
 // Compact line with clack-style bar
 const BAR = `${esc(`38;2;${MUTED}`)}│${reset}`;
