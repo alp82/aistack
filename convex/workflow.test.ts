@@ -972,7 +972,7 @@ describe('fixed 30-day all-machine web Stats', () => {
   })
 })
 
-describe('owner-only token efficiency (workflow-aggregates/v4)', () => {
+describe('owner-only token efficiency (workflow-aggregates/v4, v5)', () => {
   const OTHER = { tokenIdentifier: 'convex|user_other', subject: 'user_other' }
   const efficiency = (t: Ctx, slug: string, identity?: typeof IDENTITY) =>
     (identity ? t.withIdentity(identity) : t).query(api.workflow.getEfficiencyByStackSlug, { slug })
@@ -1029,7 +1029,9 @@ describe('owner-only token efficiency (workflow-aggregates/v4)', () => {
   test('prices a bound only under publishCost and cites the table', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
-    await publish(t, stackId, { workflow: wire([efficientDay()]) })
+    // Two machines clear the cache rule's 200-call evidence floor.
+    await publish(t, stackId, { machine: 'a', workflow: wire([efficientDay()]) })
+    await publish(t, stackId, { machine: 'b', workflow: wire([efficientDay()]) })
     const priced = await efficiency(t, slug, IDENTITY)
     const cache = priced?.tiles.find((tile) => tile.lever === 'cache')
     expect(cache?.usd).toBeGreaterThan(0)
@@ -1074,5 +1076,56 @@ describe('owner-only token efficiency (workflow-aggregates/v4)', () => {
     expect(await efficiency(t, slug, IDENTITY)).not.toBeNull()
     await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
     expect(await efficiency(t, slug, IDENTITY)).toBeNull()
+  })
+
+  test('stores the v5 atoms and reads them into the rules', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const v5Day = () => {
+      const d = efficientDay()
+      const eff = d.harnesses[0].efficiency
+      if (!eff) throw new Error('no efficiency block')
+      Object.assign(eff, {
+        orphanCacheWrites: 30,
+        orphanCacheWriteTokens: 3_000_000,
+        // Every orphan came after the cache expired: no warm switch.
+        warmOrphanCacheWrites: 0,
+        warmOrphanCacheWriteTokens: 0,
+        gapBands: {
+          short: { calls: 30, cacheWrite: 3_000_000, cacheRead: 0, input: 3_000 },
+          long: { calls: 0, cacheWrite: 0, cacheRead: 0, input: 0 },
+        },
+        headlessSessions: 2,
+        coldCompactions: 0,
+        effortRaw: [{ level: 'xhigh', responses: 90, outputTokens: 100_000 }],
+      })
+      eff.toolResults = [
+        { tool: 'read', results: 40, bytes: 4_000_000, buckets: [{ bucket: 34, results: 40 }] },
+      ]
+      return d
+    }
+    await publish(t, stackId, { machine: 'a', workflow: wire([v5Day()]) })
+    await publish(t, stackId, { machine: 'b', workflow: wire([v5Day()]) })
+    const view = await efficiency(t, slug, IDENTITY)
+    expect(view?.tiles.find((tile) => tile.lever === 'switches')?.figure.value).toBe('0')
+    expect(view?.tiles.find((tile) => tile.lever === 'tools')?.fix).toBe(
+      'Read with offset and limit'
+    )
+    const sessions = view?.tiles.find((tile) => tile.lever === 'sessions')
+    expect(sessions?.evidence).toContainEqual({ label: 'scripted sessions left out', value: '4' })
+  })
+
+  test('refuses an efficiency block with more raw effort rows than levels', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const d = efficientDay()
+    const eff = d.harnesses[0].efficiency
+    if (!eff) throw new Error('no efficiency block')
+    eff.effortRaw = Array.from({ length: 7 }, () => ({
+      level: 'high' as const,
+      responses: 1,
+      outputTokens: 1,
+    }))
+    await expect(publish(t, stackId, { workflow: wire([d]) })).rejects.toThrow(/effortRaw/)
   })
 })

@@ -8,6 +8,7 @@ import {
 	ingestRecord,
 	newestVersion,
 	noteRecordBeforeWindow,
+	toolResultBytes,
 } from "./analyzer.js";
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
 
@@ -637,7 +638,7 @@ describe("per-call context (#358)", () => {
 	});
 });
 
-describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+describe("token-efficiency atoms (workflow-aggregates/v4, v5)", () => {
 	const usage = (input: number, cacheWrite: number, cacheRead: number) => ({
 		input_tokens: input,
 		output_tokens: 10,
@@ -700,14 +701,66 @@ describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
 			efficiency?.toolResults.map((t) => [t.tool, t.results, t.bytes]),
 		).toEqual([
 			["Read", 1, 50_000],
-			[
-				"mcp",
-				1,
-				Buffer.byteLength(
-					JSON.stringify([{ type: "text", text: "y".repeat(2_000) }]),
-				),
-			],
+			// A text block counts its text (v5).
+			["mcp", 1, 2_000],
 		]);
 		expect(JSON.stringify(efficiency)).not.toMatch(/acme|SECRET|secret/);
+	});
+
+	it("reads the cache TTL from the write split and marks scripted sessions (v5)", () => {
+		const agg = createAggregate();
+		const oneHour = (write: number, read: number) => ({
+			input_tokens: 10,
+			output_tokens: 10,
+			cache_creation_input_tokens: write,
+			cache_read_input_tokens: read,
+			cache_creation: {
+				ephemeral_5m_input_tokens: 0,
+				ephemeral_1h_input_tokens: write,
+			},
+		});
+		ingest(
+			agg,
+			assistant({
+				id: "msg_h1",
+				sessionId: "sess-ttl",
+				timestamp: "2026-07-20T12:00:00.000Z",
+				usage: oneHour(20_000, 0),
+			}),
+			// 25 minutes later under a one-hour cache, a write with no read:
+			// the prefix was invalidated while the cache was warm.
+			assistant({
+				id: "msg_h2",
+				sessionId: "sess-ttl",
+				timestamp: "2026-07-20T12:25:00.000Z",
+				usage: oneHour(22_000, 0),
+			}),
+			{
+				...assistant({
+					id: "msg_p1",
+					sessionId: "sess-script",
+					timestamp: "2026-07-20T13:00:00.000Z",
+					usage: oneHour(15_000, 0),
+				}),
+				entrypoint: "sdk-cli",
+			},
+		);
+		const efficiency = agg.workflow.finish().days[0]?.efficiency;
+		expect(efficiency?.warmOrphanCacheWrites).toBe(1);
+		expect(efficiency?.gapBands?.short.calls).toBe(1);
+		expect(efficiency?.headlessSessions).toBe(1);
+		// sess-ttl has two calls; the scripted one-call session is left out.
+		expect(efficiency?.shortSessions).toBe(1);
+	});
+
+	it("counts no bytes for an image block in a tool result (v5)", () => {
+		expect(
+			toolResultBytes([
+				{ type: "image", source: { type: "base64", data: "A".repeat(90_000) } },
+				{ type: "text", text: "caption" },
+			]),
+		).toBe(7);
+		expect(toolResultBytes("plain")).toBe(5);
+		expect(toolResultBytes(null)).toBe(0);
 	});
 });

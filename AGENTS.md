@@ -258,19 +258,27 @@ The measured workflow atoms feed Stats (the Actual Usage section,
   measured sessions. Print the bucket range and any available previous range, never an
   estimated midpoint or percentage delta. The tile does not require five sessions on
   each side of the phase-track split; upstream measurement gates still apply.
-* **Token efficiency is owner-only and lives in settings** (`workflow-aggregates/v4`).
+* **Token efficiency is owner-only and lives in settings** (`workflow-aggregates/v4`, `v5`).
   The CLI ships `efficiency` atoms per harness day: main-call gap and per-session peak
   histograms, cache re-warm and orphan-write sums, short-session counts, tool-result
   sizes under the fixed vocabulary `TOOL_RESULT_NAMES` (`mcp` and `other` for the
-  rest, never a server or user name), and content block counts. The eight rules live
-  in `packages/workflow-rules/src/efficiency.ts`; thresholds are placeholders that
-  should become measured population percentiles. The findings render on
+  rest, never a server or user name), and content block counts. v5 adds after-gap
+  tokens split at one hour, orphan writes within the cache TTL in force, headless
+  (`claude -p`) sessions, cold compactions and raw effort levels with their output;
+  its tool results are main-thread only and its short sessions exclude headless ones.
+  The fold keeps a v5 atom only when every day has it, so the rules fall back to v4. The eight rules live
+  in `packages/workflow-rules/src/efficiency.ts`. Each rule estimates its waste in
+  input-token equivalents; severity is that waste as a share of the whole stack's
+  spend plus an absolute minimum, summed per lever across harnesses. A rule below
+  its evidence floor reads "More data" and is not a finding. Thresholds and floors
+  are placeholders that should become measured population percentiles; the
+  rationale is `docs/research/token-efficiency-validation-2026-09.md`. The findings render on
   `/settings/token-efficiency` (`workflow.getMyEfficiency`, no target argument) as
   one tile grid, passing rules inside it. The stack page links there with an
   owner-only bar ("Save tokens: N findings", `getEfficiencyByStackSlug`), the profile
   with compact boxes. Nothing reaches the public Stats section. A tile leads with the
-  fix; `--warning` is the "look" edge and lime marks a passing rule, which prints no
-  dollars. Dollars need `publishCost`. Deploy the backend before the CLI release: the
+  fix; `--warning` is the "look" edge and lime marks a passing rule. Only a finding
+  prints dollars, and they mean the saving. Dollars need `publishCost`. Deploy the backend before the CLI release: the
   day validator rejects a block it has no field for.
 * **The cut list applies to details too.** No thinking share, late-night commits, turn
   length, parallel projects, project workspaces, web searches per day, effort levels,

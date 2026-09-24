@@ -326,6 +326,7 @@ function ingestClaudeWorkflow(
 		inputTokens: number;
 		cacheReadTokens: number;
 		cacheWriteTokens: number;
+		cacheTtlSec?: number;
 		firstCall?: { harnessTokens: number; instructionsTokens: number };
 	} | null = null;
 	if (counts && isApiCall(rec)) {
@@ -341,6 +342,13 @@ function ingestClaudeWorkflow(
 			cacheReadTokens: counts.cacheRead,
 			cacheWriteTokens:
 				counts.cacheWrite5m + counts.cacheWrite1h + counts.cacheWriteUnsplit,
+			// The TTL this call wrote under (v5): a subscription within plan
+			// usage writes the main conversation at one hour.
+			...(counts.cacheWrite1h > 0
+				? { cacheTtlSec: 3600 }
+				: counts.cacheWrite5m > 0
+					? { cacheTtlSec: 300 }
+					: {}),
 			...(first
 				? {
 						firstCall: {
@@ -368,6 +376,10 @@ function ingestClaudeWorkflow(
 			: {}),
 		...(context ?? {}),
 		...(blocks.thinking + blocks.text > 0 && isApiCall(rec) ? { blocks } : {}),
+		// A script started the session (v5). `claude -p` records carry
+		// `entrypoint: "sdk-cli"` (seen in a local transcript on 2026-09-24);
+		// the other SDK entrypoints share the `sdk-` prefix.
+		...(asStr(rec.entrypoint)?.startsWith("sdk-") ? { headless: true } : {}),
 	});
 
 	const tools: Obj[] = [];
@@ -743,13 +755,7 @@ function ingestClaudeToolResults(
 		const block = asObj(rawBlock);
 		if (!block || asStr(block.type) !== "tool_result") continue;
 		const toolUseId = asStr(block.tool_use_id);
-		const content = block.content;
-		const bytes =
-			typeof content === "string"
-				? Buffer.byteLength(content)
-				: content === undefined || content === null
-					? 0
-					: Buffer.byteLength(JSON.stringify(content));
+		const bytes = toolResultBytes(block.content);
 		agg.workflow.ingest({
 			type: "toolResult",
 			session,
@@ -761,6 +767,27 @@ function ingestClaudeToolResults(
 			bytes,
 		});
 	}
+}
+
+/**
+ * The byte length of a tool result's content (v5). An image block counts no
+ * bytes: its base64 source is hundreds of KB, but the model bills it by
+ * pixels, so its size says nothing about the tokens it cost.
+ */
+export function toolResultBytes(content: unknown): number {
+	if (typeof content === "string") return Buffer.byteLength(content);
+	if (content === undefined || content === null) return 0;
+	if (!Array.isArray(content))
+		return Buffer.byteLength(JSON.stringify(content));
+	let bytes = 0;
+	for (const rawBlock of content) {
+		const block = asObj(rawBlock);
+		if (block && asStr(block.type) === "image") continue;
+		if (block && asStr(block.type) === "text" && typeof block.text === "string")
+			bytes += Buffer.byteLength(block.text);
+		else bytes += Buffer.byteLength(JSON.stringify(rawBlock));
+	}
+	return bytes;
 }
 
 function ingestUser(agg: Aggregate, rec: Obj): void {

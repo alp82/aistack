@@ -41,13 +41,26 @@ const tile = (over: Partial<Tile>): Tile => ({
 	harness: "claude-code",
 	severity: "high",
 	meter: 1,
+	waste: 45_000_000,
+	share: 0.067,
+	confidence: "high",
+	sample: { have: 20_000, need: 200, unit: "calls" },
 	fix: "Use the 1h cache TTL",
 	verdict: "Breaks are cold-starting your cache",
+	problem: "Breaks are cold-starting your cache",
+	passing: "Your cache survives breaks",
 	keep: "Keep working in contiguous blocks",
 	figure: { value: "502", label: "calls after a break" },
 	evidence: [{ label: "tokens rewritten after a break", value: "17.7M" }],
 	why: "The prompt cache expires 5 minutes after the last call.",
 	action: "Set the cache TTL to 1h on API-key billing.",
+	steps: [
+		{
+			text: "Set the prompt cache to one hour.",
+			code: '{ "promptCacheTtl": "1h" }',
+		},
+		{ text: "After a long break, start a fresh session." },
+	],
 	usd: 332,
 	usdNote: null,
 	...over,
@@ -71,6 +84,17 @@ const read: EfficiencyRead = {
 			fix: "Ask quick questions in a running session",
 			verdict: "Sessions are worth their startup",
 			keep: "Keep quick questions inside running sessions",
+			usd: null,
+		}),
+		tile({
+			id: "grok-build:effort",
+			lever: "effort",
+			harness: "grok-build",
+			severity: "insufficient",
+			fix: "Default to medium effort",
+			verdict: "Not enough data yet: 3 of 20 sessions",
+			sample: { have: 3, need: 20, unit: "sessions" },
+			share: null,
 			usd: null,
 		}),
 	],
@@ -116,7 +140,7 @@ it("previews the same boxes on the profile with the small text removed", () => {
 	expect(link.textContent).not.toContain("Breaks are cold-starting");
 });
 
-it("puts the passing rule inside the settings grid and opens the fix on click", () => {
+it("puts the passing rule inside the settings grid and opens the guide on click", () => {
 	answer(read);
 	render(<TokenEfficiencyPage />);
 	expect(getFunctionName(queryMock.mock.calls[0]?.[0])).toBe(
@@ -124,15 +148,54 @@ it("puts the passing rule inside the settings grid and opens the fix on click", 
 	);
 	expect(screen.getByText("Save tokens: 2 findings")).toBeTruthy();
 	const tiles = screen.getAllByRole("button");
-	expect(tiles).toHaveLength(3);
+	expect(tiles).toHaveLength(4);
 	expect(tiles[2]?.textContent).toContain("Good");
 	expect(tiles[2]?.textContent).toContain(
 		"Keep quick questions inside running sessions",
 	);
+	expect(tiles[2]?.textContent).toContain("Why it matters");
 	expect(tiles[0]?.textContent).toContain("$332");
-	expect(tiles[0]?.textContent).not.toContain("Set the cache TTL");
+	expect(tiles[0]?.textContent).toContain("How to fix");
+	expect(document.body.textContent).not.toContain("Why it costs tokens");
 	fireEvent.click(tiles[0] as HTMLElement);
-	expect(tiles[0]?.textContent).toContain("Set the cache TTL");
+	expect(tiles[0]?.getAttribute("aria-expanded")).toBe("true");
+	const guide = document.getElementById(
+		tiles[0]?.getAttribute("aria-controls") ?? "",
+	);
+	expect(guide?.textContent).toContain("Why it costs tokens");
+	expect(guide?.textContent).toContain(
+		"The prompt cache expires 5 minutes after the last call.",
+	);
+	expect(guide?.textContent).toContain("1.Set the prompt cache to one hour.");
+	expect(guide?.textContent).toContain('{ "promptCacheTtl": "1h" }');
+	expect(guide?.textContent).toContain("17.7M tokens rewritten after a break");
+	expect(guide?.textContent).toContain("about 7% of your token spend");
+	fireEvent.click(tiles[0] as HTMLElement);
+	expect(document.body.textContent).not.toContain("Why it costs tokens");
+});
+
+it("holds a rule below its evidence floor apart from the findings", () => {
+	answer(read);
+	render(<TokenEfficiencyPage />);
+	// Two findings: the passing rule and the one below its floor do not count.
+	expect(screen.getByText("Save tokens: 2 findings")).toBeTruthy();
+	const tiles = screen.getAllByRole("button");
+	const waiting = tiles[3] as HTMLElement;
+	expect(waiting.textContent).toContain("More data");
+	expect(waiting.textContent).toContain(
+		"Not enough data yet: 3 of 20 sessions",
+	);
+	expect(waiting.textContent).toContain("Details");
+	fireEvent.click(waiting);
+	const guide = document.getElementById(
+		waiting.getAttribute("aria-controls") ?? "",
+	);
+	expect(guide?.textContent).toContain("Not enough data yet");
+	expect(guide?.textContent).toContain(
+		"needs at least 20 sessions from the last 30 days, and your syncs have 3",
+	);
+	expect(guide?.textContent).toContain("How to fix, if it applies");
+	expect(guide?.textContent).not.toContain("of your token spend");
 });
 
 it("says so when there is nothing to read yet", () => {

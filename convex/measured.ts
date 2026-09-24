@@ -286,6 +286,8 @@ const WORKFLOW_LIMITS = {
   extensions: 128,
   routingModels: 64,
   effortLevels: 4,
+  /** Raw effort rows in the efficiency block (v5): `EFFORT_RAW_LEVELS`. */
+  effortRawLevels: 6,
   /** Tool-result rows per day: the fixed vocabulary in `TOOL_RESULT_NAMES`. */
   toolResults: 32,
 } as const
@@ -422,6 +424,13 @@ export function checkWorkflowDays(wire: Infer<typeof WorkflowWire>): void {
             `${here}.efficiency.toolResults[${j}].buckets`
           )
         })
+        if (eff.effortRaw) {
+          requireSize(
+            eff.effortRaw.length,
+            WORKFLOW_LIMITS.effortRawLevels,
+            `${here}.efficiency.effortRaw`
+          )
+        }
       }
     })
 

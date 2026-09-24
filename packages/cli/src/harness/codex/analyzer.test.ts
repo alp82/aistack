@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { finalize } from "../shared/aggregate.js";
 import {
 	type Aggregate,
+	codexCacheTtlSec,
 	createAggregate,
 	createFileState,
 	type FileState,
@@ -447,7 +448,7 @@ describe("per-call context (#358)", () => {
 	});
 });
 
-describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+describe("token-efficiency atoms (workflow-aggregates/v4, v5)", () => {
 	it("sizes a function_call_output under its call's tool and splits the call's tokens", () => {
 		const agg = createAggregate();
 		const state = createFileState();
@@ -537,5 +538,62 @@ describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
 				buckets: [{ bucket: 24, results: 1 }],
 			},
 		]);
+	});
+
+	it("reads cache writes and the 30-minute cache of GPT-5.6 and later (v5)", () => {
+		expect(codexCacheTtlSec("gpt-5.6-codex")).toBe(1800);
+		expect(codexCacheTtlSec("gpt-6.0")).toBe(1800);
+		expect(codexCacheTtlSec("gpt-5.5")).toBe(300);
+		expect(codexCacheTtlSec("o4-mini")).toBe(300);
+
+		const agg = createAggregate();
+		const state = createFileState();
+		const at = (offsetSec: number) =>
+			new Date(Date.UTC(2026, 6, 20, 12, 0, offsetSec)).toISOString();
+		const usage = (input: number, cached: number, written: number) => ({
+			input_tokens: input,
+			cached_input_tokens: cached,
+			cache_write_input_tokens: written,
+			output_tokens: 20,
+		});
+		const count = (offsetSec: number, last: Record<string, number>) => ({
+			type: "event_msg",
+			timestamp: at(offsetSec),
+			payload: {
+				type: "token_count",
+				info: { last_token_usage: last, total_token_usage: last },
+			},
+		});
+		const lines: unknown[] = [
+			{
+				type: "session_meta",
+				timestamp: at(0),
+				payload: { id: "sess-w", cwd: "/r", cli_version: "0.2.0" },
+			},
+			{
+				type: "turn_context",
+				timestamp: at(1),
+				payload: { model: "gpt-5.6-codex" },
+			},
+			count(5, usage(10_000, 0, 9_000)),
+			// 20 minutes later: inside the 30-minute cache, a read.
+			count(5 + 1200, usage(11_000, 9_000, 1_500)),
+			// 25 more minutes, a write and no read: the cache was still warm.
+			count(5 + 1200 + 1500, usage(12_000, 0, 11_000)),
+		];
+		for (const line of lines) ingestLine(agg, line, state);
+		const efficiency = agg.workflow.finish().days[0]?.efficiency;
+		expect(efficiency?.gapBands?.short).toEqual({
+			calls: 2,
+			cacheWrite: 12_500,
+			cacheRead: 9_000,
+			input: 1_500,
+		});
+		expect(efficiency?.orphanCacheWrites).toBe(1);
+		expect(efficiency?.warmOrphanCacheWrites).toBe(1);
+		// The write is the uncached part of `input_tokens` that went to cache.
+		const usageRow = [...agg.byModel.values()][0];
+		expect(usageRow?.cacheWriteUnsplit).toBe(21_500);
+		expect(usageRow?.input).toBe(2_500);
 	});
 });

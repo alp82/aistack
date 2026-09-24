@@ -271,6 +271,23 @@ const EffortLevel = v.union(
   v.literal('other')
 )
 
+/** The raw effort levels of the efficiency block (v5): `xhigh` and `max` stay apart. */
+const EffortRawLevel = v.union(
+  v.literal('low'),
+  v.literal('medium'),
+  v.literal('high'),
+  v.literal('xhigh'),
+  v.literal('max'),
+  v.literal('other')
+)
+
+const GapBand = v.object({
+  calls: v.number(),
+  cacheWrite: v.number(),
+  cacheRead: v.number(),
+  input: v.number(),
+})
+
 /**
  * One harness's reading for ONE UTC DAY, already reduced on the machine (#285).
  *
@@ -381,6 +398,8 @@ export const HarnessDay = v.object({
    * client that predates the block. Main-session call gaps and per-session
    * peaks as histograms; cache re-warm, orphan-write and short-session sums;
    * tool-result sizes under a fixed tool vocabulary; content block counts.
+   * `workflow-aggregates/v5` adds the optional gap bands, warm orphan writes,
+   * headless sessions, cold compactions and raw effort levels.
    */
   efficiency: v.optional(
     v.object({
@@ -406,6 +425,20 @@ export const HarnessDay = v.object({
         })
       ),
       blocks: v.optional(v.object({ thinking: v.number(), text: v.number() })),
+      gapBands: v.optional(v.object({ short: GapBand, long: GapBand })),
+      warmOrphanCacheWrites: v.optional(v.number()),
+      warmOrphanCacheWriteTokens: v.optional(v.number()),
+      headlessSessions: v.optional(v.number()),
+      coldCompactions: v.optional(v.number()),
+      effortRaw: v.optional(
+        v.array(
+          v.object({
+            level: EffortRawLevel,
+            responses: v.number(),
+            outputTokens: v.number(),
+          })
+        )
+      ),
     })
   ),
 })

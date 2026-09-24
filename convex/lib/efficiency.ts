@@ -1,7 +1,7 @@
 /**
  * The owner's token-efficiency scorecard over the fixed 30-day window.
  *
- * Reads the v4 efficiency atoms beside the context, routing and effort
+ * Reads the v4 and v5 efficiency atoms beside the context, routing and effort
  * blocks of every machine's days, folds them per harness across machines
  * (the same all-machine session fold web Stats uses, ADR-0009), and hands
  * each harness to the pure rules in `@aistack/workflow-rules`. Dollars enter
@@ -20,6 +20,8 @@ import {
   efficiencyScorecard,
   foldHarnessDays,
   type HarnessDay,
+  isFinding,
+  spendOf,
 } from '@aistack/workflow-rules'
 import type { ModelCatalog } from './modelCatalog'
 import { sessionRows } from './stats'
@@ -30,9 +32,13 @@ const DAY = 86_400_000
 export type EfficiencyView = {
   window: { from: string; to: string }
   rulesVersion: string
-  /** One tile per lever, the worst harness's, ranked. Passing rules last. */
+  /**
+   * One tile per lever, waste summed across harnesses and graded against the
+   * whole stack's spend. Findings by waste, then passing rules, then rules
+   * below their evidence floor.
+   */
   tiles: EfficiencyInsight[]
-  /** The sum of every bounded dollar figure, or null when cost is not published. */
+  /** The sum of the findings' dollar figures, or null when cost is not published. */
   recoverableUsd: number | null
   /** The price tables the dollar figures cite. */
   pricingTables: string[]
@@ -53,6 +59,8 @@ function ratesFor(
     model,
     input: period.input / 1e6,
     cacheWrite: period.cacheWrite5m / 1e6,
+    cacheWrite1h: period.cacheWrite1h / 1e6,
+    cacheRead: period.cacheRead / 1e6,
     source: period.source,
   }
 }
@@ -75,12 +83,16 @@ export function readEfficiency(
     }
   }
   const insights: EfficiencyInsight[] = []
+  let stackSpend = 0
   const pricingTables = new Set<string>()
   for (const days of byHarness.values()) {
     const folded = foldHarnessDays(days)
     if (!folded.efficiency) continue
     // The usage half's sums for this harness, when the window carries them.
     const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+    // The 5m/1h write split tells the cache rule which lifetime is in force.
+    const ttl = { fiveMinute: 0, oneHour: 0, unsplit: 0 }
+    let hasTtl = false
     let hasUsage = false
     for (const row of rows) {
       for (const h of row.usage?.harnesses ?? []) {
@@ -91,6 +103,13 @@ export function readEfficiency(
           tokens.output += m.tokens.output
           tokens.cacheRead += m.tokens.cacheRead
           tokens.cacheWrite += m.tokens.cacheWrite
+          const split = m.tokens.cacheWriteTtl
+          if (split) {
+            hasTtl = true
+            ttl.fiveMinute += split.fiveMinute
+            ttl.oneHour += split.oneHour
+            ttl.unsplit += split.unsplit
+          }
         }
       }
     }
@@ -103,14 +122,19 @@ export function readEfficiency(
       ...(folded.context ? { context: folded.context } : {}),
       ...(folded.routing ? { routing: folded.routing } : {}),
       ...(folded.effort ? { effort: folded.effort } : {}),
-      ...(hasUsage ? { tokens } : {}),
+      ...(hasUsage
+        ? { tokens: hasTtl ? { ...tokens, cacheWriteTtl: ttl } : tokens }
+        : {}),
       rates,
     }
+    stackSpend += spendOf(input)
     insights.push(...efficiencyInsights(input))
   }
   if (insights.length === 0) return null
-  const tiles = efficiencyScorecard(insights)
-  const bounded = tiles.filter((tile) => tile.usd !== null)
+  const tiles = efficiencyScorecard(insights, stackSpend)
+  const bounded = tiles.filter(
+    (tile) => isFinding(tile.severity) && tile.usd !== null,
+  )
   return {
     window: { from, to },
     rulesVersion: EFFICIENCY_RULES_V1,
