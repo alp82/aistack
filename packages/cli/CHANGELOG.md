@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/alp82/aistack/compare/cli-v0.19.0...cli-v0.19.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **cli:** show the running version in every command's banner ([#482](https://github.com/alp82/aistack/issues/482)) ([21f508a](https://github.com/alp82/aistack/commit/21f508a4c512af0ae6b646e058acd7be60ca60eb))
+
 ## [0.19.0](https://github.com/alp82/aistack/compare/cli-v0.18.1...cli-v0.19.0) (2026-09-24)
 
 
