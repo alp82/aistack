@@ -39,6 +39,17 @@ export const WORKFLOW_AGGREGATES_V3 = "workflow-aggregates/v3";
  */
 export const WORKFLOW_AGGREGATES_V4 = "workflow-aggregates/v4";
 
+/**
+ * `workflow-aggregates/v5` adds optional atoms to the `efficiency` block:
+ * after-gap tokens split by gap length (`gapBands`), orphan cache writes that
+ * landed while the cache was still warm, scripted (headless) sessions, cold
+ * compactions and raw effort levels with their output. On a v5 day the tool
+ * results count the main thread only, an image block counts no bytes, and
+ * `shortSessions` leaves headless sessions out. A v4 day folds beside a v5
+ * day; the fold carries a v5 atom only when every day in it has one.
+ */
+export const WORKFLOW_AGGREGATES_V5 = "workflow-aggregates/v5";
+
 /** The bucket rule both histograms cite. A bump changes what a bucket index means. */
 export const LOG_BUCKETS_V1 = "log-buckets/v1";
 
@@ -153,6 +164,9 @@ export type HarnessDay = {
  */
 export const CACHE_TTL_SEC = 300;
 
+/** The one-hour prompt cache TTL, in seconds: the line between the two gap bands. */
+export const LONG_GAP_SEC = 3600;
+
 /**
  * A session with at most this many main calls is SHORT: it paid the startup
  * prefix for one or two answers.
@@ -185,6 +199,7 @@ export const TOOL_RESULT_NAMES: readonly string[] = [
 	"grep_command",
 	"list_dir",
 	"local_shell",
+	"read",
 	"read_file",
 	"shell",
 	"tool_search",
@@ -255,6 +270,42 @@ export type EfficiencyDay = {
 	}[];
 	/** Content blocks per type over the day's responses. Absent on a harness that logs no blocks. */
 	blocks?: { thinking: number; text: number };
+	/**
+	 * v5: the after-gap calls split by gap length. `short` is a gap past
+	 * `CACHE_TTL_SEC` up to `LONG_GAP_SEC`, `long` is past `LONG_GAP_SEC`.
+	 * A one-hour cache survives the short band, so the split is what tells a
+	 * cold call from a warm one on a subscription.
+	 */
+	gapBands?: { short: GapBand; long: GapBand };
+	/**
+	 * v5: orphan cache writes whose gap stayed within the cache TTL in force.
+	 * Those are true mid-session invalidations; the v4 `orphanCacheWrites`
+	 * also counts every cold call after a break.
+	 */
+	warmOrphanCacheWrites?: number;
+	warmOrphanCacheWriteTokens?: number;
+	/** v5: main sessions a script started (`claude -p`, the SDK). Not in `shortSessions`. */
+	headlessSessions?: number;
+	/** v5: compaction boundaries that followed a gap past the cache TTL in force. */
+	coldCompactions?: number;
+	/**
+	 * v5: main responses per raw effort level, with their output tokens. The
+	 * public `effort` block folds `xhigh` and `max` into `high`; this keeps
+	 * them apart, so a rule can tell a model default from a raised level.
+	 */
+	effortRaw?: readonly {
+		level: EffortRawLevel;
+		responses: number;
+		outputTokens: number;
+	}[];
+};
+
+/** One gap band of after-gap main calls (v5): a count and the tokens they carried. */
+export type GapBand = {
+	calls: number;
+	cacheWrite: number;
+	cacheRead: number;
+	input: number;
 };
 
 /**
@@ -292,6 +343,44 @@ export type ContextDay = {
 };
 
 export type EffortLevel = "low" | "medium" | "high" | "other";
+
+/** The raw effort levels the efficiency block keeps apart (v5). */
+export type EffortRawLevel =
+	| "low"
+	| "medium"
+	| "high"
+	| "xhigh"
+	| "max"
+	| "other";
+
+export const EFFORT_RAW_LEVELS: readonly EffortRawLevel[] = [
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+	"other",
+];
+
+/** Map a harness's own effort string onto the raw levels. `ultra` is Codex's top level. */
+export function effortRawLevelOf(effort: string): EffortRawLevel {
+	switch (effort.toLowerCase()) {
+		case "low":
+		case "minimal":
+			return "low";
+		case "medium":
+			return "medium";
+		case "high":
+			return "high";
+		case "xhigh":
+			return "xhigh";
+		case "max":
+		case "ultra":
+			return "max";
+		default:
+			return "other";
+	}
+}
 
 export const EFFORT_LEVELS: readonly EffortLevel[] = [
 	"low",
@@ -657,7 +746,70 @@ export function foldEfficiencyDays(
 					},
 				}
 			: {}),
+		...foldEfficiencyV5(days),
 	};
+}
+
+const addBand = (into: GapBand, from: GapBand): void => {
+	into.calls += from.calls;
+	into.cacheWrite += from.cacheWrite;
+	into.cacheRead += from.cacheRead;
+	into.input += from.input;
+};
+const emptyBand = (): GapBand => ({
+	calls: 0,
+	cacheWrite: 0,
+	cacheRead: 0,
+	input: 0,
+});
+
+/**
+ * The v5 atoms of a fold. Each one is present only when EVERY day carries it:
+ * a window that mixes v4 and v5 days would otherwise read a partial sum as the
+ * whole, and the rules fall back to the v4 atoms instead.
+ */
+function foldEfficiencyV5(
+	days: readonly EfficiencyDay[],
+): Partial<EfficiencyDay> {
+	if (days.length === 0) return {};
+	const every = <K extends keyof EfficiencyDay>(key: K): boolean =>
+		days.every((day) => day[key] !== undefined);
+	const sum = (pick: (day: EfficiencyDay) => number | undefined): number =>
+		days.reduce((total, day) => total + (pick(day) ?? 0), 0);
+	const out: Partial<EfficiencyDay> = {};
+	if (every("gapBands")) {
+		const short = emptyBand();
+		const long = emptyBand();
+		for (const day of days) {
+			if (!day.gapBands) continue;
+			addBand(short, day.gapBands.short);
+			addBand(long, day.gapBands.long);
+		}
+		out.gapBands = { short, long };
+	}
+	if (every("warmOrphanCacheWrites")) {
+		out.warmOrphanCacheWrites = sum((d) => d.warmOrphanCacheWrites);
+		out.warmOrphanCacheWriteTokens = sum((d) => d.warmOrphanCacheWriteTokens);
+	}
+	if (every("headlessSessions"))
+		out.headlessSessions = sum((d) => d.headlessSessions);
+	if (every("coldCompactions"))
+		out.coldCompactions = sum((d) => d.coldCompactions);
+	if (every("effortRaw")) {
+		out.effortRaw = sumBy(
+			days.flatMap((d) => d.effortRaw ?? []),
+			(row) => row.level,
+			(into, from) => {
+				into.responses += from.responses;
+				into.outputTokens += from.outputTokens;
+			},
+			(row) => ({ ...row }),
+		).sort(
+			(a, b) =>
+				EFFORT_RAW_LEVELS.indexOf(a.level) - EFFORT_RAW_LEVELS.indexOf(b.level),
+		);
+	}
+	return out;
 }
 
 function foldLengths(

@@ -1,7 +1,7 @@
 import {
 	type GitDay,
 	type HarnessDay,
-	WORKFLOW_AGGREGATES_V4,
+	WORKFLOW_AGGREGATES_V5,
 	type WorkflowDay,
 } from "@aistack/workflow-rules";
 import {
@@ -28,7 +28,7 @@ export type LocalHarnessWorkflow = {
  * or a rank.
  */
 export type WorkflowExtraction = {
-	aggregateVersion: typeof WORKFLOW_AGGREGATES_V4;
+	aggregateVersion: typeof WORKFLOW_AGGREGATES_V5;
 	/**
 	 * This machine's offset from UTC, in minutes east (#218). Session hours ship
 	 * in UTC, and the page renders them in the owner's local time. The machine is
@@ -134,7 +134,7 @@ export function buildWorkflowExtraction(
 	].sort();
 
 	return {
-		aggregateVersion: WORKFLOW_AGGREGATES_V4,
+		aggregateVersion: WORKFLOW_AGGREGATES_V5,
 		utcOffsetMinutes,
 		days: dates.map((date) => {
 			const projects = projectDays.get(date)?.size;

@@ -404,7 +404,7 @@ describe("per-call context (#358)", () => {
 	});
 });
 
-describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
+describe("token-efficiency atoms (workflow-aggregates/v4, v5)", () => {
 	it("reads gaps, re-warms, orphan writes, peaks, short sessions and compactions per main session", () => {
 		const reducer = createHarnessWorkflowReducer("claude-code");
 		const start = Date.UTC(2026, 7, 24, 10, 0);
@@ -498,7 +498,149 @@ describe("token-efficiency atoms (workflow-aggregates/v4)", () => {
 			sessionsCompacted: 1,
 			toolResults: [],
 			blocks: { thinking: 6, text: 6 },
+			// v5: the 20-minute break sits in the short band.
+			gapBands: {
+				short: { calls: 1, cacheWrite: 21_000, cacheRead: 0, input: 50 },
+				long: { calls: 0, cacheWrite: 0, cacheRead: 0, input: 0 },
+			},
+			// Only l5 was a warm-cache invalidation: l3 came after the cache expired.
+			warmOrphanCacheWrites: 1,
+			warmOrphanCacheWriteTokens: 30_000,
+			headlessSessions: 0,
+			// The compaction came 730 s after l5, past the 5-minute cache.
+			coldCompactions: 1,
+			effortRaw: [],
 		});
+	});
+
+	it("tests the gap against the cache TTL the session wrote under (v5)", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		const call = (
+			id: string,
+			offsetSec: number,
+			tokens: { read: number; write: number },
+		) =>
+			reducer.ingest({
+				type: "response",
+				session: "sub",
+				tsMs: start + offsetSec * 1000,
+				responseId: id,
+				contextTokens: tokens.read + tokens.write,
+				inputTokens: 0,
+				cacheReadTokens: tokens.read,
+				cacheWriteTokens: tokens.write,
+				cacheTtlSec: 3600,
+			});
+		call("c1", 0, { read: 0, write: 20_000 });
+		// 20 minutes later under a one-hour cache: still warm, a read.
+		call("c2", 1200, { read: 20_000, write: 500 });
+		// 25 minutes later, a write and no read: a switch, the cache was warm.
+		call("c3", 2700, { read: 0, write: 22_000 });
+		// Two hours later: the cache expired, a write and no read.
+		call("c4", 2700 + 7200, { read: 0, write: 23_000 });
+		reducer.ingest({
+			type: "compaction",
+			session: "sub",
+			tsMs: start + (2700 + 7200 + 600) * 1000,
+		});
+		const eff = reducer.finish().days[0]?.efficiency;
+		expect(eff?.gapBands).toEqual({
+			short: { calls: 2, cacheWrite: 22_500, cacheRead: 20_000, input: 0 },
+			long: { calls: 1, cacheWrite: 23_000, cacheRead: 0, input: 0 },
+		});
+		expect(eff?.orphanCacheWrites).toBe(2);
+		expect(eff?.warmOrphanCacheWrites).toBe(1);
+		expect(eff?.warmOrphanCacheWriteTokens).toBe(22_000);
+		// Ten minutes after c4 under a one-hour cache: a warm compaction.
+		expect(eff?.coldCompactions).toBe(0);
+	});
+
+	it("leaves scripted sessions out of the short sessions and counts them (v5)", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		const one = (session: string, headless: boolean) =>
+			reducer.ingest({
+				type: "response",
+				session,
+				tsMs: start,
+				responseId: `${session}:r`,
+				contextTokens: 30_000,
+				inputTokens: 10_000,
+				cacheReadTokens: 20_000,
+				cacheWriteTokens: 0,
+				...(headless ? { headless: true } : {}),
+			});
+		one("typed", false);
+		one("script-1", true);
+		one("script-2", true);
+		const eff = reducer.finish().days[0]?.efficiency;
+		expect(eff?.shortSessions).toBe(1);
+		expect(eff?.shortSessionFirstCallTokens).toBe(30_000);
+		expect(eff?.headlessSessions).toBe(2);
+	});
+
+	it("keeps xhigh and max apart with their output, main sessions only (v5)", () => {
+		const reducer = createHarnessWorkflowReducer("codex");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		const respond = (
+			session: string,
+			id: string,
+			effort: string,
+			output: number,
+			extra: Record<string, unknown> = {},
+		) =>
+			reducer.ingest({
+				type: "response",
+				session,
+				tsMs: start,
+				responseId: id,
+				effort,
+				responseTokens: output,
+				...extra,
+			});
+		respond("m", "1", "medium", 100);
+		respond("m", "2", "xhigh", 700);
+		respond("m", "3", "ultra", 900);
+		respond("m", "4", "high", 300);
+		respond("child", "5", "max", 5_000, { parentSession: "m" });
+		const day = reducer.finish().days[0];
+		expect(day?.efficiency?.effortRaw).toEqual([
+			{ level: "medium", responses: 1, outputTokens: 100 },
+			{ level: "high", responses: 1, outputTokens: 300 },
+			{ level: "xhigh", responses: 1, outputTokens: 700 },
+			{ level: "max", responses: 1, outputTokens: 900 },
+		]);
+		// The public levels still fold xhigh and max into high, subagents included.
+		expect(day?.effort).toEqual([
+			{ level: "medium", turns: 1 },
+			{ level: "high", turns: 4 },
+		]);
+	});
+
+	it("counts a subagent's tool results nowhere (v5)", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		reducer.ingest({
+			type: "toolResult",
+			session: "main",
+			tsMs: start,
+			tool: "Read",
+			bytes: 40_000,
+		});
+		reducer.ingest({
+			type: "toolResult",
+			session: "main:agent:a",
+			tsMs: start,
+			parentSession: "main",
+			sidechain: true,
+			tool: "Read",
+			bytes: 90_000,
+		});
+		const results = reducer.finish().days[0]?.efficiency?.toolResults;
+		expect(results?.map((r) => [r.tool, r.results, r.bytes])).toEqual([
+			["Read", 1, 40_000],
+		]);
 	});
 
 	it("sizes tool results by wire name on the day of the result and never keeps a user name", () => {

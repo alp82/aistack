@@ -19,8 +19,11 @@
 //
 // TokenCounts mapping (#66 decision 6): `cached_input_tokens` is a SUBSET of
 // `input_tokens`, so `input = input_tokens - cached_input`, `cacheRead =
-// cached_input`, and `cacheWrite = 0` - Codex reports no cache writes, and a
-// zero write prices correctly with zero pricing-code changes.
+// cached_input`. GPT-5.6 and later charge cache writes, and rollouts carry
+// `cache_write_input_tokens` beside the other two (seen in local rollouts on
+// 2026-09-24, always 0 there). It is read as the uncached part the request
+// wrote to cache, the same subset of `input_tokens`, so a rollout without it
+// still prices with `cacheWrite = 0`.
 
 import {
 	apiEquivalentCost,
@@ -131,12 +134,16 @@ function genuineDelta(
 
 	const inputTotal = asNum(last.input_tokens);
 	const cached = Math.min(asNum(last.cached_input_tokens), inputTotal);
+	const written = Math.min(
+		asNum(last.cache_write_input_tokens),
+		inputTotal - cached,
+	);
 	const counts: TokenCounts = {
-		input: inputTotal - cached,
+		input: inputTotal - cached - written,
 		output: asNum(last.output_tokens),
 		cacheWrite5m: 0,
 		cacheWrite1h: 0,
-		cacheWriteUnsplit: 0,
+		cacheWriteUnsplit: written,
 		cacheRead: cached,
 	};
 	// A zero delta is a rate-limit-only refresh, not a response.
@@ -272,6 +279,20 @@ function noteActivity(
 // Usage - token_count deltas
 // ---------------------------------------------------------------------------
 
+/**
+ * The prompt cache lifetime of a Codex model, in seconds (v5). OpenAI keeps
+ * the cache at least 30 minutes on GPT-5.6 and later
+ * (developers.openai.com/api/docs/guides/prompt-caching); earlier models keep
+ * the 5-minute rule the other harnesses use.
+ */
+export function codexCacheTtlSec(model: string): number {
+	const match = /gpt-(\d+)\.(\d+)/.exec(model);
+	if (!match) return 300;
+	const major = Number(match[1]);
+	const minor = Number(match[2]);
+	return major > 5 || (major === 5 && minor >= 6) ? 1800 : 300;
+}
+
 function ingestEvent(
 	agg: Aggregate,
 	payload: Obj,
@@ -318,16 +339,17 @@ function ingestEvent(
 			// instructions and tool specs, cached by an earlier session) and
 			// the fresh part is the instructions: AGENTS.md, environment,
 			// skills and the first prompt. Same method as Claude Code (#358).
-			contextTokens: counts.input + counts.cacheRead,
+			contextTokens: counts.input + counts.cacheRead + counts.cacheWriteUnsplit,
 			inputTokens: counts.input,
 			cacheReadTokens: counts.cacheRead,
-			cacheWriteTokens: 0,
+			cacheWriteTokens: counts.cacheWriteUnsplit,
+			cacheTtlSec: codexCacheTtlSec(modelKey),
 			...(contextWindow > 0 ? { contextWindow } : {}),
 			...(firstCall && !state.forked
 				? {
 						firstCall: {
 							harnessTokens: counts.cacheRead,
-							instructionsTokens: counts.input,
+							instructionsTokens: counts.input + counts.cacheWriteUnsplit,
 						},
 					}
 				: {}),

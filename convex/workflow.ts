@@ -480,6 +480,7 @@ const EfficiencySeverity = v.union(
   v.literal('medium'),
   v.literal('low'),
   v.literal('ok'),
+  v.literal('insufficient'),
 )
 const EfficiencyTile = v.object({
   id: v.string(),
@@ -487,13 +488,20 @@ const EfficiencyTile = v.object({
   harness: v.string(),
   severity: EfficiencySeverity,
   meter: v.number(),
+  waste: v.number(),
+  share: v.union(v.number(), v.null()),
+  confidence: v.union(v.literal('high'), v.literal('medium'), v.literal('low')),
+  sample: v.object({ have: v.number(), need: v.number(), unit: v.string() }),
   fix: v.string(),
   verdict: v.string(),
+  problem: v.string(),
+  passing: v.string(),
   keep: v.string(),
   figure: v.object({ value: v.string(), label: v.string() }),
   evidence: v.array(v.object({ label: v.string(), value: v.string() })),
   why: v.string(),
   action: v.string(),
+  steps: v.array(v.object({ text: v.string(), code: v.optional(v.string()) })),
   usd: v.union(v.number(), v.null()),
   usdNote: v.union(v.string(), v.null()),
 })

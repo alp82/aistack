@@ -13,7 +13,7 @@
 import {
 	foldWorkflowDays,
 	type MeasuredDay,
-	WORKFLOW_AGGREGATES_V4,
+	WORKFLOW_AGGREGATES_V5,
 } from "@aistack/workflow-rules";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
@@ -566,7 +566,7 @@ function workflowBlock(
 ): string[] {
 	const out: string[] = [];
 	const folded = foldWorkflowDays(workflowDays, {
-		aggregateVersion: WORKFLOW_AGGREGATES_V4,
+		aggregateVersion: WORKFLOW_AGGREGATES_V5,
 		utcOffsetMinutes,
 	});
 	const harnesses = folded?.harnesses ?? [];
@@ -577,7 +577,7 @@ function workflowBlock(
 	].filter(Boolean);
 
 	out.push(
-		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V4}`,
+		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V5}`,
 	);
 	const first = folded?.dates[0];
 	const last = folded?.dates.at(-1);
@@ -596,10 +596,11 @@ function workflowBlock(
 		out.push(`          ${mix} · ${ruleVersions.join(", ")}`);
 	}
 
-	// The efficiency atoms (v4): call gaps and per-session counts, cache
-	// re-warm and orphan-write sums, tool-result sizes by built-in tool name,
-	// content block counts. Every one is a count, a sum or a bucket; no
-	// tool name outside the fixed vocabulary and no result content.
+	// The efficiency atoms (v4, v5): call gaps and per-session counts, cache
+	// re-warm and orphan-write sums, gap bands, tool-result sizes by built-in
+	// tool name, content block counts, effort levels. Every one is a count, a
+	// sum or a bucket; no tool name outside the fixed vocabulary and no
+	// result content.
 	const efficiency = harnesses.flatMap((h) =>
 		h.efficiency ? [h.efficiency] : [],
 	);

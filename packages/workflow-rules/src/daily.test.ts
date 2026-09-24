@@ -5,6 +5,7 @@ import {
 	bucketRange,
 	bucketRangeV2,
 	effortLevelOf,
+	effortRawLevelOf,
 	foldContextDays,
 	foldEfficiencyDays,
 	foldGitDays,
@@ -414,7 +415,7 @@ describe("foldWorkflowDays", () => {
 	});
 });
 
-describe("foldEfficiencyDays (workflow-aggregates/v4)", () => {
+describe("foldEfficiencyDays (workflow-aggregates/v4, v5)", () => {
 	it("adds counts and sums, merges histograms by bucket, and merges tool rows by name", () => {
 		const folded = foldEfficiencyDays([
 			efficiencyDay(),
@@ -472,5 +473,56 @@ describe("foldEfficiencyDays (workflow-aggregates/v4)", () => {
 		expect(toolResultName("acme-billing__query")).toBe("mcp");
 		expect(toolResultName("my-secret-tool")).toBe("other");
 		expect(toolResultName(undefined)).toBe("other");
+		// opencode's and pi's read tool (v5).
+		expect(toolResultName("read")).toBe("read");
+	});
+
+	it("carries a v5 atom only when every day in the fold has it", () => {
+		const band = (calls: number) => ({
+			calls,
+			cacheWrite: calls * 1_000,
+			cacheRead: calls * 10,
+			input: calls,
+		});
+		const v5 = efficiencyDay({
+			gapBands: { short: band(2), long: band(1) },
+			warmOrphanCacheWrites: 1,
+			warmOrphanCacheWriteTokens: 5_000,
+			headlessSessions: 3,
+			coldCompactions: 1,
+			effortRaw: [
+				{ level: "xhigh", responses: 4, outputTokens: 900 },
+				{ level: "medium", responses: 6, outputTokens: 300 },
+			],
+		});
+		const both = foldEfficiencyDays([
+			v5,
+			efficiencyDay({
+				gapBands: { short: band(1), long: band(0) },
+				warmOrphanCacheWrites: 0,
+				warmOrphanCacheWriteTokens: 0,
+				headlessSessions: 1,
+				coldCompactions: 0,
+				effortRaw: [{ level: "max", responses: 1, outputTokens: 500 }],
+			}),
+		]);
+		expect(both.gapBands).toEqual({ short: band(3), long: band(1) });
+		expect(both.warmOrphanCacheWrites).toBe(1);
+		expect(both.headlessSessions).toBe(4);
+		expect(both.coldCompactions).toBe(1);
+		expect(both.effortRaw).toEqual([
+			{ level: "medium", responses: 6, outputTokens: 300 },
+			{ level: "xhigh", responses: 4, outputTokens: 900 },
+			{ level: "max", responses: 1, outputTokens: 500 },
+		]);
+		// A v4 day in the window: the partial sums would read as the whole.
+		const mixed = foldEfficiencyDays([v5, efficiencyDay()]);
+		expect(mixed.gapBands).toBeUndefined();
+		expect(mixed.warmOrphanCacheWrites).toBeUndefined();
+		expect(mixed.headlessSessions).toBeUndefined();
+		expect(mixed.coldCompactions).toBeUndefined();
+		expect(mixed.effortRaw).toBeUndefined();
+		expect(effortRawLevelOf("ultra")).toBe("max");
+		expect(effortRawLevelOf("XHIGH")).toBe("xhigh");
 	});
 });

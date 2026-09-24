@@ -3,13 +3,18 @@ import {
 	classifyEvent,
 	deriveSessionPhases,
 	EFFORT_LEVELS,
+	EFFORT_RAW_LEVELS,
 	type EffortLevel,
+	type EffortRawLevel,
 	effortLevelOf,
+	effortRawLevelOf,
+	type GapBand,
 	type HarnessDay,
 	type HarnessEvent,
 	type HarnessName,
 	LOG_BUCKETS_V1,
 	LOG_BUCKETS_V2,
+	LONG_GAP_SEC,
 	logBucket,
 	logBucketV2,
 	PHASE_RULES_V1,
@@ -19,11 +24,11 @@ import {
 	SHORT_SESSION_CALLS,
 	toolResultName,
 	UNKNOWN_GATE,
-	WORKFLOW_AGGREGATES_V4,
+	WORKFLOW_AGGREGATES_V5,
 } from "@aistack/workflow-rules";
 import { sanitizeModelId } from "../harness/shared/payload.js";
 
-export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V4;
+export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V5;
 
 /**
  * The first call of a session, split (#358). `harnessTokens` is what the
@@ -65,6 +70,14 @@ export type WorkflowObservation = {
 			cacheWriteTokens?: number;
 			/** Content blocks of the response, when the harness logs them (Claude Code). */
 			blocks?: { thinking: number; text: number };
+			/**
+			 * The cache TTL this call wrote under, in seconds (v5), when the
+			 * harness says: Claude Code's 5m/1h write split, Codex's model.
+			 * Absent when the call wrote nothing the harness split.
+			 */
+			cacheTtlSec?: number;
+			/** A script started the session (v5): `claude -p` or the SDK. */
+			headless?: boolean;
 	  }
 	| { type: "turn"; turnId?: string; questionBack: boolean }
 	/** A compaction boundary the harness logged. Lands on the day of the event. */
@@ -131,10 +144,16 @@ type SessionState = {
 			cacheReadTokens?: number;
 			cacheWriteTokens?: number;
 			blocks?: { thinking: number; text: number };
+			cacheTtlSec?: number;
 			tsMs: number;
 		}
 	>;
 	compacted: boolean;
+	/** Compaction boundaries by time, for the cold-compaction test (v5). */
+	compactionTs: number[];
+	/** Tool results by time and wire name; counted in `finish()` on main sessions only (v5). */
+	toolResults: Array<{ tsMs: number; tool: string; bytes: number }>;
+	headless: boolean;
 	nextAnonymousResponse: number;
 	turns: Map<string, boolean>;
 	nextAnonymousTurn: number;
@@ -244,6 +263,9 @@ function shellIncludes(arg: string, head: string): boolean {
 function sessionState(): SessionState {
 	return {
 		compacted: false,
+		compactionTs: [],
+		toolResults: [],
+		headless: false,
 		events: [],
 		responses: new Map(),
 		nextAnonymousResponse: 0,
@@ -320,9 +342,22 @@ type DayState = {
 		>;
 		blocks: { thinking: number; text: number };
 		hasBlocks: boolean;
+		gapBands: { short: GapBand; long: GapBand };
+		warmOrphanCacheWrites: number;
+		warmOrphanCacheWriteTokens: number;
+		headlessSessions: number;
+		coldCompactions: number;
+		effortRaw: Map<EffortRawLevel, { responses: number; outputTokens: number }>;
 	};
 	hasEfficiency: boolean;
 };
+
+const emptyBand = (): GapBand => ({
+	calls: 0,
+	cacheWrite: 0,
+	cacheRead: 0,
+	input: 0,
+});
 
 function dayState(): DayState {
 	return {
@@ -384,6 +419,12 @@ function dayState(): DayState {
 			toolResults: new Map(),
 			blocks: { thinking: 0, text: 0 },
 			hasBlocks: false,
+			gapBands: { short: emptyBand(), long: emptyBand() },
+			warmOrphanCacheWrites: 0,
+			warmOrphanCacheWriteTokens: 0,
+			headlessSessions: 0,
+			coldCompactions: 0,
+			effortRaw: new Map(),
 		},
 		hasEfficiency: false,
 	};
@@ -413,13 +454,6 @@ export function createHarnessWorkflowReducer(
 	const eventCells = new Map<string, Map<string, number>>();
 	const webSearchesByDate = new Map<string, number>();
 	const compactionsByDate = new Map<string, number>();
-	const toolResultsByDate = new Map<
-		string,
-		Map<
-			string,
-			{ results: number; bytes: number; buckets: Map<number, number> }
-		>
-	>();
 	const eventDates = new Set<string>();
 	let finished: HarnessWorkflowAggregate | undefined;
 
@@ -447,6 +481,8 @@ export function createHarnessWorkflowReducer(
 					: Math.max(state.lastTs, observation.tsMs);
 			state.parentSession ??= observation.parentSession;
 			state.sidechain ||= observation.sidechain === true;
+			if (observation.type === "response" && observation.headless)
+				state.headless = true;
 			const at = new Date(observation.tsMs);
 			const date = utcDateOf(observation.tsMs);
 			if (observation.projectWorkspace) {
@@ -524,6 +560,9 @@ export function createHarnessWorkflowReducer(
 								},
 							}
 						: {}),
+					...(finiteNonnegative(observation.cacheTtlSec) > 0
+						? { cacheTtlSec: finiteNonnegative(observation.cacheTtlSec) }
+						: {}),
 				};
 				const existing = state.responses.get(responseId);
 				const magnitude = (value: typeof response): number =>
@@ -537,26 +576,16 @@ export function createHarnessWorkflowReducer(
 					observation.turnId ?? `anonymous:${state.nextAnonymousTurn++}`;
 				state.turns.set(turnId, observation.questionBack);
 			} else if (observation.type === "toolResult") {
-				const bytes = finiteNonnegative(observation.bytes);
-				const byDate =
-					toolResultsByDate.get(date) ??
-					new Map<
-						string,
-						{ results: number; bytes: number; buckets: Map<number, number> }
-					>();
-				const name = toolResultName(observation.tool);
-				const row = byDate.get(name) ?? {
-					results: 0,
-					bytes: 0,
-					buckets: new Map<number, number>(),
-				};
-				row.results++;
-				row.bytes += bytes;
-				bump(row.buckets, logBucketV2(bytes));
-				byDate.set(name, row);
-				toolResultsByDate.set(date, byDate);
+				// Held on the session: whether it is a subagent is known only
+				// once every record is in, so `finish()` counts main ones.
+				state.toolResults.push({
+					tsMs: observation.tsMs,
+					tool: toolResultName(observation.tool),
+					bytes: finiteNonnegative(observation.bytes),
+				});
 			} else {
 				state.compacted = true;
+				state.compactionTs.push(observation.tsMs);
 				bump(compactionsByDate, date);
 			}
 		},
@@ -728,14 +757,33 @@ export function createHarnessWorkflowReducer(
 						day.efficiency.blocks.thinking += response.blocks.thinking;
 						day.efficiency.blocks.text += response.blocks.text;
 					}
+					for (const response of responses) {
+						if (!response.effort) continue;
+						day.hasEfficiency = true;
+						const level = effortRawLevelOf(response.effort);
+						const row = day.efficiency.effortRaw.get(level) ?? {
+							responses: 0,
+							outputTokens: 0,
+						};
+						row.responses++;
+						row.outputTokens += response.responseTokens ?? 0;
+						day.efficiency.effortRaw.set(level, row);
+					}
 					if (calls.length > 0) {
 						day.hasEfficiency = true;
 						const eff = day.efficiency;
 						let peak = 0;
+						// The TTL in force for a call is the one the session last
+						// wrote under (v5): Claude Code's 5m/1h split, Codex's model.
+						let ttlSec = CACHE_TTL_SEC;
+						const ttlAt: number[] = [];
 						calls.forEach((call, i) => {
 							const context = call.contextTokens ?? 0;
 							peak = Math.max(peak, context);
 							const previous = calls[i - 1];
+							const ttlBefore = ttlSec;
+							if (call.cacheTtlSec !== undefined) ttlSec = call.cacheTtlSec;
+							ttlAt.push(ttlSec);
 							if (!previous) return;
 							const gapSec = (call.tsMs - previous.tsMs) / 1000;
 							bump(eff.callGaps, logBucket(gapSec));
@@ -743,6 +791,14 @@ export function createHarnessWorkflowReducer(
 								eff.callsAfterGap++;
 								eff.cacheWriteAfterGap += call.cacheWriteTokens ?? 0;
 								eff.inputAfterGap += call.inputTokens ?? 0;
+								const band =
+									gapSec > LONG_GAP_SEC
+										? eff.gapBands.long
+										: eff.gapBands.short;
+								band.calls++;
+								band.cacheWrite += call.cacheWriteTokens ?? 0;
+								band.cacheRead += call.cacheReadTokens ?? 0;
+								band.input += call.inputTokens ?? 0;
 							}
 							if (
 								(call.cacheWriteTokens ?? 0) > 0 &&
@@ -750,15 +806,51 @@ export function createHarnessWorkflowReducer(
 							) {
 								eff.orphanCacheWrites++;
 								eff.orphanCacheWriteTokens += call.cacheWriteTokens ?? 0;
+								// A write with no read after a gap past the TTL is an
+								// expired cache, which the after-gap atoms count.
+								if (gapSec <= ttlBefore) {
+									eff.warmOrphanCacheWrites++;
+									eff.warmOrphanCacheWriteTokens += call.cacheWriteTokens ?? 0;
+								}
 							}
 						});
+						// A compaction after a gap past the TTL re-reads the whole
+						// history uncached: the costliest way to compact.
+						for (const ts of state.compactionTs) {
+							let last = -1;
+							for (let i = 0; i < calls.length; i++) {
+								if ((calls[i]?.tsMs ?? Infinity) <= ts) last = i;
+							}
+							const before = calls[last];
+							if (
+								before &&
+								(ts - before.tsMs) / 1000 > (ttlAt[last] ?? CACHE_TTL_SEC)
+							)
+								eff.coldCompactions++;
+						}
 						bump(eff.sessionMaxContext, logBucketV2(peak));
 						bump(eff.sessionCalls, logBucket(calls.length));
-						if (calls.length <= SHORT_SESSION_CALLS) {
+						if (state.headless) eff.headlessSessions++;
+						else if (calls.length <= SHORT_SESSION_CALLS) {
 							eff.shortSessions++;
 							eff.shortSessionFirstCallTokens += calls[0]?.contextTokens ?? 0;
 						}
 						if (state.compacted) eff.sessionsCompacted++;
+					}
+					// Tool results of the main thread, on the day of the result.
+					// A subagent's output never reaches the main context.
+					for (const result of state.toolResults) {
+						const resultDay = dayOf(utcDateOf(result.tsMs));
+						resultDay.hasEfficiency = true;
+						const held = resultDay.efficiency.toolResults.get(result.tool) ?? {
+							results: 0,
+							bytes: 0,
+							buckets: new Map<number, number>(),
+						};
+						held.results++;
+						held.bytes += result.bytes;
+						bump(held.buckets, logBucketV2(result.bytes));
+						resultDay.efficiency.toolResults.set(result.tool, held);
 					}
 				}
 			}
@@ -768,24 +860,6 @@ export function createHarnessWorkflowReducer(
 				const day = dayOf(date);
 				day.hasContext = true;
 				day.context.compactions += compactions;
-			}
-
-			// Tool results, on the day of the result.
-			for (const [date, rows] of toolResultsByDate) {
-				const day = dayOf(date);
-				day.hasEfficiency = true;
-				for (const [tool, row] of rows) {
-					const held = day.efficiency.toolResults.get(tool) ?? {
-						results: 0,
-						bytes: 0,
-						buckets: new Map<number, number>(),
-					};
-					held.results += row.results;
-					held.bytes += row.bytes;
-					for (const [bucket, results] of row.buckets)
-						bump(held.buckets, bucket, results);
-					day.efficiency.toolResults.set(tool, held);
-				}
 			}
 
 			// Event cells and web searches, on the day of the event.
@@ -1018,6 +1092,16 @@ export function createHarnessWorkflowReducer(
 										...(day.efficiency.hasBlocks
 											? { blocks: day.efficiency.blocks }
 											: {}),
+										gapBands: day.efficiency.gapBands,
+										warmOrphanCacheWrites: day.efficiency.warmOrphanCacheWrites,
+										warmOrphanCacheWriteTokens:
+											day.efficiency.warmOrphanCacheWriteTokens,
+										headlessSessions: day.efficiency.headlessSessions,
+										coldCompactions: day.efficiency.coldCompactions,
+										effortRaw: EFFORT_RAW_LEVELS.flatMap((level) => {
+											const row = day.efficiency.effortRaw.get(level);
+											return row ? [{ level, ...row }] : [];
+										}),
 									},
 								}
 							: {}),
@@ -1027,7 +1111,6 @@ export function createHarnessWorkflowReducer(
 			eventCells.clear();
 			webSearchesByDate.clear();
 			compactionsByDate.clear();
-			toolResultsByDate.clear();
 			eventDates.clear();
 			return finished;
 		},
