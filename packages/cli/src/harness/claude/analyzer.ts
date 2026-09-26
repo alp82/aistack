@@ -121,6 +121,13 @@ export type Aggregate = SharedAggregate<SeenEntry> & {
 	 * before anything leaves the reducer.
 	 */
 	workflowToolNames: Map<string, string>;
+	/**
+	 * Record `uuid` -> the slash commands that record typed. A skill the user
+	 * types (`/wayfinder`) is logged as a slash command, and the skill body
+	 * record that follows names the command record as its parent. This is how
+	 * that body finds the command to move into `skillCalls`.
+	 */
+	typedCommands: Map<string, string[]>;
 };
 
 export function createAggregate(): Aggregate {
@@ -132,6 +139,7 @@ export function createAggregate(): Aggregate {
 		workflowSeenTurns: new Set<string>(),
 		contextFirstCall: new Map<string, string | null>(),
 		workflowToolNames: new Map<string, string>(),
+		typedCommands: new Map<string, string[]>(),
 	});
 }
 
@@ -790,6 +798,13 @@ export function toolResultBytes(content: unknown): number {
 	return bytes;
 }
 
+/**
+ * The first line of the record Claude Code writes when it loads a skill body.
+ * The model's `Skill` tool writes one too, but that record carries
+ * `sourceToolUseID`; a skill the user typed as `/name` does not.
+ */
+const SKILL_BODY_PREFIX = "Base directory for this skill:";
+
 function ingestUser(agg: Aggregate, rec: Obj): void {
 	const msg = asObj(rec.message);
 	if (!msg) return;
@@ -804,12 +819,47 @@ function ingestUser(agg: Aggregate, rec: Obj): void {
 			if (asStr(block.type) === "text") text += asStr(block.text) ?? "";
 		}
 	}
+	if (
+		rec.isMeta === true &&
+		!asStr(rec.sourceToolUseID) &&
+		text.startsWith(SKILL_BODY_PREFIX)
+	) {
+		ingestTypedSkill(agg, rec, text);
+		return;
+	}
 	if (!text.includes("<command-name>")) return;
 
 	// `matchAll` over `exec` in a loop: the regex is module-level and `g`-flagged,
 	// so an `exec` loop carries a shared `lastIndex` that a forgotten reset turns
 	// into records being skipped at random.
+	const names: string[] = [];
 	for (const match of text.matchAll(SLASH_RE)) {
-		bump(agg.slashCommands, cleanName(match[1]));
+		const name = cleanName(match[1]);
+		bump(agg.slashCommands, name);
+		names.push(name);
 	}
+	const uuid = asStr(rec.uuid);
+	if (uuid && names.length > 0) agg.typedCommands.set(uuid, names);
+}
+
+/**
+ * A skill the user typed as `/name`. Claude Code logs the command first and
+ * the skill body second, so the command was already counted as a slash
+ * command; it moves to `skillCalls` here under the name the user typed. With
+ * no command record to point at, the skill directory names it.
+ */
+function ingestTypedSkill(agg: Aggregate, rec: Obj, text: string): void {
+	const parent = asStr(rec.parentUuid);
+	const typed = parent ? agg.typedCommands.get(parent) : undefined;
+	if (typed?.length === 1) {
+		const name = typed[0];
+		const left = (agg.slashCommands.get(name) ?? 0) - 1;
+		if (left > 0) agg.slashCommands.set(name, left);
+		else agg.slashCommands.delete(name);
+		bump(agg.skillCalls, name);
+		return;
+	}
+	const dir = text.slice(SKILL_BODY_PREFIX.length).split("\n")[0].trim();
+	const base = dir.split(/[\\/]/).filter(Boolean).pop();
+	bump(agg.skillCalls, base ? cleanName(base) : "(unnamed)");
 }

@@ -357,3 +357,29 @@ export function noteConfiguredMcpServers(
 	}
 	state.mcpServers.sort((a, b) => b.length - a.length);
 }
+
+// ---------------------------------------------------------------------------
+// Inventory - skills the user typed as a command
+// ---------------------------------------------------------------------------
+
+/**
+ * One user text part that loaded a skill. opencode registers every skill as a
+ * command, and a typed `/name` writes the skill body into the user message,
+ * followed by `Base directory for this skill: <dir>`. The scanner projects that
+ * directory line and nothing else of the text.
+ */
+export type TypedSkillRow = {
+	id: unknown;
+	skillDir: unknown;
+};
+
+export function ingestTypedSkill(agg: Aggregate, row: TypedSkillRow): void {
+	const id = asStr(row.id);
+	const dir = asStr(row.skillDir)?.trim();
+	if (!id || !dir) return;
+	const key = `typed-skill:${id}`;
+	if (agg.toolCallDedup.has(key)) return;
+	agg.toolCallDedup.add(key);
+	const base = dir.split(/[\\/]/).filter(Boolean).pop();
+	if (base) bump(agg.skillCalls, cleanName(base));
+}

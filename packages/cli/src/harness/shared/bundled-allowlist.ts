@@ -61,7 +61,10 @@ const BUILTIN_SUBAGENTS = [
 	"statusline-setup",
 ] as const;
 
-/** Skills bundled with Claude Code. */
+/**
+ * Skills bundled with Claude Code. This CLI publishes every skill name and no
+ * longer reads this list; it stays for the wire shape and older clients.
+ */
 const BUILTIN_SKILLS = [
 	"artifact-capabilities",
 	"artifact-design",

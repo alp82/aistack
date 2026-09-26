@@ -70,17 +70,46 @@ export function toolUse(
 export function slashCommand(
 	name: string,
 	timestamp = "2026-07-20T12:00:00.000Z",
+	uuid?: string,
 ): Record<string, unknown> {
 	return {
 		type: "user",
 		timestamp,
 		sessionId: "sess-1",
+		...(uuid ? { uuid } : {}),
 		message: {
 			role: "user",
 			content: [
 				{
 					type: "text",
 					text: `<command-message>x</command-message>\n<command-name>/${name}</command-name>`,
+				},
+			],
+		},
+	};
+}
+
+/**
+ * The record Claude Code writes when it loads a skill body. A skill the model
+ * loads carries `sourceToolUseID`; one the user typed carries the command
+ * record as its parent instead.
+ */
+export function skillBody(
+	dir: string,
+	opts: { parentUuid?: string; sourceToolUseID?: string } = {},
+): Record<string, unknown> {
+	return {
+		type: "user",
+		timestamp: "2026-07-20T12:00:01.000Z",
+		sessionId: "sess-1",
+		isMeta: true,
+		...opts,
+		message: {
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text: `Base directory for this skill: ${dir}\n\n# Skill\n`,
 				},
 			],
 		},

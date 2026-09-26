@@ -38,6 +38,7 @@ import {
 } from "../../workflow/reducer.js";
 import {
 	addModelUsage,
+	asArr,
 	asName,
 	asNum,
 	asObj,
@@ -97,6 +98,12 @@ export type FileState = {
 	sawResponse: boolean;
 	/** `call_id` -> tool name, so a `function_call_output` is sized under its tool (v4). */
 	callNames: Map<string, string>;
+	/**
+	 * Skills already counted in the current user turn. A model often reads one
+	 * `SKILL.md` in several chunks, and that is one use. Cleared on
+	 * `task_started`.
+	 */
+	turnSkills: Set<string>;
 };
 
 export function createFileState(): FileState {
@@ -113,6 +120,7 @@ export function createFileState(): FileState {
 		forked: false,
 		sawResponse: false,
 		callNames: new Map(),
+		turnSkills: new Set(),
 	};
 }
 
@@ -244,9 +252,10 @@ export function ingestLine(
 	noteActivity(agg, state, tsMs);
 	noteProjectDay(agg, state.cwd ?? "(unknown)", tsMs);
 
-	if (type === "event_msg" && payload)
+	if (type === "event_msg" && payload) {
+		if (asStr(payload.type) === "task_started") state.turnSkills.clear();
 		ingestEvent(agg, payload, state, tsMs, firstCall);
-	else if (type === "response_item" && payload)
+	} else if (type === "response_item" && payload)
 		ingestItem(agg, payload, state, tsMs);
 	else if (type === "compacted" && tsMs !== null && state.sessionId) {
 		// A `compacted` rollout line is one compaction boundary (#358). The
@@ -405,8 +414,14 @@ function ingestItem(
 		if (!name) return;
 		const callId = asStr(payload.call_id) ?? asStr(payload.id);
 		if (callId) state.callNames.set(callId, name);
+		if (name !== "apply_patch" && (!callId || !agg.toolCallDedup.has(callId)))
+			ingestSkillReads(agg, payload.arguments ?? payload.input, state);
 		ingestCall(agg, name, callId);
 		ingestWorkflowCall(agg, payload, name, callId, state, tsMs);
+		return;
+	}
+	if (type === "message" && asStr(payload.role) === "user") {
+		ingestSkillMention(agg, payload, state);
 		return;
 	}
 	// Non-function tool items publish under stable synthetic names that live in
@@ -438,6 +453,57 @@ function ingestItem(
 			tsMs,
 		);
 	}
+}
+
+/**
+ * A `SKILL.md` path in a tool call's arguments. Codex has no skill tool: the
+ * model loads a skill by reading its `SKILL.md` through a shell command, so
+ * the directory that holds the file names the skill. A patch that writes a
+ * `SKILL.md` is authoring, not a use.
+ */
+const SKILL_READ_RE = /([A-Za-z0-9._:@-]+)[/\\]SKILL\.md\b/g;
+
+function ingestSkillReads(
+	agg: Aggregate,
+	args: unknown,
+	state: FileState,
+): void {
+	if (typeof args !== "string" || !args.includes("SKILL.md")) return;
+	for (const match of args.matchAll(SKILL_READ_RE))
+		countTurnSkill(agg, cleanName(match[1]), state);
+}
+
+/**
+ * A skill the user named with `$name`. Codex writes the skill body into the
+ * conversation as a user message that starts with `<skill><name>...`. A
+ * forked rollout replays it under the same message id, so the id dedupes it.
+ */
+const SKILL_MENTION_RE = /^<skill>\s*<name>([^<]{1,200})<\/name>/;
+
+function ingestSkillMention(
+	agg: Aggregate,
+	payload: Obj,
+	state: FileState,
+): void {
+	for (const rawBlock of asArr(payload.content)) {
+		const text = asStr(asObj(rawBlock)?.text);
+		const name = text ? SKILL_MENTION_RE.exec(text)?.[1] : undefined;
+		if (!name) continue;
+		const id = asStr(payload.id);
+		if (id) {
+			const key = `skill-mention:${id}`;
+			if (agg.toolCallDedup.has(key)) return;
+			agg.toolCallDedup.add(key);
+		}
+		countTurnSkill(agg, cleanName(name), state);
+		return;
+	}
+}
+
+function countTurnSkill(agg: Aggregate, name: string, state: FileState): void {
+	if (state.turnSkills.has(name)) return;
+	state.turnSkills.add(name);
+	bump(agg.skillCalls, name);
 }
 
 /**

@@ -78,6 +78,45 @@ function functionCall(name: string, callId: string, ts = TS) {
 	};
 }
 
+function shellRead(callId: string, cmd: string, name = "exec_command") {
+	return {
+		timestamp: TS,
+		type: "response_item",
+		payload: {
+			type: "function_call",
+			name,
+			call_id: callId,
+			arguments: JSON.stringify({ cmd }),
+		},
+	};
+}
+
+function skillMention(id: string, name: string) {
+	return {
+		timestamp: TS,
+		type: "response_item",
+		payload: {
+			type: "message",
+			id,
+			role: "user",
+			content: [
+				{
+					type: "input_text",
+					text: `<skill>\n<name>${name}</name>\n<path>/home/u/.codex/skills/${name}/SKILL.md</path>\nbody</skill>`,
+				},
+			],
+		},
+	};
+}
+
+function taskStarted() {
+	return {
+		timestamp: TS,
+		type: "event_msg",
+		payload: { type: "task_started" },
+	};
+}
+
 function foldFile(
 	agg: Aggregate,
 	lines: unknown[],
@@ -324,13 +363,52 @@ describe("inventory", () => {
 		expect(finalize(agg).tools).toEqual([["exec_command", 1]]);
 	});
 
-	it("skills, subagents and slash commands stay empty (#66 decision 3)", () => {
+	it("subagents and slash commands stay empty (#66 decision 3)", () => {
 		const agg = createAggregate();
 		foldFile(agg, [sessionMeta(), functionCall("exec_command", "call_1")]);
 		const f = finalize(agg);
 		expect(f.skills).toEqual([]);
 		expect(f.subagents).toEqual([]);
 		expect(f.slashCommands).toEqual([]);
+	});
+
+	it("counts a skill the model loads by reading its SKILL.md, once per turn", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			taskStarted(),
+			shellRead("c1", "sed -n '1,240p' /home/u/.codex/skills/tdd/SKILL.md"),
+			shellRead("c2", "sed -n '240,480p' /home/u/.codex/skills/tdd/SKILL.md"),
+			shellRead("c3", "cat /home/u/.codex/skills/.system/openai-docs/SKILL.md"),
+			taskStarted(),
+			shellRead("c4", "cat .agents/skills/tdd/SKILL.md"),
+		]);
+		expect(finalize(agg).skills).toEqual([
+			["tdd", 2],
+			["openai-docs", 1],
+		]);
+	});
+
+	it("does not count a SKILL.md listing, a glob or a patch that writes one", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			shellRead("c1", "find ~/.codex/skills -name SKILL.md"),
+			shellRead("c2", "ls skills/*/SKILL.md"),
+			shellRead("c3", "*** Add File: skills/new-skill/SKILL.md", "apply_patch"),
+		]);
+		expect(finalize(agg).skills).toEqual([]);
+	});
+
+	it("counts a skill the user named with $name, and a forked replay once", () => {
+		const agg = createAggregate();
+		foldFile(agg, [sessionMeta(), skillMention("msg_1", "wayfinder")]);
+		foldFile(agg, [sessionMeta(), skillMention("msg_1", "wayfinder")]);
+		foldFile(agg, [sessionMeta(), skillMention("msg_2", "grill-me")]);
+		expect(finalize(agg).skills).toEqual([
+			["grill-me", 1],
+			["wayfinder", 1],
+		]);
 	});
 
 	it("configured MCP servers appear at zero without inventing calls", () => {
