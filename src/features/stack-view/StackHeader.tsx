@@ -13,6 +13,7 @@ import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { RelativeTime } from "@/components/RelativeTime";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { UpvotersTooltip } from "@/components/UpvotersTooltip";
+import { buttonVariants } from "@/components/ui/button";
 import HoverCard from "@/components/ui/hover-card";
 import { Sparkline } from "@/features/charts";
 import { fmtTokens, MEASURED_ANCHOR } from "@/features/measured/copy";
@@ -115,6 +116,24 @@ export function StackHeader({
 					}}
 				/>
 				<div className={cn("relative z-[1] mx-auto px-6", STACK_WIDTH)}>
+					{upvoteStatus?.isOwner && (
+						<div className="mb-8 flex flex-col gap-3 border-b border-stroke-subtle pb-5 sm:flex-row sm:items-center sm:justify-between">
+							<span className="font-mono text-xs font-semibold uppercase tracking-widest text-fg-secondary">
+								Your stack
+							</span>
+							<Link
+								to="/stacks/$slug/edit"
+								params={{ slug: stack.slug }}
+								className={buttonVariants({
+									size: "lg",
+									className: "h-12 w-full font-mono sm:w-auto",
+								})}
+							>
+								<Pencil aria-hidden="true" className="size-5" />
+								Edit stack
+							</Link>
+						</div>
+					)}
 					<div className="grid items-stretch gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(16.25rem,17rem)] lg:gap-16">
 						<div className="min-w-0">
 							<div className="flex flex-wrap items-center gap-3">
@@ -289,15 +308,7 @@ export function StackHeader({
 										updated <RelativeTime at={reading.receivedAt} />
 									</span>
 								)}
-								{upvoteStatus?.isOwner ? (
-									<Link
-										to="/stacks/$slug/edit"
-										params={{ slug: stack.slug }}
-										className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-4 hover:text-accent-lime"
-									>
-										<Pencil className="size-3" /> Edit stack
-									</Link>
-								) : (
+								{!upvoteStatus?.isOwner && (
 									<button
 										type="button"
 										onClick={onReport}
