@@ -62,7 +62,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Markdown } from "tiptap-markdown";
 import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
 import {
 	AIBundleCard,
@@ -80,6 +79,7 @@ import {
 	type ToolData,
 	ToolSuggestionPlugin,
 } from "@/components/editor";
+import { HtmlSafeMarkdown } from "@/components/editor/htmlSafeMarkdown";
 import type { SlashFileItem } from "@/components/editor/SlashCommandPlugin";
 import {
 	buildItems,
@@ -427,7 +427,7 @@ export function TiptapEditor({
 				TaskItem.configure({
 					nested: true,
 				}),
-				Markdown.configure({
+				HtmlSafeMarkdown.configure({
 					transformPastedText: false,
 					transformCopiedText: false,
 				}),
