@@ -15,6 +15,7 @@ import { fmtShare, fmtTokens, fmtUSD } from "@/features/measured/copy";
 import { MetricBlock } from "@/features/measured/MetricBlock";
 import { ModelShareRows } from "@/features/measured/ModelShareRows";
 import { fmtPercent, MEASURED_TIME_NOTE } from "@/features/workflow/copy";
+import { Tip } from "@/features/workflow/parts";
 import { cn } from "@/lib/utils";
 import {
 	CONTEXT_PAINT,
@@ -500,6 +501,8 @@ function Context({ h }: { h: ContextHarness }) {
 		</div>
 	);
 }
+const INVENTORY_MIN_SHARE = 0.01;
+
 function InventoryBlock({
 	title,
 	inventory,
@@ -509,19 +512,31 @@ function InventoryBlock({
 	inventory: Inventory;
 	counts?: boolean;
 }) {
-	if (!inventory.atoms.length) return null;
-	const atoms = inventory.atoms;
+	// A name under 1% of calls is a sliver in the bar and noise in the list.
+	// A count-only atom has no share to judge, so it stays.
+	const atoms = inventory.atoms.filter(
+		(a) => a.callShare === null || a.callShare >= INVENTORY_MIN_SHARE,
+	);
+	if (!atoms.length) return null;
 	const measured = atoms.filter((a) => a.callShare !== null && a.callShare > 0);
 	// One call-count series, with the approved rank shading.
 	const steps = [100, 78, 60, 46, 36, 28];
 	const paint = (i: number) =>
 		`color-mix(in oklab, var(--accent-lime) ${steps[Math.min(i, steps.length - 1)]}%, var(--bg-panel))`;
-	const segments = measured.map((a) => ({
-		key: a.name,
-		label: a.name,
-		share: a.callShare ?? 0,
-		paint: paint(atoms.indexOf(a)),
-	}));
+	let at = 0;
+	const segments = measured.map((a) => {
+		const share = a.callShare ?? 0;
+		const left = at;
+		at += share;
+		return {
+			key: a.name,
+			label: a.name,
+			share,
+			left,
+			count: countLabel(a),
+			paint: paint(atoms.indexOf(a)),
+		};
+	});
 	const chips = (
 		<ul className="flex flex-wrap gap-1.5">
 			{atoms.map((a, i) => (
@@ -546,10 +561,7 @@ function InventoryBlock({
 		</ul>
 	);
 	return (
-		<Block
-			title={title}
-			note={atoms.length ? `${atoms.length} used` : undefined}
-		>
+		<Block title={title} note={`${inventory.atoms.length} used`}>
 			<div className="md:hidden">{chips}</div>
 			<div className="hidden md:block">
 				{counts ? (
@@ -582,32 +594,51 @@ function InventoryBlock({
 								label={`${title} share of calls`}
 								height={64}
 							/>
-							<div className="pointer-events-none absolute inset-0 flex">
-								{segments.map((s) => (
+							{/* Each overlay sits at its running share, like the SVG rect
+							    under it. In a flex row a border wider than a sliver would
+							    push every later divider off its color boundary. */}
+							<div className="absolute inset-0">
+								{segments.map((s, i) => (
 									<div
 										key={s.key}
-										style={{ width: `${s.share * 100}%` }}
-										className="min-w-0 overflow-hidden border-r-2 border-bg-canvas"
+										style={{
+											left: `${s.left * 100}%`,
+											width: `${s.share * 100}%`,
+										}}
+										className="absolute inset-y-0"
 									>
-										{s.share >= 0.09 && (
-											<div
-												className={cn(
-													"flex h-full flex-col justify-between px-2 py-2",
-													segments.indexOf(s) < 3
-														? "text-accent-lime-contrast"
-														: "text-fg-primary",
+										<Tip
+											className="h-full w-full"
+											label={
+												<>
+													<p className="break-all font-semibold">{s.label}</p>
+													<p className="text-fg-muted">
+														{fmtPercent(s.share)} of calls
+														{s.count ? ` · ${s.count}` : ""}
+													</p>
+												</>
+											}
+										>
+											<div className="h-full w-full overflow-hidden border-r-2 border-bg-canvas">
+												{s.share >= 0.09 && (
+													<div
+														className={cn(
+															"flex h-full flex-col justify-between px-2 py-2",
+															i < 3
+																? "text-accent-lime-contrast"
+																: "text-fg-primary",
+														)}
+													>
+														<p className="truncate text-xs font-semibold">
+															{s.label}
+														</p>
+														<b className="font-mono text-lg">
+															{fmtPercent(s.share)}
+														</b>
+													</div>
 												)}
-											>
-												<p className="truncate text-xs font-semibold">
-													{s.label}
-												</p>
-												<b className="font-mono text-lg">
-													{s.share > 0 && s.share < 0.005
-														? "<1%"
-														: fmtPercent(s.share)}
-												</b>
 											</div>
-										)}
+										</Tip>
 									</div>
 								))}
 							</div>

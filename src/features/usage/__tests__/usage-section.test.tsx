@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -149,6 +150,49 @@ it("drops a harness under 1% from the pie and one at 10% or less from context", 
 	const context = screen.getByRole("region", { name: "Context per call" });
 	expect(within(context).getByText("Claude Code")).toBeInTheDocument();
 	expect(within(context).queryByText("Codex")).toBeNull();
+});
+it("drops skills under 1% and lines each divider up with its color", () => {
+	const atom = (name: string, callShare: number, knownCalls: number) => ({
+		name,
+		callShare,
+		knownCalls,
+		countsComplete: true,
+	});
+	setup(
+		usage(),
+		stats({
+			inventory: {
+				...stats().inventory,
+				skills: {
+					totalCalls: 1000,
+					withheldNames: 0,
+					atoms: [
+						atom("wayfinder", 0.6, 600),
+						atom("research", 0.39, 390),
+						atom("a-rare-skill", 0.005, 5),
+						atom("another-rare-skill", 0.005, 5),
+					],
+				},
+			},
+		}),
+	);
+	const skills = screen.getByRole("region", { name: "Skills" });
+	expect(skills).not.toHaveTextContent("rare-skill");
+	expect(skills).toHaveTextContent("4 used");
+	const segment = (name: string) =>
+		within(skills)
+			.getAllByText(name)
+			.map((el) => el.closest<HTMLElement>("[style*='left']"))
+			.find(Boolean);
+	expect(segment("research")?.style.left).toBe("60%");
+	expect(segment("research")?.style.width).toBe("39%");
+	// The Tip's trigger is the segment's first grandchild.
+	const trigger = segment("wayfinder")?.firstElementChild?.firstElementChild;
+	if (!trigger) throw new Error("no tip trigger");
+	act(() => {
+		fireEvent.mouseEnter(trigger);
+	});
+	expect(screen.getByText(/60% of calls · 600×/)).toBeInTheDocument();
 });
 it("honors unavailable workflow and cost readings", () => {
 	setup(usage({ current: reading({ cost: null }) }), null);
