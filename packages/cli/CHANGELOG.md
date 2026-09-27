@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/alp82/aistack/compare/cli-v0.19.2...cli-v0.20.0) (2026-09-27)
+
+
+### Features
+
+* **cli:** split skill calls into typed and automatic, show it in the tip ([#487](https://github.com/alp82/aistack/issues/487)) ([1b51ff8](https://github.com/alp82/aistack/commit/1b51ff87ab1a26a4c0714b323b4933629a917038))
+
 ## [0.19.2](https://github.com/alp82/aistack/compare/cli-v0.19.1...cli-v0.19.2) (2026-09-27)
 
 
