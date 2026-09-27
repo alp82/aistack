@@ -48,6 +48,7 @@ import {
 	asObj,
 	asStr,
 	bump,
+	bumpTypedSkill,
 	cleanName,
 	countsTotal,
 	createAggregate as createSharedAggregate,
@@ -856,10 +857,10 @@ function ingestTypedSkill(agg: Aggregate, rec: Obj, text: string): void {
 		const left = (agg.slashCommands.get(name) ?? 0) - 1;
 		if (left > 0) agg.slashCommands.set(name, left);
 		else agg.slashCommands.delete(name);
-		bump(agg.skillCalls, name);
+		bumpTypedSkill(agg, name);
 		return;
 	}
 	const dir = text.slice(SKILL_BODY_PREFIX.length).split("\n")[0].trim();
 	const base = dir.split(/[\\/]/).filter(Boolean).pop();
-	bump(agg.skillCalls, base ? cleanName(base) : "(unnamed)");
+	bumpTypedSkill(agg, base ? cleanName(base) : "(unnamed)");
 }

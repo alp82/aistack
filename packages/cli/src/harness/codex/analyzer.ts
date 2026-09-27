@@ -44,6 +44,7 @@ import {
 	asObj,
 	asStr,
 	bump,
+	bumpTypedSkill,
 	cleanName,
 	countsTotal,
 	createAggregate as createSharedAggregate,
@@ -495,15 +496,21 @@ function ingestSkillMention(
 			if (agg.toolCallDedup.has(key)) return;
 			agg.toolCallDedup.add(key);
 		}
-		countTurnSkill(agg, cleanName(name), state);
+		countTurnSkill(agg, cleanName(name), state, true);
 		return;
 	}
 }
 
-function countTurnSkill(agg: Aggregate, name: string, state: FileState): void {
+function countTurnSkill(
+	agg: Aggregate,
+	name: string,
+	state: FileState,
+	typed = false,
+): void {
 	if (state.turnSkills.has(name)) return;
 	state.turnSkills.add(name);
-	bump(agg.skillCalls, name);
+	if (typed) bumpTypedSkill(agg, name);
+	else bump(agg.skillCalls, name);
 }
 
 /**

@@ -411,6 +411,7 @@ const StatsInventoryCategory = v.object({
     knownCalls: v.number(),
     countsComplete: v.boolean(),
     callShare: v.union(v.number(), v.null()),
+    typedCalls: v.union(v.number(), v.null()),
   })),
 })
 const StatsView = v.object({

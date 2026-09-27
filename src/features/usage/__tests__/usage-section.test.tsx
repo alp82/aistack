@@ -151,13 +151,13 @@ it("drops a harness under 1% from the pie and one at 10% or less from context", 
 	expect(within(context).getByText("Claude Code")).toBeInTheDocument();
 	expect(within(context).queryByText("Codex")).toBeNull();
 });
-it("drops skills under 1% and lines each divider up with its color", () => {
-	const atom = (name: string, callShare: number, knownCalls: number) => ({
-		name,
-		callShare,
-		knownCalls,
-		countsComplete: true,
-	});
+it("drops skills under 1%, fills the bar, and splits typed calls in the tip", () => {
+	const atom = (
+		name: string,
+		callShare: number,
+		knownCalls: number,
+		typedCalls: number | null,
+	) => ({ name, callShare, knownCalls, countsComplete: true, typedCalls });
 	setup(
 		usage(),
 		stats({
@@ -167,10 +167,10 @@ it("drops skills under 1% and lines each divider up with its color", () => {
 					totalCalls: 1000,
 					withheldNames: 0,
 					atoms: [
-						atom("wayfinder", 0.6, 600),
-						atom("research", 0.39, 390),
-						atom("a-rare-skill", 0.005, 5),
-						atom("another-rare-skill", 0.005, 5),
+						atom("wayfinder", 0.5, 500, 400),
+						atom("research", 0.3, 300, null),
+						atom("a-rare-skill", 0.005, 5, 0),
+						atom("another-rare-skill", 0.005, 5, 0),
 					],
 				},
 			},
@@ -184,15 +184,32 @@ it("drops skills under 1% and lines each divider up with its color", () => {
 			.getAllByText(name)
 			.map((el) => el.closest<HTMLElement>("[style*='left']"))
 			.find(Boolean);
-	expect(segment("research")?.style.left).toBe("60%");
-	expect(segment("research")?.style.width).toBe("39%");
+	// The shown names span the bar; each label keeps its share of all calls.
+	expect(Number.parseFloat(segment("research")?.style.left ?? "")).toBeCloseTo(
+		62.5,
+	);
+	expect(Number.parseFloat(segment("research")?.style.width ?? "")).toBeCloseTo(
+		37.5,
+	);
+	expect(segment("research")).toHaveTextContent("30%");
 	// The Tip's trigger is the segment's first grandchild.
-	const trigger = segment("wayfinder")?.firstElementChild?.firstElementChild;
-	if (!trigger) throw new Error("no tip trigger");
-	act(() => {
-		fireEvent.mouseEnter(trigger);
-	});
-	expect(screen.getByText(/60% of calls · 600×/)).toBeInTheDocument();
+	const hover = (name: string) => {
+		const trigger = segment(name)?.firstElementChild?.firstElementChild;
+		if (!trigger) throw new Error("no tip trigger");
+		act(() => {
+			fireEvent.mouseEnter(trigger);
+		});
+	};
+	hover("wayfinder");
+	expect(screen.getByText("/wayfinder")).toBeInTheDocument();
+	expect(screen.getByText("typed by you").nextSibling).toHaveTextContent("400");
+	expect(screen.getByText("loaded by the model").nextSibling).toHaveTextContent(
+		"100",
+	);
+	expect(screen.getByText("50% of all calls")).toBeInTheDocument();
+	hover("research");
+	expect(screen.getByText("/research")).toBeInTheDocument();
+	expect(screen.getAllByText("typed by you")).toHaveLength(1);
 });
 it("honors unavailable workflow and cost readings", () => {
 	setup(usage({ current: reading({ cost: null }) }), null);
@@ -216,12 +233,14 @@ it("renders inventory without usage and never invents counts or percentages", ()
 							knownCalls: 0,
 							countsComplete: false,
 							callShare: null,
+							typedCalls: null,
 						},
 						{
 							name: "partial-count",
 							knownCalls: 3,
 							countsComplete: false,
 							callShare: null,
+							typedCalls: null,
 						},
 					],
 				},

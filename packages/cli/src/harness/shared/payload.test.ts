@@ -18,7 +18,12 @@ import {
 	ingestRecord,
 	isDisplaySafeName,
 } from "../claude/analyzer.js";
-import { assistant, slashCommand, toolUse } from "../claude/fixtures.js";
+import {
+	assistant,
+	skillBody,
+	slashCommand,
+	toolUse,
+} from "../claude/fixtures.js";
 import {
 	addModelUsage,
 	createAggregate as sharedAggregate,
@@ -186,15 +191,16 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 	it("publishes the count beside the share, and nothing else (#213)", () => {
 		// Counts were the map's designated headroom metric under #33 and #213
 		// spends it. An atom carries exactly three fields: a share is unusable
-		// for anything absolute, and a count with no fixed shape is a blob.
-		for (const category of Object.values(payload.inventory)) {
+		// for anything absolute, and a count with no fixed shape is a blob. A
+		// skill adds one more: how many of its calls the user typed.
+		for (const [key, category] of Object.entries(payload.inventory)) {
 			if (!Array.isArray(category)) continue;
 			for (const atom of category) {
-				expect(Object.keys(atom).sort()).toEqual([
-					"callShare",
-					"calls",
-					"name",
-				]);
+				expect(Object.keys(atom).sort()).toEqual(
+					key === "skills"
+						? ["callShare", "calls", "name", "typedCalls"]
+						: ["callShare", "calls", "name"],
+				);
 			}
 		}
 	});
@@ -664,10 +670,41 @@ describe("every skill name publishes", () => {
 			{ syncConfig: BUNDLED_SYNC_CONFIG },
 		);
 		expect(payload.inventory.skills).toEqual([
-			{ name: "wayfinder", callShare: 0.6667, calls: 2 },
-			{ name: "alp-river:crossfire", callShare: 0.3333, calls: 1 },
+			{ name: "wayfinder", callShare: 0.6667, calls: 2, typedCalls: 0 },
+			{
+				name: "alp-river:crossfire",
+				callShare: 0.3333,
+				calls: 1,
+				typedCalls: 0,
+			},
 		]);
 		expect(payload.inventory.withheld.skills).toBe(0);
+	});
+
+	it("splits typed skill calls, and leaves the split out where no analyzer reads it", () => {
+		const agg = createAggregate();
+		for (const r of [
+			slashCommand("wayfinder", undefined, "u-1"),
+			skillBody("/home/u/.claude/skills/wayfinder", { parentUuid: "u-1" }),
+			assistant({ content: [toolUse("Skill", { skill: "wayfinder" })] }),
+			assistant({ content: [toolUse("Skill", { skill: "tdd" })] }),
+		])
+			ingestRecord(agg, r, { projectDir: "-home-u-proj" });
+		const skills = (harnessName: string) =>
+			buildPayload({
+				aggregate: agg,
+				stats: CLEAN_STATS,
+				syncConfig: config(),
+				now: NOW,
+				windowDays: 30,
+				...HARNESS_PARAMS,
+				harnessName,
+			}).payload.inventory.skills;
+		expect(skills("claude-code")).toEqual([
+			{ name: "wayfinder", callShare: 0.6667, calls: 2, typedCalls: 1 },
+			{ name: "tdd", callShare: 0.3333, calls: 1, typedCalls: 0 },
+		]);
+		expect(skills("cursor")[0]).not.toHaveProperty("typedCalls");
 	});
 });
 

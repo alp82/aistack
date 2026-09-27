@@ -494,6 +494,7 @@ describe("tool, skill, subagent and slash-command extraction", () => {
 		);
 		const f = finalize(agg);
 		expect(f.skills).toEqual([["wayfinder", 2]]);
+		expect(f.skillsTyped).toEqual(new Map([["wayfinder", 2]]));
 		expect(f.slashCommands).toEqual([["clear", 1]]);
 	});
 
@@ -507,6 +508,7 @@ describe("tool, skill, subagent and slash-command extraction", () => {
 			}),
 		);
 		expect(finalize(agg).skills).toEqual([["tdd", 1]]);
+		expect(finalize(agg).skillsTyped.size).toBe(0);
 	});
 
 	it("names a typed skill by its directory when the command record is missing", () => {

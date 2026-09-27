@@ -34,6 +34,7 @@ import {
 	asNum,
 	asStr,
 	bump,
+	bumpTypedSkill,
 	cleanName,
 	createAggregate as createSharedAggregate,
 	noteProjectDay,
@@ -381,5 +382,5 @@ export function ingestTypedSkill(agg: Aggregate, row: TypedSkillRow): void {
 	if (agg.toolCallDedup.has(key)) return;
 	agg.toolCallDedup.add(key);
 	const base = dir.split(/[\\/]/).filter(Boolean).pop();
-	if (base) bump(agg.skillCalls, cleanName(base));
+	if (base) bumpTypedSkill(agg, cleanName(base));
 }

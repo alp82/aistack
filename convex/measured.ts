@@ -619,6 +619,7 @@ const PublicAtom = v.object({
   name: v.string(),
   callShare: v.number(),
   calls: v.optional(v.number()),
+  typedCalls: v.optional(v.number()),
 })
 
 /** The stack behind a public slug, or null. */

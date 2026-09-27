@@ -136,6 +136,8 @@ export type Aggregate<Seen = unknown> = {
 	// tools / skills / mcp / agents
 	toolCalls: Map<string, number>;
 	skillCalls: Map<string, number>;
+	/** Of `skillCalls`, the ones the user typed as a command (`/name`, `$name`). */
+	skillTypedCalls: Map<string, number>;
 	mcpServerCalls: Map<string, number>;
 	mcpToolCalls: Map<string, number>;
 	subagentCalls: Map<string, number>;
@@ -302,6 +304,7 @@ export function createAggregate<Seen = unknown>(): Aggregate<Seen> {
 		lastTs: null,
 		toolCalls: new Map(),
 		skillCalls: new Map(),
+		skillTypedCalls: new Map(),
 		mcpServerCalls: new Map(),
 		mcpToolCalls: new Map(),
 		subagentCalls: new Map(),
@@ -319,6 +322,15 @@ export function createAggregate<Seen = unknown>(): Aggregate<Seen> {
 
 export const bump = (m: Map<string, number>, k: string, n = 1) =>
 	m.set(k, (m.get(k) ?? 0) + n);
+
+/** A skill the user typed as a command: a skill call, and a typed one. */
+export function bumpTypedSkill(
+	agg: Pick<Aggregate, "skillCalls" | "skillTypedCalls">,
+	name: string,
+): void {
+	bump(agg.skillCalls, name);
+	bump(agg.skillTypedCalls, name);
+}
 
 export function emptyUsage(): ModelUsage {
 	return {
@@ -416,6 +428,8 @@ export type Finalized = {
 	projects: number;
 	tools: Array<[string, number]>;
 	skills: Array<[string, number]>;
+	/** Typed calls per skill name; a name the user never typed is absent. */
+	skillsTyped: Map<string, number>;
 	mcpServers: Array<[string, number]>;
 	subagents: Array<[string, number]>;
 	slashCommands: Array<[string, number]>;
@@ -543,6 +557,7 @@ export function finalize(agg: Aggregate): Finalized {
 		projects: agg.projectDirs.size,
 		tools: byCount(agg.toolCalls),
 		skills: byCount(agg.skillCalls),
+		skillsTyped: new Map(agg.skillTypedCalls),
 		mcpServers: byCount(agg.mcpServerCalls),
 		subagents: byCount(agg.subagentCalls),
 		slashCommands: byCount(agg.slashCommands),
