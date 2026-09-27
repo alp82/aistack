@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/alp82/aistack/compare/cli-v0.19.1...cli-v0.19.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **cli:** count skills the user types and publish every skill name ([#484](https://github.com/alp82/aistack/issues/484)) ([e13c262](https://github.com/alp82/aistack/commit/e13c262dc4a0821e2a7626c29083c2fac306ee82))
+
 ## [0.19.1](https://github.com/alp82/aistack/compare/cli-v0.19.0...cli-v0.19.1) (2026-09-24)
 
 
