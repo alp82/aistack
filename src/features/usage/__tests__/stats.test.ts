@@ -37,6 +37,7 @@ it("distinguishes absent, partial and exact inventory counts", () => {
 			knownCalls: 0,
 			countsComplete: false,
 			callShare: null,
+			typedCalls: null,
 		}),
 	).toBeNull();
 	expect(
@@ -45,6 +46,7 @@ it("distinguishes absent, partial and exact inventory counts", () => {
 			knownCalls: 3,
 			countsComplete: false,
 			callShare: null,
+			typedCalls: null,
 		}),
 	).toBe("≥3×");
 	expect(
@@ -53,6 +55,7 @@ it("distinguishes absent, partial and exact inventory counts", () => {
 			knownCalls: 0,
 			countsComplete: true,
 			callShare: null,
+			typedCalls: null,
 		}),
 	).toBe("0×");
 });

@@ -878,10 +878,26 @@ describe('fixed 30-day all-machine web Stats', () => {
     view = await stats(t, slug)
     expect(view?.inventory.skills.totalCalls).toBeNull()
     expect(view?.inventory.skills.atoms).toEqual([
-      { name: 'tdd', knownCalls: 29, countsComplete: false, callShare: null },
-      { name: 'legacy', knownCalls: 0, countsComplete: false, callShare: null },
+      { name: 'tdd', knownCalls: 29, countsComplete: false, callShare: null, typedCalls: null },
+      { name: 'legacy', knownCalls: 0, countsComplete: false, callShare: null, typedCalls: null },
     ])
     expect(JSON.stringify(view)).not.toContain('withheld-secret')
+  })
+
+  test('the typed split sums across machines and is unknown when any machine lacks it', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    async function skills(machine: string, typedCalls?: number) {
+      const p = payload()
+      p.inventory.skills = [{ name: 'wayfinder', calls: 10, callShare: 0.5, ...(typedCalls === undefined ? {} : { typedCalls }) }]
+      p.inventory.calls = { builtinTools: 0, skills: 20, mcpServers: 0, subagents: 0, slashCommands: 0 }
+      await publish(t, stackId, { machine, payload: p })
+    }
+    await skills('a', 7)
+    await skills('b', 2)
+    expect((await stats(t, slug))?.inventory.skills.atoms[0]).toMatchObject({ knownCalls: 20, typedCalls: 9 })
+    await skills('cursor')
+    expect((await stats(t, slug))?.inventory.skills.atoms[0]).toMatchObject({ knownCalls: 30, typedCalls: null })
   })
 
   test('Git selects newest eligible publication with stable ties and ignores empty machines', async () => {

@@ -387,6 +387,7 @@ describe("inventory", () => {
 			["tdd", 2],
 			["openai-docs", 1],
 		]);
+		expect(finalize(agg).skillsTyped.size).toBe(0);
 	});
 
 	it("does not count a SKILL.md listing, a glob or a patch that writes one", () => {
@@ -409,6 +410,12 @@ describe("inventory", () => {
 			["grill-me", 1],
 			["wayfinder", 1],
 		]);
+		expect(finalize(agg).skillsTyped).toEqual(
+			new Map([
+				["wayfinder", 1],
+				["grill-me", 1],
+			]),
+		);
 	});
 
 	it("configured MCP servers appear at zero without inventing calls", () => {

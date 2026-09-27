@@ -197,6 +197,7 @@ describe("scan", () => {
 		await scan(agg, { sinceMs: SINCE, roots: [dir] });
 
 		expect([...agg.skillCalls]).toEqual([["grill-me", 1]]);
+		expect([...agg.skillTypedCalls]).toEqual([["grill-me", 1]]);
 		expect(JSON.stringify([...agg.skillCalls])).not.toContain("SECRET");
 	});
 

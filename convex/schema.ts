@@ -80,6 +80,10 @@ const MeasuredAtom = v.object({
   // per-category total, so withheld calls are that total minus the published
   // counts.
   calls: v.optional(v.number()),
+  // Of `calls`, how many the user typed as a command (`/name`, `$name`); the
+  // rest the model loaded on its own. Skills only, and optional because an
+  // older CLI does not split them.
+  typedCalls: v.optional(v.number()),
 })
 
 const MeasuredModel = v.object({

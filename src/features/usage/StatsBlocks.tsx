@@ -33,6 +33,7 @@ import {
 	harnessSegments,
 	harnessTokenShares,
 	type Inventory,
+	type InventoryAtom,
 	languageSegments,
 	medianLabel,
 	phaseSegments,
@@ -503,14 +504,71 @@ function Context({ h }: { h: ContextHarness }) {
 }
 const INVENTORY_MIN_SHARE = 0.01;
 
+/**
+ * A bar segment's tip: the name as typed, the total, and how the calls split
+ * between the user typing it and the model loading it. The split shows only
+ * when every source reported it.
+ */
+function InventoryTip({ atom, name }: { atom: InventoryAtom; name: string }) {
+	const total = countLabel(atom);
+	const typed = atom.typedCalls;
+	const split =
+		typed !== null && atom.countsComplete && atom.knownCalls > 0
+			? [
+					{ key: "typed", label: "typed by you", calls: typed },
+					{
+						key: "auto",
+						label: "loaded by the model",
+						calls: atom.knownCalls - typed,
+					},
+				]
+			: null;
+	return (
+		<div className="space-y-2">
+			<p className="break-all text-xs font-bold">{name}</p>
+			{total && (
+				<p>
+					<b className="text-lg font-black">{total.replace("×", "")}</b>{" "}
+					<span className="text-fg-muted">calls</span>
+				</p>
+			)}
+			{split && (
+				<ul className="space-y-1">
+					{split.map((row) => (
+						<li key={row.key}>
+							<div className="flex justify-between gap-3">
+								<span className="text-fg-muted">{row.label}</span>
+								<b>{row.calls.toLocaleString("en-US")}</b>
+							</div>
+							<ShareChart
+								share={row.calls / atom.knownCalls}
+								label={`${row.label}: ${fmtPercent(row.calls / atom.knownCalls)}`}
+								height={3}
+							/>
+						</li>
+					))}
+				</ul>
+			)}
+			{atom.callShare !== null && (
+				<p className="text-fg-muted">
+					{fmtPercent(atom.callShare)} of all calls
+				</p>
+			)}
+		</div>
+	);
+}
+
 function InventoryBlock({
 	title,
 	inventory,
 	counts = false,
+	prefix = "",
 }: {
 	title: string;
 	inventory: Inventory;
 	counts?: boolean;
+	/** Printed before a name in the tip, as the user would type it. */
+	prefix?: string;
 }) {
 	// A name under 1% of calls is a sliver in the bar and noise in the list.
 	// A count-only atom has no share to judge, so it stays.
@@ -523,17 +581,21 @@ function InventoryBlock({
 	const steps = [100, 78, 60, 46, 36, 28];
 	const paint = (i: number) =>
 		`color-mix(in oklab, var(--accent-lime) ${steps[Math.min(i, steps.length - 1)]}%, var(--bg-panel))`;
+	// The bar spans the names it shows. Each label keeps its share of ALL
+	// calls, so dropping the names under 1% leaves no empty tail.
+	const shown = measured.reduce((n, a) => n + (a.callShare ?? 0), 0);
 	let at = 0;
 	const segments = measured.map((a) => {
-		const share = a.callShare ?? 0;
+		const width = shown > 0 ? (a.callShare ?? 0) / shown : 0;
 		const left = at;
-		at += share;
+		at += width;
 		return {
 			key: a.name,
 			label: a.name,
-			share,
+			share: width,
+			trueShare: a.callShare ?? 0,
 			left,
-			count: countLabel(a),
+			atom: a,
 			paint: paint(atoms.indexOf(a)),
 		};
 	});
@@ -610,13 +672,10 @@ function InventoryBlock({
 										<Tip
 											className="h-full w-full"
 											label={
-												<>
-													<p className="break-all font-semibold">{s.label}</p>
-													<p className="text-fg-muted">
-														{fmtPercent(s.share)} of calls
-														{s.count ? ` · ${s.count}` : ""}
-													</p>
-												</>
+												<InventoryTip
+													atom={s.atom}
+													name={`${prefix}${s.label}`}
+												/>
 											}
 										>
 											<div className="h-full w-full overflow-hidden border-r-2 border-bg-canvas">
@@ -633,7 +692,7 @@ function InventoryBlock({
 															{s.label}
 														</p>
 														<b className="font-mono text-lg">
-															{fmtPercent(s.share)}
+															{fmtPercent(s.trueShare)}
 														</b>
 													</div>
 												)}
@@ -834,7 +893,11 @@ export function StatsBlocks({
 			)}
 			{stats && (
 				<>
-					<InventoryBlock title="Skills" inventory={stats.inventory.skills} />
+					<InventoryBlock
+						title="Skills"
+						inventory={stats.inventory.skills}
+						prefix="/"
+					/>
 					<InventoryBlock
 						title="MCP servers"
 						inventory={stats.inventory.mcpServers}

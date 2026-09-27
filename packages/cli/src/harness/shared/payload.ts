@@ -81,6 +81,11 @@ export type PayloadAtom = {
 	 * included, and the count keeps that property.
 	 */
 	calls: number;
+	/**
+	 * Of `calls`, how many the user typed as a command (`/name`, `$name`).
+	 * Skills only; the rest the model loaded on its own.
+	 */
+	typedCalls?: number;
 };
 
 export type PayloadInventory = {
@@ -348,6 +353,17 @@ function buildModels(
 // Build
 // ---------------------------------------------------------------------------
 
+/**
+ * The harnesses whose analyzer tells a typed skill (`/name`, `$name`) from one
+ * the model loaded. Any other harness leaves `typedCalls` out: a 0 there would
+ * claim every call was automatic.
+ */
+const TYPED_SKILL_HARNESSES: ReadonlySet<string> = new Set([
+	"claude-code",
+	"codex",
+	"opencode",
+]);
+
 export type BuildPayloadInput = {
 	aggregate: Aggregate;
 	stats: ScanStats;
@@ -497,7 +513,12 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		inventory: {
 			builtinTools: builtins.atoms,
 			mcpServers: mcp.atoms,
-			skills: skills.atoms,
+			skills: TYPED_SKILL_HARNESSES.has(harnessName)
+				? skills.atoms.map((atom) => ({
+						...atom,
+						typedCalls: finalized.skillsTyped.get(atom.name) ?? 0,
+					}))
+				: skills.atoms,
 			subagents: subagents.atoms,
 			slashCommands: slash.atoms,
 			withheld: {

@@ -90,7 +90,12 @@ export function statsInventory(inventory: readonly Doc<'measuredInventory'>[]) {
     CATEGORIES.map((category) => {
       const names = new Map<
         string,
-        { name: string; knownCalls: number; countsComplete: boolean }
+        {
+          name: string
+          knownCalls: number
+          countsComplete: boolean
+          typedCalls: number | null
+        }
       >()
       let total = 0
       let totalComplete = true
@@ -105,9 +110,15 @@ export function statsInventory(inventory: readonly Doc<'measuredInventory'>[]) {
             name: atom.name,
             knownCalls: 0,
             countsComplete: true,
+            typedCalls: 0,
           }
           if (atom.calls === undefined) held.countsComplete = false
           else held.knownCalls += atom.calls
+          // The typed split is known only when every source carried it.
+          held.typedCalls =
+            held.typedCalls === null || atom.typedCalls === undefined
+              ? null
+              : held.typedCalls + atom.typedCalls
           names.set(atom.name, held)
         }
       }
@@ -142,6 +153,7 @@ export function statsInventory(inventory: readonly Doc<'measuredInventory'>[]) {
         knownCalls: number
         countsComplete: boolean
         callShare: number | null
+        typedCalls: number | null
       }[]
     }
   >
