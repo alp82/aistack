@@ -146,6 +146,60 @@ describe("scan", () => {
 		expect(agg.ccVersions).toEqual(new Set(["1.18.11"]));
 	});
 
+	it("counts a skill the user typed as a command, and reads only its directory", async () => {
+		const ts = NOW - DAY;
+		const { db } = createDb();
+		insertSession(db, "ses_1", null);
+		const insertMessage = db.prepare(
+			"insert into message values (?, ?, ?, ?, ?)",
+		);
+		const insertPart = db.prepare("insert into part values (?, ?, ?, ?, ?, ?)");
+		insertMessage.run(
+			"msg_u",
+			"ses_1",
+			ts,
+			ts,
+			JSON.stringify({ role: "user" }),
+		);
+		insertPart.run(
+			"prt_u",
+			"msg_u",
+			"ses_1",
+			ts,
+			ts,
+			JSON.stringify({
+				type: "text",
+				text: "SECRET SKILL BODY\n\nBase directory for this skill: /home/u/.config/opencode/skills/grill-me\nRelative paths in this skill are relative to this base directory.",
+			}),
+		);
+		// The same marker in an assistant message is prose, not a typed skill.
+		insertMessage.run(
+			"msg_a",
+			"ses_1",
+			ts,
+			ts,
+			JSON.stringify({ role: "assistant" }),
+		);
+		insertPart.run(
+			"prt_a",
+			"msg_a",
+			"ses_1",
+			ts,
+			ts,
+			JSON.stringify({
+				type: "text",
+				text: "Base directory for this skill: /x/skills/to-spec",
+			}),
+		);
+		db.close();
+
+		const agg = createAggregate();
+		await scan(agg, { sinceMs: SINCE, roots: [dir] });
+
+		expect([...agg.skillCalls]).toEqual([["grill-me", 1]]);
+		expect(JSON.stringify([...agg.skillCalls])).not.toContain("SECRET");
+	});
+
 	it("the window filter runs in SQL - an out-of-window row never reaches the fold", async () => {
 		const { db } = createDb();
 		insertSession(db, "ses_1", null);

@@ -440,10 +440,13 @@ it("reuses configured Cursor resources without claiming use and publishes only c
 		built.payload.inventory.builtinTools.map((tool) => tool.name),
 	).toContain("read_file");
 	expect(built.payload.inventory.mcpServers).toEqual([]);
-	expect(built.payload.inventory.skills).toEqual([]);
+	// Every skill name publishes; the skill body never does.
+	expect(built.payload.inventory.skills.map((skill) => skill.name)).toEqual([
+		"private-skill",
+	]);
 	const wire = JSON.stringify(built.payload);
 	expect(wire).not.toMatch(
-		/private-tool|private-skill|private_docs|never-send|skill body|rule body/,
+		/private-tool|private_docs|never-send|skill body|rule body/,
 	);
 	expect(wire).not.toContain(project);
 });

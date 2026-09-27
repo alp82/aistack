@@ -12,7 +12,7 @@ import { traceError } from "../../trace.js";
 // `session_input.prompt` and full file contents in `session.summary_diffs`
 // and `part.data.state.output`. The rule that keeps them out: never
 // `SELECT *` - every query names its columns, and `part.data` reaches JS only
-// as four json_extract'ed scalars. Errors are swallowed, not thrown, because
+// as json_extract'ed scalars and one skill directory line. Errors are swallowed, not thrown, because
 // a node:sqlite error message carries the DB path.
 
 import { readFileSync } from "node:fs";
@@ -27,6 +27,7 @@ import {
 	type DbFoldState,
 	ingestMessageRow,
 	ingestToolPart,
+	ingestTypedSkill,
 	noteConfiguredMcpServers,
 	noteSessions,
 } from "./analyzer.js";
@@ -299,6 +300,25 @@ function readDb(
 				messageId: r.message_id,
 			});
 		}
+
+		// v1 skills typed as a command. The text stays in SQLite: only the line
+		// after the marker (the skill's directory) is projected, and the
+		// analyzer keeps its last segment. 31 is the marker's length.
+		const typedSkills = db.prepare(
+			`select id, substr(rest, 1, case when instr(rest, char(10)) > 0
+					then instr(rest, char(10)) - 1 else 512 end) as skill_dir
+			from (
+				select p.id as id, substr(json_extract(p.data, '$.text'),
+					instr(json_extract(p.data, '$.text'), 'Base directory for this skill: ') + 31) as rest
+				from part p join message m on m.id = p.message_id
+				where p.time_created >= ?
+					and json_extract(p.data, '$.type') = 'text'
+					and json_extract(m.data, '$.role') = 'user'
+					and instr(json_extract(p.data, '$.text'), 'Base directory for this skill: ') > 0
+			)`,
+		);
+		for (const r of typedSkills.all(sinceMs))
+			ingestTypedSkill(agg, { id: r.id, skillDir: r.skill_dir });
 
 		// v2 inline tool content, same named-scalar rule via json_each. The v2
 		// content shape is unverified on any real machine, so a query error here

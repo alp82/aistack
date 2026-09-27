@@ -16,14 +16,21 @@ import { MetricBlock } from "@/features/measured/MetricBlock";
 import { ModelShareRows } from "@/features/measured/ModelShareRows";
 import { fmtPercent, MEASURED_TIME_NOTE } from "@/features/workflow/copy";
 import { cn } from "@/lib/utils";
-import { CONTEXT_PAINT, type ContextHarness, waffleCells } from "./context";
+import {
+	CONTEXT_PAINT,
+	type ContextHarness,
+	type ContextReading,
+	waffleCells,
+} from "./context";
 import type { UsageRead, UsageReading } from "./copy";
 import { harnessLabel } from "./HarnessShareRows";
 import {
 	activityData,
 	countLabel,
 	gitDays,
+	HARNESS_CONTEXT_MIN_SHARE,
 	harnessSegments,
+	harnessTokenShares,
 	type Inventory,
 	languageSegments,
 	medianLabel,
@@ -683,6 +690,23 @@ function Phases({ stats }: { stats: StatsRead }) {
 		</Block>
 	);
 }
+/**
+ * Context per call for the harnesses that carry the work. A harness with a
+ * few sessions has a thin, noisy reading, so it gets no card. Without a usage
+ * reading there is no share to judge by, and every card stays.
+ */
+function mainContext(
+	context: ContextReading,
+	current: UsageReading | null,
+): ContextReading {
+	if (!context || !current) return context;
+	const shares = harnessTokenShares(current);
+	const harnesses = context.harnesses.filter(
+		(h) => (shares.get(h.harness) ?? 0) > HARNESS_CONTEXT_MIN_SHARE,
+	);
+	return harnesses.length > 0 ? { harnesses } : null;
+}
+
 export function StatsBlocks({
 	usage,
 	stats,
@@ -694,7 +718,7 @@ export function StatsBlocks({
 	const previous = usage?.previous ?? null;
 	const harnesses = current ? harnessSegments(current, previous) : [];
 	const showHarnesses = harnesses.length > 1;
-	const context = stats?.context;
+	const context = mainContext(stats?.context ?? null, current);
 	const activity = stats ? activityData(stats) : null;
 	const languages = stats?.git ? languageSegments(stats.git) : [];
 	return (

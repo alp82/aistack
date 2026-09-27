@@ -438,10 +438,14 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		optIns.mcpServers,
 		observedCalls.mcpServers,
 	);
+	// Every skill name publishes. A skill name is the owner's own word for a
+	// workflow, and hiding it hid the skills people run most (`wayfinder`,
+	// `grill-me`). The analyzers have already passed each name through
+	// `cleanName`, so the display-safety bar still holds.
 	const skills = buildCategory(
 		finalized.skills,
-		new Set(allowlist.skills),
-		optIns.skills,
+		new Set(finalized.skills.map(([name]) => name)),
+		[],
 		observedCalls.skills,
 	);
 	const subagents = buildCategory(

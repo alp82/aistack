@@ -112,7 +112,8 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 		assistant({ content: [toolUse("AcmeInternalDeploy")] }),
 		// A private MCP server named after a client.
 		assistant({ content: [toolUse("mcp__acme-billing-prod__charge")] }),
-		// A private Skill named after an unreleased project.
+		// Skills are the exception: every skill name publishes (see the
+		// "every skill name publishes" block). These three test the name bar.
 		assistant({
 			content: [toolUse("Skill", { skill: "project-glasswing-launch" })],
 		}),
@@ -143,25 +144,22 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 	it.each([
 		"AcmeInternalDeploy",
 		"acme-billing-prod",
-		"project-glasswing-launch",
 		"payroll-migrator",
 		"deploy-acme-prod",
 		"secret-client",
-		"zzzz",
 	])("does not leak %s anywhere in the payload", (needle) => {
 		expect(wire).not.toContain(needle);
 	});
 
 	it("publishes only the allowlisted names, per category", () => {
-		// Ordered by call count: Skill fired 4x (one allowed, three withheld
-		// skills), Agent 2x, Bash once.
+		// Ordered by call count: Skill fired 4x, Agent 2x, Bash once.
 		expect(payload.inventory.builtinTools.map((a) => a.name)).toEqual([
 			"Skill",
 			"Agent",
 			"Bash",
 		]);
 		expect(payload.inventory.mcpServers.map((a) => a.name)).toEqual(["github"]);
-		expect(payload.inventory.skills.map((a) => a.name)).toEqual(["grilling"]);
+		expect(payload.inventory.skills).toHaveLength(4);
 		expect(payload.inventory.subagents.map((a) => a.name)).toEqual(["Explore"]);
 		expect(payload.inventory.slashCommands.map((a) => a.name)).toEqual([
 			"clear",
@@ -172,7 +170,7 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 		expect(payload.inventory.withheld).toEqual({
 			builtinTools: 2, // AcmeInternalDeploy + the mangled Ba<bidi>sh
 			mcpServers: 2, // acme-billing-prod + the mangled git<esc>hub
-			skills: 3, // the private one, the overlong one, the blank one
+			skills: 0, // every skill name publishes
 			subagents: 1,
 			slashCommands: 1,
 		});
@@ -230,7 +228,7 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 describe("a ticked name publishes; the same name unticked does not", () => {
 	const records = [
 		assistant({
-			content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+			content: [toolUse("Agent", { subagent_type: "alp-river:crossfire" })],
 		}),
 		assistant({ content: [toolUse("mcp__acme-billing-prod__charge")] }),
 	];
@@ -240,23 +238,23 @@ describe("a ticked name publishes; the same name unticked does not", () => {
 
 	it("keeps the name private with no opt-ins - the state before the gate", () => {
 		const payload = build(records);
-		expect(payload.inventory.skills).toEqual([]);
-		expect(payload.inventory.withheld.skills).toBe(1);
+		expect(payload.inventory.subagents).toEqual([]);
+		expect(payload.inventory.withheld.subagents).toBe(1);
 	});
 
 	it("publishes it once the owner has ticked it", () => {
 		const payload = build(records, {
-			syncConfig: ticked({ skills: ["alp-river:crossfire"] }),
+			syncConfig: ticked({ subagents: ["alp-river:crossfire"] }),
 		});
-		expect(payload.inventory.skills.map((a) => a.name)).toEqual([
+		expect(payload.inventory.subagents.map((a) => a.name)).toEqual([
 			"alp-river:crossfire",
 		]);
-		expect(payload.inventory.withheld.skills).toBe(0);
+		expect(payload.inventory.withheld.subagents).toBe(0);
 	});
 
-	it("ticks are per class - a skill tick does not free an MCP server", () => {
+	it("ticks are per class - a subagent tick does not free an MCP server", () => {
 		const payload = build(records, {
-			syncConfig: ticked({ skills: ["acme-billing-prod"] }),
+			syncConfig: ticked({ subagents: ["acme-billing-prod"] }),
 		});
 		expect(payload.inventory.mcpServers).toEqual([]);
 		expect(payload.inventory.withheld.mcpServers).toBe(1);
@@ -266,7 +264,7 @@ describe("a ticked name publishes; the same name unticked does not", () => {
 		// The bundled fallback carries no opt-ins, so an offline sync publishes
 		// strictly less than an online one - never more.
 		const payload = build(records, { syncConfig: BUNDLED_SYNC_CONFIG });
-		expect(payload.inventory.skills).toEqual([]);
+		expect(payload.inventory.subagents).toEqual([]);
 		expect(payload.inventory.mcpServers).toEqual([]);
 	});
 });
@@ -276,9 +274,9 @@ describe("the gate's review list", () => {
 		const agg = createAggregate();
 		for (const r of [
 			assistant({
-				content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+				content: [toolUse("Agent", { subagent_type: "alp-river:crossfire" })],
 			}),
-			assistant({ content: [toolUse("Skill", { skill: "grilling" })] }),
+			assistant({ content: [toolUse("Agent", { subagent_type: "Explore" })] }),
 			assistant({ content: [toolUse("mcp__acme-billing-prod__charge")] }),
 		])
 			ingestRecord(agg, r, { projectDir: "-home-u-secret-client" });
@@ -292,7 +290,7 @@ describe("the gate's review list", () => {
 			...HARNESS_PARAMS,
 		});
 
-		expect(built.keptPrivate.skills).toEqual([
+		expect(built.keptPrivate.subagents).toEqual([
 			{ name: "alp-river:crossfire", count: 1, group: "alp-river" },
 		]);
 		expect(built.keptPrivate.mcpServers.map((a) => a.name)).toEqual([
@@ -301,7 +299,7 @@ describe("the gate's review list", () => {
 		// The names the user has NOT agreed to publish stay on the machine; the
 		// payload carries only the count.
 		expect(JSON.stringify(built.payload)).not.toContain("alp-river");
-		expect(built.payload.inventory.withheld.skills).toBe(1);
+		expect(built.payload.inventory.withheld.subagents).toBe(1);
 	});
 });
 
@@ -310,7 +308,7 @@ describe("buildSyncBody - the unsealed half (#48)", () => {
 		const agg = createAggregate();
 		for (const r of [
 			assistant({
-				content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+				content: [toolUse("Agent", { subagent_type: "alp-river:crossfire" })],
 			}),
 		])
 			ingestRecord(agg, r, { projectDir: "-home-u-secret-client" });
@@ -332,7 +330,7 @@ describe("buildSyncBody - the unsealed half (#48)", () => {
 
 	it("sends the names beside the payload, never inside it, when it is on", () => {
 		const body = buildSyncBody([built()], config({ reviewKeptPrivate: true }));
-		expect(body.keptPrivate?.skills).toEqual([
+		expect(body.keptPrivate?.subagents).toEqual([
 			{ name: "alp-river:crossfire", count: 1, group: "alp-river" },
 		]);
 		// The closed payload validator is the privacy claim (#38/#45). The name
@@ -637,19 +635,39 @@ describe("share denominators include withheld atoms", () => {
 		// Renormalizing over the allowed atoms only would make a payload that
 		// withheld a 90%-of-calls MCP server look like a complete inventory.
 		const payload = build([
-			assistant({ content: [toolUse("Skill", { skill: "grilling" })] }),
+			assistant({ content: [toolUse("mcp__github__create_issue")] }),
 			...Array.from({ length: 9 }, () =>
-				assistant({ content: [toolUse("Skill", { skill: "acme-private" })] }),
+				assistant({ content: [toolUse("mcp__acme-private__x")] }),
 			),
 		]);
-		expect(payload.inventory.skills).toEqual([
-			{ name: "grilling", callShare: 0.1, calls: 1 },
+		expect(payload.inventory.mcpServers).toEqual([
+			{ name: "github", callShare: 0.1, calls: 1 },
 		]);
-		expect(payload.inventory.withheld.skills).toBe(1);
+		expect(payload.inventory.withheld.mcpServers).toBe(1);
 		// The absolute figures explain the same gap the shares do (#213): ten
 		// calls were observed, one publishes by name, and nine are the withheld
-		// skill's - recoverable as a total, never as a name.
-		expect(payload.inventory.calls.skills).toBe(10);
+		// server's - recoverable as a total, never as a name.
+		expect(payload.inventory.calls.mcpServers).toBe(10);
+	});
+});
+
+describe("every skill name publishes", () => {
+	it("publishes a skill on no list, with no tick, and withholds nothing", () => {
+		const payload = build(
+			[
+				assistant({ content: [toolUse("Skill", { skill: "wayfinder" })] }),
+				assistant({ content: [toolUse("Skill", { skill: "wayfinder" })] }),
+				assistant({
+					content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+				}),
+			],
+			{ syncConfig: BUNDLED_SYNC_CONFIG },
+		);
+		expect(payload.inventory.skills).toEqual([
+			{ name: "wayfinder", callShare: 0.6667, calls: 2 },
+			{ name: "alp-river:crossfire", callShare: 0.3333, calls: 1 },
+		]);
+		expect(payload.inventory.withheld.skills).toBe(0);
 	});
 });
 

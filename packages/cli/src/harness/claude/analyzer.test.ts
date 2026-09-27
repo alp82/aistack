@@ -10,7 +10,7 @@ import {
 	noteRecordBeforeWindow,
 	toolResultBytes,
 } from "./analyzer.js";
-import { assistant, slashCommand, toolUse } from "./fixtures.js";
+import { assistant, skillBody, slashCommand, toolUse } from "./fixtures.js";
 
 const ingest = (agg: Aggregate, ...recs: unknown[]) => {
 	for (const r of recs) ingestRecord(agg, r, { projectDir: "-home-u-proj" });
@@ -478,6 +478,43 @@ describe("tool, skill, subagent and slash-command extraction", () => {
 			["clear", 2],
 			["model", 1],
 		]);
+	});
+
+	it("counts a skill the user typed as /name as a skill", () => {
+		// Claude Code logs `/wayfinder` as a command and never calls the Skill
+		// tool, so without this the user's most-run skill reads as a slash command.
+		const agg = createAggregate();
+		ingest(
+			agg,
+			slashCommand("wayfinder", undefined, "u-1"),
+			skillBody("/home/u/.claude/skills/wayfinder", { parentUuid: "u-1" }),
+			slashCommand("wayfinder", undefined, "u-2"),
+			skillBody("/home/u/.claude/skills/wayfinder", { parentUuid: "u-2" }),
+			slashCommand("clear", undefined, "u-3"),
+		);
+		const f = finalize(agg);
+		expect(f.skills).toEqual([["wayfinder", 2]]);
+		expect(f.slashCommands).toEqual([["clear", 1]]);
+	});
+
+	it("does not count the body of a skill the model loaded a second time", () => {
+		const agg = createAggregate();
+		ingest(
+			agg,
+			assistant({ content: [toolUse("Skill", { skill: "tdd" })] }),
+			skillBody("/home/u/.claude/skills/tdd", {
+				sourceToolUseID: "toolu_1",
+			}),
+		);
+		expect(finalize(agg).skills).toEqual([["tdd", 1]]);
+	});
+
+	it("names a typed skill by its directory when the command record is missing", () => {
+		const agg = createAggregate();
+		ingest(agg, skillBody("/home/u/.claude/skills/grill-me"));
+		const f = finalize(agg);
+		expect(f.skills).toEqual([["grill-me", 1]]);
+		expect(f.slashCommands).toEqual([]);
 	});
 });
 

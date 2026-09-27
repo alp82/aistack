@@ -123,6 +123,33 @@ it("keeps context visible and suppresses unsupported sparse blocks", () => {
 		expect(screen.queryByRole("region", { name: title })).toBeNull();
 	expect(screen.queryByText("median session")).toBeNull();
 });
+it("drops a harness under 1% from the pie and one at 10% or less from context", () => {
+	const [claude, codex] = reading().harnesses;
+	setup(
+		usage({
+			current: reading({
+				harnesses: [
+					claude,
+					codex,
+					{
+						harness: "cursor",
+						sessions: 3,
+						totalTokens: 6_000_000,
+						tokenShare: 0.005,
+					},
+				],
+			}),
+		}),
+		stats({ context: contextReading() }),
+	);
+	const pie = screen.getByRole("region", { name: "Harnesses" });
+	expect(within(pie).getAllByText("Codex").length).toBeGreaterThan(0);
+	expect(within(pie).queryByText("Cursor")).toBeNull();
+	// Codex holds 8.3% of the tokens: in the pie, but no context card.
+	const context = screen.getByRole("region", { name: "Context per call" });
+	expect(within(context).getByText("Claude Code")).toBeInTheDocument();
+	expect(within(context).queryByText("Codex")).toBeNull();
+});
 it("honors unavailable workflow and cost readings", () => {
 	setup(usage({ current: reading({ cost: null }) }), null);
 	expect(document.body.textContent).not.toContain("$");
