@@ -24,6 +24,22 @@ export function medianLabel(
 ): string {
 	return `${range.low}-${range.high} min`;
 }
+/** A harness under this token share leaves the Harnesses pie and legend. */
+export const HARNESS_PIE_MIN_SHARE = 0.01;
+/** A harness at or under this token share gets no Context per call card. */
+export const HARNESS_CONTEXT_MIN_SHARE = 0.1;
+
+/** Each harness's share of the window's tokens, over every harness. */
+export function harnessTokenShares(current: UsageReading): Map<string, number> {
+	const total = current.harnesses.reduce((n, h) => n + h.totalTokens, 0);
+	return new Map(
+		current.harnesses.map((h) => [
+			h.harness,
+			total > 0 ? h.totalTokens / total : 0,
+		]),
+	);
+}
+
 export function harnessSegments(
 	current: UsageReading,
 	previous: UsageReading | null,
@@ -33,7 +49,7 @@ export function harnessSegments(
 	const before =
 		previous?.harnesses.reduce((n, h) => n + h.totalTokens, 0) ?? 0;
 	return current.harnesses
-		.filter((h) => total > 0 && h.totalTokens / total >= 0.0005)
+		.filter((h) => total > 0 && h.totalTokens / total > HARNESS_PIE_MIN_SHARE)
 		.map((h) => ({
 			key: h.harness,
 			label: harnessLabel(h.harness),
