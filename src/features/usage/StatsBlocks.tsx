@@ -581,12 +581,11 @@ function InventoryBlock({
 	const steps = [100, 78, 60, 46, 36, 28];
 	const paint = (i: number) =>
 		`color-mix(in oklab, var(--accent-lime) ${steps[Math.min(i, steps.length - 1)]}%, var(--bg-panel))`;
-	// The bar spans the names it shows. Each label keeps its share of ALL
-	// calls, so dropping the names under 1% leaves no empty tail.
-	const shown = measured.reduce((n, a) => n + (a.callShare ?? 0), 0);
+	// Keep withheld and filtered calls in the denominator so widths, labels
+	// and tooltips all describe the same share of calls.
 	let at = 0;
 	const segments = measured.map((a) => {
-		const width = shown > 0 ? (a.callShare ?? 0) / shown : 0;
+		const width = a.callShare ?? 0;
 		const left = at;
 		at += width;
 		return {

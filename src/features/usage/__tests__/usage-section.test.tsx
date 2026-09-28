@@ -151,7 +151,7 @@ it("drops a harness under 1% from the pie and one at 10% or less from context", 
 	expect(within(context).getByText("Claude Code")).toBeInTheDocument();
 	expect(within(context).queryByText("Codex")).toBeNull();
 });
-it("drops skills under 1%, fills the bar, and splits typed calls in the tip", () => {
+it("drops skills under 1%, preserves call shares, and splits typed calls in the tip", () => {
 	const atom = (
 		name: string,
 		callShare: number,
@@ -184,12 +184,12 @@ it("drops skills under 1%, fills the bar, and splits typed calls in the tip", ()
 			.getAllByText(name)
 			.map((el) => el.closest<HTMLElement>("[style*='left']"))
 			.find(Boolean);
-	// The shown names span the bar; each label keeps its share of all calls.
+	// Filtered names leave a tail; geometry keeps the share of all calls.
 	expect(Number.parseFloat(segment("research")?.style.left ?? "")).toBeCloseTo(
-		62.5,
+		50,
 	);
 	expect(Number.parseFloat(segment("research")?.style.width ?? "")).toBeCloseTo(
-		37.5,
+		30,
 	);
 	expect(segment("research")).toHaveTextContent("30%");
 	// The Tip's trigger is the segment's first grandchild.
@@ -252,6 +252,46 @@ it("renders inventory without usage and never invents counts or percentages", ()
 	expect(block.textContent).toContain("≥3×");
 	expect(block.textContent).not.toMatch(/0×|%/);
 	expect(screen.queryByText(/has not been measured yet/)).toBeNull();
+});
+it("keeps withheld skill calls in the bar denominator", () => {
+	setup(
+		usage(),
+		stats({
+			inventory: {
+				...stats().inventory,
+				skills: {
+					totalCalls: 100,
+					withheldNames: 17,
+					atoms: [
+						{
+							name: "code-review",
+							knownCalls: 16,
+							countsComplete: true,
+							typedCalls: null,
+							callShare: 0.16,
+						},
+						{
+							name: "grilling",
+							knownCalls: 2,
+							countsComplete: true,
+							typedCalls: null,
+							callShare: 0.02,
+						},
+					],
+				},
+			},
+		}),
+	);
+	const block = screen.getByRole("region", { name: "Skills" });
+	const chart = within(block).getByRole("img", {
+		name: "Skills share of calls",
+	});
+	const marks = chart.querySelectorAll("rect");
+	expect(marks[0]).toHaveAttribute("width", "1000");
+	expect(marks[1]).toHaveAttribute("width", "160");
+	expect(marks[2]).toHaveAttribute("x", "160");
+	expect(marks[2]).toHaveAttribute("width", "20");
+	expect(block).toHaveTextContent("17 names withheld across sources");
 });
 it("waits for both reads before inviting the owner or visitor", () => {
 	setup(noDaysUsage(), undefined);
