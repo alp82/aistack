@@ -22,6 +22,7 @@ import { Sparkline } from "@/features/charts";
 import type { Board, BoardRow } from "./board";
 import { harnessLabel, trendOf, trendWords } from "./board";
 import * as f from "./format";
+import { DATA_LICENSE } from "./jsonLd";
 import { Pager } from "./Pager";
 
 /** The trend cell is fixed at every size, so the column reads as a column. */
@@ -96,6 +97,19 @@ export function LeaderboardPage({
 						/>
 
 						{board.quiet.count > 0 && <QuietLine board={board} />}
+
+						<p className="mt-6 font-mono text-xs leading-relaxed text-fg-muted">
+							These figures are free to reuse with credit to AI Stack, under{" "}
+							<a
+								href={DATA_LICENSE.url}
+								rel="license noopener noreferrer"
+								target="_blank"
+								className="text-fg-secondary underline hover:text-accent-lime"
+							>
+								{DATA_LICENSE.name}
+							</a>
+							.
+						</p>
 					</main>
 				</div>
 			</div>

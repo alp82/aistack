@@ -16,6 +16,12 @@ describe("leaderboard structured data", () => {
 		expect(list.itemListElement[0].item.url).toContain("/stacks/orcdev-abc123");
 	});
 
+	it("declares a versioned licence URL for the dataset", () => {
+		expect(leaderboardJsonLd(board()).license).toBe(
+			"https://creativecommons.org/licenses/by/4.0/",
+		);
+	});
+
 	it("publishes a partially priced spend as minValue, never value", () => {
 		const data = leaderboardJsonLd(board());
 		const props = data.mainEntity.itemListElement[0].item.additionalProperty;

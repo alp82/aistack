@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { harnessLabel, trendOf, trendWords } from "../board";
+import { DATA_LICENSE } from "../jsonLd";
 import { LeaderboardPage } from "../LeaderboardPage";
 import { board, NOW, row } from "./fixture";
 
@@ -121,6 +122,14 @@ describe("the board", () => {
 		expect(
 			screen.getByText(/302.0B tokens sit in that group/),
 		).toBeInTheDocument();
+	});
+
+	it("prints the licence the structured data declares", () => {
+		setup();
+		expect(screen.getByRole("link", { name: "CC BY 4.0" })).toHaveAttribute(
+			"href",
+			DATA_LICENSE.url,
+		);
 	});
 
 	it("says so when every stack is quiet, instead of an empty frame", () => {

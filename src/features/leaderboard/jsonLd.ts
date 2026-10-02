@@ -11,6 +11,17 @@ import type { Board } from "./board";
  * visible page refuses to state.
  */
 
+/**
+ * The licence the leaderboard figures are published under. The page prints it
+ * and the markup declares it from this one constant, because structured data
+ * may only state what the visible page states. The URL names the version:
+ * Google asks for one that "unambiguously identifies a specific version".
+ */
+export const DATA_LICENSE = {
+	name: "CC BY 4.0",
+	url: "https://creativecommons.org/licenses/by/4.0/",
+} as const;
+
 type PropertyValue = {
 	"@type": "PropertyValue";
 	name: string;
@@ -37,6 +48,7 @@ export function leaderboardJsonLd(board: Board) {
 			`Windows are offset by up to ${Math.ceil(board.windowSpreadDays)} days. ` +
 			`Every spend figure is a lower bound at API list prices.`,
 		url: `${SITE_URL}/leaderboard`,
+		license: DATA_LICENSE.url,
 		...(temporalCoverage ? { temporalCoverage } : {}),
 		measurementTechnique:
 			"local scan of agent session logs, published by each stack's owner",
