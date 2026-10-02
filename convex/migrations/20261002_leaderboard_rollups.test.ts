@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'
+import { liveBoard } from '../leaderboard.testOracle'
 import schema from '../schema'
 
 const modules = Object.fromEntries(
@@ -119,7 +120,7 @@ describe('20261002_leaderboard_rollups', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  test('fills the rollups so the rollup board equals the live board', async () => {
+  test('fills the rollups so the served board equals the live board', async () => {
     const t = convexTest(schema, modules)
     const big = await seedMeasuredStack(t, 'big', [
       { agoDays: 0, tokens: 900 },
@@ -133,7 +134,10 @@ describe('20261002_leaderboard_rollups', () => {
     await seedMeasuredStack(t, 'unmeasured', [])
 
     expect(await rollups(t)).toEqual([])
-    expect((await t.query(api.leaderboard.getRolledUp, {})).stackCount).toBe(0)
+    // Before the backfill the board is empty, while the live derivation over
+    // the same rows already ranks two stacks.
+    expect((await t.query(api.leaderboard.get, {})).stackCount).toBe(0)
+    expect((await t.run((ctx) => liveBoard(ctx))).stackCount).toBe(2)
 
     // One refresh per stack that holds inventory. The stack with no measured
     // rows is not scheduled at all.
@@ -151,9 +155,11 @@ describe('20261002_leaderboard_rollups', () => {
       sessions: 4,
     })
 
-    const live = await t.query(api.leaderboard.get, {})
-    expect(await t.query(api.leaderboard.getRolledUp, {})).toEqual(live)
-    expect(live.rows.map((r) => [r.name, r.tokens])).toEqual([
+    // `liveBoard` is the test oracle: the board derived from the measured rows.
+    const live = await t.run((ctx) => liveBoard(ctx))
+    const served = await t.query(api.leaderboard.get, {})
+    expect(served).toEqual(live)
+    expect(served.rows.map((r) => [r.name, r.tokens])).toEqual([
       ['big', 1000],
       ['small', 300],
     ])
