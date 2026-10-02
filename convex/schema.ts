@@ -1435,6 +1435,51 @@ export default defineSchema({
     .index('by_stack', ['stackId'])
     .index('by_stack_machine_harness', ['stackId', 'machine', 'harness']),
 
+  // The leaderboard's per-stack rollup (ADR-0014): what `/leaderboard` needs
+  // from one stack's 30-day fold, written at sync time and by an hourly cron,
+  // so the board reads one small row per measured stack and folds no days.
+  //
+  // DERIVED, never a source of truth. `measuredDays` and `measuredInventory`
+  // stay the measured data (ADR-0011) and a row here can be dropped and
+  // recomputed at any time by `leaderboard.refreshStack`.
+  //
+  // A row exists only while the stack has a board reading: at least one
+  // inventory row, and either a usage day inside the window or a legacy
+  // figure. Nothing that changes outside a sync is stored: the stack's name,
+  // slug, quality flag, `publishCost` and its creator are read live, and
+  // `living` is evaluated against `lastSyncMs` at read time.
+  leaderboardRollups: defineTable({
+    stackId: v.id('stacks'),
+    /** The inclusive UTC dates the figures fold: today minus 29 through today. */
+    windowFrom: v.string(),
+    windowTo: v.string(),
+    /** Server clock of the refresh that last CHANGED this row. An unchanged recompute writes nothing. */
+    computedAt: v.number(),
+    /** Newest `receivedAt` among the stack's visible inventory rows. */
+    lastSyncMs: v.number(),
+    tokens: v.number(),
+    sessions: v.number(),
+    /** One point per measured UTC date in the window, oldest first. At most 30. */
+    points: v.array(v.object({ at: v.number(), tokens: v.number() })),
+    /** Harnesses with tokens, in source order. */
+    activeHarnesses: v.array(v.object({ name: v.string(), tokens: v.number() })),
+    /** Per measured model id, in fold order, `unknown` kept for the totals. */
+    modelTokens: v.array(v.object({ id: v.string(), tokens: v.number() })),
+    /**
+     * Priced as if `publishCost` were on. The board checks the stack's flag at
+     * read time and drops this when it is off, so a toggle needs no refresh.
+     */
+    spend: v.union(
+      v.object({
+        lowerBoundUSD: v.number(),
+        coverage: v.number(),
+        exact: v.boolean(),
+      }),
+      v.null()
+    ),
+    pricingTables: v.array(v.string()),
+  }).index('by_stack', ['stackId']),
+
   // Private registry for the public machine position (#250). The machine name
   // remains the source key on snapshots. This table only preserves the first
   // position assigned to that name when retention removes its earliest row.

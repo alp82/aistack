@@ -315,8 +315,8 @@ importers:
         specifier: ^5.0.4
         version: 5.1.2(vite@7.3.0(@types/node@24.13.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.51
-        version: 0.0.51(convex@1.32.0(react@19.2.3))
+        specifier: ^0.0.53
+        version: 0.0.53(convex@1.32.0(react@19.2.3))
       jimp:
         specifier: ^1.6.1
         version: 1.6.1
@@ -3325,8 +3325,8 @@ packages:
       zod:
         optional: true
 
-  convex-test@0.0.51:
-    resolution: {integrity: sha512-J+4YRpKGXJDfnQqiWUUT+ylNmNO36MpkuwqG3JG4ld+7QtroZGF8HqO4qzMmfv5ltm71rPbkBvi//MoMHjnVvQ==}
+  convex-test@0.0.53:
+    resolution: {integrity: sha512-bouZQTnTvZi8IHljHL++yClj1vcV+/9ZxEcd8JZz7RDxOfPkRKrkMgkk/xlX4M1EAiwcEJPNiQE7VJFvDM3lCQ==}
     peerDependencies:
       convex: ^1.32.0
 
@@ -8390,7 +8390,7 @@ snapshots:
       typescript: 5.9.3
       zod: 4.3.4
 
-  convex-test@0.0.51(convex@1.32.0(react@19.2.3)):
+  convex-test@0.0.53(convex@1.32.0(react@19.2.3)):
     dependencies:
       convex: 1.32.0(react@19.2.3)
 

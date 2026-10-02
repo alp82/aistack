@@ -226,6 +226,14 @@ The one approximate 30-day figure kept for a stack whose machines published whol
 snapshots and never a measured day. It sits on the machine inventory, prints marked
 approximate with no previous period, and 7d and 24h read as not measured beside it.
 
+**Leaderboard rollup**:
+One stack's leaderboard figures for the current 30-day window, derived from its measured
+days and machine inventory and stored so the board reads one small row per stack. A sync
+refreshes its own stack's rollup and an hourly cron refreshes all of them. It is derived
+data: the measured days stay the source, and a rollup can be dropped and recomputed.
+_Avoid_: snapshot (that named the retired whole-window payload), cache (it is written at
+sync time, and a read never fills it)
+
 **Workflow reading**:
 Measured workflow evidence combined over a window. Its scope depends on the projection:
 web Stats combines session evidence across machines while keeping Git on one coherent

@@ -36,6 +36,13 @@ export type ModelCatalog = {
   priceAt: (slug: string, provider: string | null, atMs: number) => ReturnType<Pricer['priceAt']>
 }
 
+/**
+ * The name half of the catalog: enough to resolve a measured id to its row.
+ * A read that prints names and prices nothing (the leaderboard's rollup read,
+ * ADR-0014) loads this alone and never touches `modelPrices`.
+ */
+export type ModelNames = Pick<ModelCatalog, 'bySlug' | 'byAlias'>
+
 /** The catalog's provider name as the pricing vendor it stands for. */
 export function vendorOfProvider(provider: string | undefined): Vendor | null {
   const p = (provider ?? '').trim().toLowerCase()
@@ -62,11 +69,8 @@ function toPriceRow(row: Doc<'modelPrices'>, vendor: Vendor | null): PriceRow {
   }
 }
 
-/** Build the catalog from rows already in hand. Tests and the loader share it. */
-export function catalogFrom(
-  models: readonly Doc<'models'>[],
-  prices: readonly Doc<'modelPrices'>[]
-): ModelCatalog {
+/** The slug and alias lookups over the catalog rows. The first row wins a clash. */
+export function namesFrom(models: readonly Doc<'models'>[]): ModelNames {
   const bySlug = new Map<string, Doc<'models'>>()
   const byAlias = new Map<string, Doc<'models'>>()
   for (const row of models) {
@@ -75,6 +79,15 @@ export function catalogFrom(
       if (!byAlias.has(alias)) byAlias.set(alias, row)
     }
   }
+  return { bySlug, byAlias }
+}
+
+/** Build the catalog from rows already in hand. Tests and the loader share it. */
+export function catalogFrom(
+  models: readonly Doc<'models'>[],
+  prices: readonly Doc<'modelPrices'>[]
+): ModelCatalog {
+  const { bySlug, byAlias } = namesFrom(models)
   const vendorOf = (slug: string): Vendor | null =>
     vendorOfProvider((bySlug.get(slug) ?? byAlias.get(slug))?.provider)
   const priceRows = prices.map((row) => toPriceRow(row, vendorOf(row.modelSlug)))
@@ -99,6 +112,11 @@ export async function loadModelCatalog(ctx: QueryCtx | MutationCtx): Promise<Mod
   return catalogFrom(models, prices)
 }
 
+/** The names alone, from `models`. No price row is read. */
+export async function loadModelNames(ctx: QueryCtx | MutationCtx): Promise<ModelNames> {
+  return namesFrom(await ctx.db.query('models').collect())
+}
+
 /**
  * One measured id against the catalog (ADR-0012 decision 6): strip the
  * provider prefix, the `#fast` suffix and a dated suffix, then the slug, then
@@ -110,7 +128,7 @@ export async function loadModelCatalog(ctx: QueryCtx | MutationCtx): Promise<Mod
  * disappearance #33 decision 3 exempted model ids to prevent.
  */
 export function resolveModelId(
-  catalog: ModelCatalog,
+  catalog: ModelNames,
   id: string
 ): { catalogSlug: string | null; catalogName: string | null } {
   const bare = vendorModelId(id)
