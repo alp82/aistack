@@ -33,6 +33,7 @@ import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
 import { isAdmin } from './lib/admin'
 import { normalizeFrequencyHours } from './lib/autoSync'
+import { scheduleRollupRefresh } from './lib/leaderboardRollup'
 import { reopenStackReports } from './lib/stackReports'
 
 import { extractShortId } from './lib/ids'
@@ -548,6 +549,7 @@ export const publishSnapshot = internalMutation({
       receivedAt: inserted.receivedAt,
       cliVersion: undefined,
     })
+    await scheduleRollupRefresh(ctx, args.stackId)
     return inserted
   },
 })
@@ -1969,6 +1971,11 @@ export const publishForToken = internalMutation({
       receivedAt,
       cliVersion,
     })
+
+    // The leaderboard's rollup of this stack (ADR-0014), recomputed in its own
+    // mutation once this one commits. Once per publish, after every inventory
+    // row and every day is written, so the refresh reads the whole sync.
+    await scheduleRollupRefresh(ctx, stack._id)
 
     // ONE event per approved sync, never one per snapshot: this mutation lands
     // up to 8 payloads atomically, so a per-snapshot emit would fire 8 times for

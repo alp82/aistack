@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
@@ -241,11 +241,14 @@ describe('leaderboard.get', () => {
     const small = await seedStack(t, { name: 'Small' })
     const big = await seedStack(t, { name: 'Big' })
     const draft = await seedStack(t, { name: 'Draft', published: false })
-    const spam = await seedStack(t, { name: 'Spam', isLowQuality: true })
+    const spam = await seedStack(t, { name: 'Spam' })
     await sync(t, small.stackId, { totalTokens: 100 })
     await sync(t, big.stackId, { totalTokens: 900 })
     await sync(t, draft.stackId, { totalTokens: 5000 })
     await sync(t, spam.stackId, { totalTokens: 4000 })
+    // Flagged after the sync: a sync reopens the stack's reports and clears
+    // the flag (#444), so a flag set before it would not survive.
+    await patchStack(t, spam.stackId, { isLowQuality: true })
 
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows.map((r) => [r.rank, r.name, r.tokens])).toEqual([
@@ -579,5 +582,691 @@ describe('leaderboard.model', () => {
       stackCount: 0,
       leadsCount: 0,
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The rollup (ADR-0014). Every test here compares `getRolledUp` with `get` at
+// one frozen instant: the rollup board must equal the live board field for
+// field, and the clock is the only thing the two reads do not share.
+// ---------------------------------------------------------------------------
+
+const NOW = Date.parse('2026-08-03T12:00:00Z')
+
+const dateOf = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+
+/** Run every scheduled function, and the ones those schedule, to the end. */
+async function settle(t: Ctx) {
+  await t.finishAllScheduledFunctions(vi.runAllTimers)
+}
+
+/** The hourly cron's function, run to completion. */
+async function runCron(t: Ctx) {
+  const result = await t.mutation(internal.leaderboard.refreshAll, {})
+  await settle(t)
+  return result
+}
+
+async function rollups(t: Ctx) {
+  return await t.run(async (ctx) => ctx.db.query('leaderboardRollups').collect())
+}
+
+async function rollupOf(t: Ctx, stackId: Id<'stacks'>) {
+  return (await rollups(t)).find((row) => row.stackId === stackId) ?? null
+}
+
+/**
+ * Both boards at the same instant, asserted equal on every page. Returns the
+ * first page so a test can also assert what the board says.
+ */
+async function sameBoard(t: Ctx) {
+  const live = await t.query(api.leaderboard.get, {})
+  const rolled = await t.query(api.leaderboard.getRolledUp, {})
+  expect(rolled).toEqual(live)
+  for (let page = 2; page <= live.totalPages; page++) {
+    expect(await t.query(api.leaderboard.getRolledUp, { page })).toEqual(
+      await t.query(api.leaderboard.get, { page })
+    )
+  }
+  return rolled
+}
+
+/** One day row, inserted directly: any date, any machine, and no write hook. */
+async function insertDay(
+  t: Ctx,
+  stackId: Id<'stacks'>,
+  day: {
+    date: string
+    machine?: string
+    harness?: string
+    sessions?: number
+    models: FixtureModel[]
+  }
+) {
+  await t.run(async (ctx) => {
+    await ctx.db.insert('measuredDays', {
+      stackId,
+      ...(day.machine === undefined ? {} : { machine: day.machine }),
+      date: day.date,
+      capturedAt: Date.now(),
+      receivedAt: Date.now(),
+      aggregateVersion: 'measured-days/v1',
+      fingerprint: `fp-${day.date}-${day.machine ?? ''}`,
+      usage: {
+        harnesses: [
+          {
+            harness: day.harness ?? 'claude-code',
+            sessions: day.sessions ?? 1,
+            projectKeys: ['AAAAAAAAAAAAAAAAAAAAAA'],
+            models: day.models.map((m) => ({
+              model: m.id,
+              tokens: { input: m.tokens, output: 0, cacheWrite: 0, cacheRead: 0 },
+              ...(m.usd === undefined
+                ? {}
+                : { usd: m.usd, pricingTable: 'anthropic-list-2026-07-25' }),
+            })),
+            subagentTokens: 0,
+            excludedTokens: { unpriced: 0, synthetic: 0 },
+          },
+        ],
+      },
+    })
+  })
+}
+
+/** One inventory row, inserted directly: any sync time, and no write hook. */
+async function insertInventory(
+  t: Ctx,
+  stackId: Id<'stacks'>,
+  row: {
+    receivedAt: number
+    harness?: string
+    machine?: string
+    legacy?: { tokens: number; sessions: number }
+  }
+) {
+  const p = payload({ harness: row.harness })
+  await t.run(async (ctx) => {
+    await ctx.db.insert('measuredInventory', {
+      stackId,
+      ...(row.machine === undefined ? {} : { machine: row.machine }),
+      harness: p.harness.name,
+      harnessVersion: p.harness.version,
+      capturedAt: row.receivedAt,
+      receivedAt: row.receivedAt,
+      inventory: p.inventory,
+      modelsSeen: [],
+      pricingTable: p.pricingTable,
+      ...(row.legacy === undefined
+        ? {}
+        : {
+            legacy: {
+              ...row.legacy,
+              activeDays: 5,
+              capturedAt: row.receivedAt,
+              windowDays: 30,
+            },
+          }),
+    })
+  })
+}
+
+async function patchStack(
+  t: Ctx,
+  stackId: Id<'stacks'>,
+  patch: { publishCost?: boolean; isLowQuality?: boolean; name?: string; slug?: string }
+) {
+  await t.run(async (ctx) => ctx.db.patch(stackId, patch))
+}
+
+describe('leaderboard rollup', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  test('serves the live board, field for field, over a mixed population', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'GPT X',
+        slug: 'gpt-x',
+        shortId: 'gptx1',
+        provider: 'openai',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+      // A rate for `gpt-x`, so a day the CLI left unpriced is filled by the
+      // backend: the one figure in a rollup that depends on `modelPrices`.
+      await ctx.db.insert('modelPrices', {
+        modelSlug: 'gpt-x',
+        from: 0,
+        input: 3,
+        output: 15,
+        source: 'test-rates',
+        createdAt: NOW,
+      })
+    })
+
+    // Two machines, two harnesses, days across the window, a day on its first
+    // date and days before it. The live path loads all of them and filters;
+    // the rollup reads the window alone.
+    const wide = await seedStack(t, { name: 'Wide' })
+    await insertInventory(t, wide.stackId, { receivedAt: NOW - HOUR, machine: 'laptop' })
+    await insertInventory(t, wide.stackId, { receivedAt: NOW - 2 * DAY, machine: 'vps' })
+    await insertInventory(t, wide.stackId, {
+      receivedAt: NOW - 3 * HOUR,
+      machine: 'laptop',
+      harness: 'codex',
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW),
+      machine: 'laptop',
+      models: [
+        { id: 'model-alpha', tokens: 700, usd: 0.1 },
+        { id: 'unknown', tokens: 50 },
+      ],
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW),
+      machine: 'vps',
+      models: [{ id: 'model-alpha', tokens: 300, usd: 0.2 }],
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW - 3 * DAY),
+      machine: 'laptop',
+      harness: 'codex',
+      sessions: 4,
+      models: [{ id: 'gpt-x', tokens: 2_000_000 }],
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW - 29 * DAY),
+      machine: 'vps',
+      models: [{ id: 'model-alpha', tokens: 11, usd: 0.3 }],
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW - 30 * DAY),
+      machine: 'vps',
+      models: [{ id: 'model-alpha', tokens: 90_000, usd: 40 }],
+    })
+    await insertDay(t, wide.stackId, {
+      date: dateOf(NOW - 200 * DAY),
+      machine: 'laptop',
+      models: [{ id: 'model-old', tokens: 80_000, usd: 30 }],
+    })
+
+    // Cost off: same tokens, no dollars.
+    const privately = await seedStack(t, { name: 'Private', publishCost: false })
+    await sync(t, privately.stackId, {
+      models: [{ id: 'model-alpha', tokens: 400, usd: 9 }],
+    })
+
+    // Quiet: last sync 8 days ago, still inside the window.
+    const quiet = await seedStack(t, { name: 'Quiet' })
+    await insertInventory(t, quiet.stackId, { receivedAt: NOW - 8 * DAY })
+    await insertDay(t, quiet.stackId, {
+      date: dateOf(NOW - 8 * DAY),
+      models: [{ id: 'claude-y', tokens: 600 }],
+    })
+
+    // Legacy: an inventory figure and no days.
+    const legacy = await seedStack(t, { name: 'Legacy' })
+    await insertInventory(t, legacy.stackId, {
+      receivedAt: NOW - DAY,
+      legacy: { tokens: 5000, sessions: 7 },
+    })
+
+    // Measured once, long ago: inventory, but no day in the window.
+    const gone = await seedStack(t, { name: 'Gone' })
+    await insertInventory(t, gone.stackId, { receivedAt: NOW - 60 * DAY })
+    await insertDay(t, gone.stackId, {
+      date: dateOf(NOW - 60 * DAY),
+      models: [{ id: 'model-alpha', tokens: 999 }],
+    })
+
+    // Never measured.
+    await seedStack(t, { name: 'Unmeasured' })
+
+    // Two stacks the board cannot tell apart by tokens or name, and enough
+    // rows for a second page. Synced newest stack first, so the rollups are
+    // created in the opposite order to the stacks.
+    const filler: Id<'stacks'>[] = []
+    for (let i = 0; i < 12; i++) {
+      filler.push((await seedStack(t, { name: i < 2 ? 'Twin' : `S${i}` })).stackId)
+    }
+    for (const [i, stackId] of [...filler.entries()].reverse()) {
+      await sync(t, stackId, {
+        models: [
+          { id: 'gpt-x', tokens: i < 2 ? 500 : 100 + i },
+          { id: 'claude-y', tokens: i < 2 ? 500 : 100 + i },
+        ],
+      })
+    }
+
+    const spam = await seedStack(t, { name: 'Spam' })
+    await sync(t, spam.stackId, { totalTokens: 9000 })
+    await patchStack(t, spam.stackId, { isLowQuality: true })
+
+    await runCron(t)
+    const board = await sameBoard(t)
+
+    // The comparison is not vacuous: every case above is on the board, or
+    // off it, for the reason it was seeded.
+    expect(board.stackCount).toBe(16)
+    expect(board.totalPages).toBe(2)
+    expect(board.quiet).toEqual({ count: 1, tokens: 600 })
+    const byName = new Map(board.rows.map((r) => [r.name, r]))
+    expect(byName.has('Spam')).toBe(false)
+    expect(byName.has('Gone')).toBe(false)
+    expect(byName.get('Legacy')).toMatchObject({ tokens: 5000, points: [], spend: null })
+    expect(byName.get('Private')?.spend).toBeNull()
+    const wideRow = byName.get('Wide')
+    expect(wideRow?.tokens).toBe(700 + 50 + 300 + 2_000_000 + 11)
+    expect(wideRow?.syncCount).toBe(3)
+    expect(wideRow?.harnesses).toEqual(['claude-code', 'codex'])
+    expect(wideRow?.topModel?.name).toBe('GPT X')
+    // 0.1 + 0.2 + 0.3 from the CLI, plus the backend's fill of the gpt-x day.
+    expect(wideRow?.spend).toEqual({ lowerBoundUSD: 6.6, coverage: 1, exact: false })
+    expect(board.pricingTables).toEqual(['anthropic-list-2026-07-25', 'test-rates'])
+
+    // One row per stack with a reading, the flagged one included (the flag
+    // is read live). A stack with no reading holds no row.
+    expect(await rollupOf(t, gone.stackId)).toBeNull()
+    expect(await rollups(t)).toHaveLength(17)
+  })
+
+  test('a sync refreshes its own stack, in a mutation of its own', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Synced' })
+    await sync(t, stackId, { totalTokens: 100 })
+
+    // The publish only scheduled the refresh: nothing is rolled up yet.
+    expect(await rollupOf(t, stackId)).toBeNull()
+    expect((await t.query(api.leaderboard.getRolledUp, {})).stackCount).toBe(0)
+
+    await settle(t)
+    expect((await sameBoard(t)).rows[0]).toMatchObject({ name: 'Synced', tokens: 100 })
+    expect(await rollupOf(t, stackId)).toMatchObject({
+      windowFrom: '2026-07-05',
+      windowTo: '2026-08-03',
+      computedAt: NOW,
+      lastSyncMs: NOW,
+    })
+
+    vi.setSystemTime(NOW + HOUR)
+    await sync(t, stackId, { totalTokens: 250 })
+    await settle(t)
+    expect((await sameBoard(t)).rows[0]).toMatchObject({
+      tokens: 250,
+      lastSyncMs: NOW + HOUR,
+    })
+    expect(await rollups(t)).toHaveLength(1)
+  })
+
+  test('the CLI publish path refreshes the rollup too', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'From The CLI' })
+    const userId = await t.run(async (ctx) => {
+      const stack = await ctx.db.get(stackId)
+      if (!stack) throw new Error('stack missing')
+      return (await ctx.db.get(stack.creatorId))?.userId ?? ''
+    })
+    const tokenId = await t.run(async (ctx) =>
+      ctx.db.insert('cliTokens', {
+        tokenHash: `hash-${userId}`,
+        userId,
+        name: 'laptop',
+        scopes: ['collect', 'sync'],
+        stackId,
+        createdAt: NOW,
+        expiresAt: NOW + DAY,
+        lastUsedAt: NOW,
+      })
+    )
+    const p = payload({ totalTokens: 640 })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payloads: [p],
+      measuredDays: dayWireOf(p, NOW),
+    })
+    await settle(t)
+
+    expect((await sameBoard(t)).rows[0]).toMatchObject({
+      name: 'From The CLI',
+      tokens: 640,
+    })
+  })
+
+  test('reads the legacy figure of a stack that published no days', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Old CLI' })
+    // A publish with no day wire is an old client: the payload's totals ride
+    // on the inventory row as the legacy figure.
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ totalTokens: 4321, sessions: 12 }),
+    })
+    await settle(t)
+
+    const board = await sameBoard(t)
+    expect(board.rows[0]).toMatchObject({
+      name: 'Old CLI',
+      tokens: 4321,
+      points: [],
+      syncCount: 0,
+      topModel: null,
+      harnesses: ['claude-code'],
+      spend: null,
+    })
+    expect(board.totalSessions).toBe(12)
+    expect(await rollupOf(t, stackId)).toMatchObject({ modelTokens: [], spend: null })
+  })
+
+  test('publishCost is checked at read time: a toggle needs no refresh', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Priced' })
+    await sync(t, stackId, { models: [{ id: 'model-alpha', tokens: 1000, usd: 12 }] })
+    await settle(t)
+    const spend = { lowerBoundUSD: 12, coverage: 1, exact: true }
+    const stored = await rollupOf(t, stackId)
+    expect(stored?.spend).toEqual(spend)
+
+    let board = await sameBoard(t)
+    expect(board.rows[0].spend).toEqual(spend)
+    expect(board.costPublishers).toBe(1)
+
+    await patchStack(t, stackId, { publishCost: false })
+    board = await sameBoard(t)
+    expect(board.rows[0].spend).toBeNull()
+    expect(board.costPublishers).toBe(0)
+    expect(board.spendLowerBoundUSD).toBe(0)
+    expect(board.pricingTables).toEqual([])
+    // Nothing was recomputed: the row is the one the sync wrote.
+    expect(await rollupOf(t, stackId)).toEqual(stored)
+
+    await patchStack(t, stackId, { publishCost: true })
+    board = await sameBoard(t)
+    expect(board.rows[0].spend).toEqual(spend)
+    expect(board.pricingTables).toEqual(['anthropic-list-2026-07-25'])
+  })
+
+  test('a stack synced with cost off stores the priced figure and shows none', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Private', publishCost: false })
+    await sync(t, stackId, { models: [{ id: 'model-alpha', tokens: 1000, usd: 12 }] })
+    await settle(t)
+
+    expect((await sameBoard(t)).rows[0].spend).toBeNull()
+    await patchStack(t, stackId, { publishCost: true })
+    expect((await sameBoard(t)).rows[0].spend).toEqual({
+      lowerBoundUSD: 12,
+      coverage: 1,
+      exact: true,
+    })
+  })
+
+  test('the quality flag, the names and the slug are read live', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Before' })
+    const other = await seedStack(t, { name: 'Other' })
+    await sync(t, stackId, { totalTokens: 300 })
+    await sync(t, other.stackId, { totalTokens: 100 })
+    await settle(t)
+    const stored = await rollups(t)
+
+    await patchStack(t, stackId, { isLowQuality: true })
+    let board = await sameBoard(t)
+    expect(board.rows.map((r) => r.name)).toEqual(['Other'])
+    expect(board.totalTokens).toBe(100)
+
+    await patchStack(t, stackId, { isLowQuality: false, name: 'After', slug: 'after' })
+    await t.run(async (ctx) => {
+      const stack = await ctx.db.get(stackId)
+      if (stack) await ctx.db.patch(stack.creatorId, { name: 'Renamed Creator' })
+    })
+    board = await sameBoard(t)
+    expect(board.rows[0]).toMatchObject({
+      name: 'After',
+      creatorName: 'Renamed Creator',
+    })
+    expect(board.rows[0].slug).toMatch(/^after-sid\d+x$/)
+
+    // A catalog row filed after the sync names the model on the next read.
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'Model Alpha',
+        slug: 'model-alpha',
+        shortId: 'malph',
+        provider: 'openai',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    })
+    board = await sameBoard(t)
+    expect(board.rows[0].topModel?.name).toBe('Model Alpha')
+    expect(board.models[0].name).toBe('Model Alpha')
+
+    expect(await rollups(t)).toEqual(stored)
+  })
+
+  test('living is evaluated against the clock, with no write', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Fading' })
+    await sync(t, stackId, { totalTokens: 100 })
+    await settle(t)
+    const stored = await rollupOf(t, stackId)
+    expect((await sameBoard(t)).livingCount).toBe(1)
+
+    // Seven days and a second later, same UTC date range for the stored day.
+    vi.setSystemTime(NOW + 7 * DAY + 1000)
+    const board = await sameBoard(t)
+    expect(board.livingCount).toBe(0)
+    expect(board.quiet).toEqual({ count: 1, tokens: 100 })
+    expect(await rollupOf(t, stackId)).toEqual(stored)
+  })
+
+  test('the cron slides the window at UTC midnight', async () => {
+    const t = convexTest(schema, modules)
+    const sliding = await seedStack(t, { name: 'Sliding' })
+    await insertInventory(t, sliding.stackId, { receivedAt: NOW })
+    await insertDay(t, sliding.stackId, {
+      date: dateOf(NOW - 29 * DAY),
+      models: [{ id: 'model-alpha', tokens: 1000 }],
+    })
+    await insertDay(t, sliding.stackId, {
+      date: dateOf(NOW),
+      models: [{ id: 'model-alpha', tokens: 10 }],
+    })
+    // Its only day is the window's first date: tomorrow it has no reading.
+    const leaving = await seedStack(t, { name: 'Leaving' })
+    await insertInventory(t, leaving.stackId, { receivedAt: NOW })
+    await insertDay(t, leaving.stackId, {
+      date: dateOf(NOW - 29 * DAY),
+      models: [{ id: 'model-alpha', tokens: 77 }],
+    })
+    await runCron(t)
+    expect((await sameBoard(t)).totalTokens).toBe(1087)
+
+    // Past midnight UTC, before the cron: the live board already dropped the
+    // oldest date, the rollups still hold yesterday's window.
+    vi.setSystemTime(Date.parse('2026-08-04T00:00:30Z'))
+    expect((await t.query(api.leaderboard.get, {})).totalTokens).toBe(10)
+    expect((await t.query(api.leaderboard.getRolledUp, {})).totalTokens).toBe(1087)
+
+    expect(await runCron(t)).toEqual({ scheduled: 2 })
+    const board = await sameBoard(t)
+    expect(board.totalTokens).toBe(10)
+    expect(board.stackCount).toBe(1)
+    expect(await rollupOf(t, sliding.stackId)).toMatchObject({
+      windowFrom: '2026-07-06',
+      windowTo: '2026-08-04',
+      tokens: 10,
+    })
+    expect(await rollupOf(t, leaving.stackId)).toBeNull()
+  })
+
+  test('the cron picks up a price change for the days the backend fills', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'GPT X',
+        slug: 'gpt-x',
+        shortId: 'gptx1',
+        provider: 'openai',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    })
+    const { stackId } = await seedStack(t, { name: 'Unpriced' })
+    await sync(t, stackId, { models: [{ id: 'gpt-x', tokens: 1_000_000 }] })
+    await settle(t)
+    expect((await sameBoard(t)).rows[0].spend).toBeNull()
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert('modelPrices', {
+        modelSlug: 'gpt-x',
+        from: 0,
+        input: 3,
+        output: 15,
+        source: 'test-rates',
+        createdAt: NOW,
+      })
+    })
+    // The live board prices it at once. The rollup is behind until the cron.
+    expect((await t.query(api.leaderboard.get, {})).rows[0].spend).not.toBeNull()
+    expect((await t.query(api.leaderboard.getRolledUp, {})).rows[0].spend).toBeNull()
+
+    await runCron(t)
+    const board = await sameBoard(t)
+    expect(board.rows[0].spend).toEqual({ lowerBoundUSD: 3, coverage: 1, exact: false })
+    expect(board.pricingTables).toEqual(['test-rates'])
+  })
+
+  test('an unchanged recompute writes nothing', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Idle' })
+    await sync(t, stackId, { totalTokens: 100 })
+    await settle(t)
+    const stored = await rollupOf(t, stackId)
+    expect(stored?.computedAt).toBe(NOW)
+
+    // An hour later, same UTC date: the cron finds nothing to change.
+    vi.setSystemTime(NOW + HOUR)
+    expect(await t.mutation(internal.leaderboard.refreshStack, { stackId })).toBe(
+      'unchanged'
+    )
+    expect(await runCron(t)).toEqual({ scheduled: 1 })
+    expect(await rollupOf(t, stackId)).toEqual(stored)
+
+    // A change is written, and stamped with the time it was computed.
+    await insertDay(t, stackId, {
+      date: dateOf(NOW - DAY),
+      models: [{ id: 'model-alpha', tokens: 5 }],
+    })
+    expect(await t.mutation(internal.leaderboard.refreshStack, { stackId })).toBe(
+      'written'
+    )
+    const rewritten = await rollupOf(t, stackId)
+    expect(rewritten?._id).toBe(stored?._id)
+    expect(rewritten).toMatchObject({ tokens: 105, computedAt: NOW + HOUR })
+    await sameBoard(t)
+  })
+
+  test('deleted days update the rollup, and a stack with none left loses it', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Shrinking' })
+    await insertInventory(t, stackId, { receivedAt: NOW })
+    await insertDay(t, stackId, {
+      date: dateOf(NOW),
+      models: [{ id: 'model-alpha', tokens: 100 }],
+    })
+    await insertDay(t, stackId, {
+      date: dateOf(NOW - DAY),
+      models: [{ id: 'model-alpha', tokens: 40 }],
+    })
+    await runCron(t)
+    expect((await sameBoard(t)).totalTokens).toBe(140)
+
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query('measuredDays').collect()
+      const yesterday = rows.find((row) => row.date === dateOf(NOW - DAY))
+      if (yesterday) await ctx.db.delete(yesterday._id)
+    })
+    expect(await t.mutation(internal.leaderboard.refreshStack, { stackId })).toBe(
+      'written'
+    )
+    expect((await sameBoard(t)).totalTokens).toBe(100)
+
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query('measuredDays').collect()) {
+        await ctx.db.delete(row._id)
+      }
+    })
+    expect(await t.mutation(internal.leaderboard.refreshStack, { stackId })).toBe(
+      'deleted'
+    )
+    expect(await rollups(t)).toEqual([])
+    expect((await sameBoard(t)).stackCount).toBe(0)
+    expect(await t.mutation(internal.leaderboard.refreshStack, { stackId })).toBe(
+      'absent'
+    )
+  })
+
+  test('a deleted stack is skipped by the read and its rollup is removed', async () => {
+    const t = convexTest(schema, modules)
+    const kept = await seedStack(t, { name: 'Kept' })
+    const doomed = await seedStack(t, { name: 'Doomed' })
+    await sync(t, kept.stackId, { totalTokens: 100 })
+    await sync(t, doomed.stackId, { totalTokens: 900 })
+    await settle(t)
+    expect((await sameBoard(t)).stackCount).toBe(2)
+
+    // The stack and its measured rows go; the rollup is left behind.
+    await t.run(async (ctx) => {
+      await ctx.db.delete(doomed.stackId)
+      for (const table of ['measuredDays', 'measuredInventory'] as const) {
+        for (const row of await ctx.db.query(table).collect()) {
+          if (row.stackId === doomed.stackId) await ctx.db.delete(row._id)
+        }
+      }
+    })
+    expect(await rollupOf(t, doomed.stackId)).not.toBeNull()
+    const board = await sameBoard(t)
+    expect(board.rows.map((r) => r.name)).toEqual(['Kept'])
+    expect(board.totalTokens).toBe(100)
+
+    // The cron finds the orphan through the rollup table itself.
+    expect(await runCron(t)).toEqual({ scheduled: 2 })
+    expect(await rollupOf(t, doomed.stackId)).toBeNull()
+    expect(await rollups(t)).toHaveLength(1)
+    await sameBoard(t)
+  })
+
+  test('a second rollup of one stack is never counted and is removed', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Once' })
+    await sync(t, stackId, { totalTokens: 100 })
+    await settle(t)
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query('leaderboardRollups')
+        .withIndex('by_stack', (q) => q.eq('stackId', stackId))
+        .first()
+      if (!row) throw new Error('rollup missing')
+      const { _id, _creationTime, ...content } = row
+      await ctx.db.insert('leaderboardRollups', content)
+    })
+    expect(await rollups(t)).toHaveLength(2)
+    expect((await sameBoard(t)).totalTokens).toBe(100)
+
+    await t.mutation(internal.leaderboard.refreshStack, { stackId })
+    expect(await rollups(t)).toHaveLength(1)
   })
 })

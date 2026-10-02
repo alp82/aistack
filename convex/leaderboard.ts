@@ -5,15 +5,21 @@ import {
   type UsageDay,
 } from '@aistack/workflow-rules'
 import { type Infer, v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
-import type { QueryCtx } from './_generated/server'
-import { query } from './_generated/server'
+import type { Doc, Id } from './_generated/dataModel'
+import type { MutationCtx, QueryCtx } from './_generated/server'
+import { internalMutation, query } from './_generated/server'
+import { fanOutRollupRefresh } from './lib/leaderboardRollup'
 import {
   inventoryForStack,
   measuredDaysForStack,
+  measuredDaysForStackInRange,
   newestInventoryPerSource,
 } from './lib/measuredDays'
-import { resolveModelId } from './lib/modelCatalog'
+import {
+  loadModelNames,
+  type ModelNames,
+  resolveModelId,
+} from './lib/modelCatalog'
 import { round2 } from './lib/reprice'
 import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured'
 
@@ -21,13 +27,33 @@ import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured
  * The read model behind `/leaderboard`. Wayfinder ticket #83 (map #76), spine
  * locked by #92, scope by #82.
  *
- * READS ARE LIVE, NOT PRECOMPUTED (#82, recorded consequence). No rollup table
- * and no cron: every figure is derived from `measuredDays` and
- * `measuredInventory` at read time (ADR-0011), so the page can never disagree
- * with the stack pages. The cost of that choice is stated in #82 - two indexed
- * reads per measured stack cap this in the low thousands of stacks, and a
- * later rollup must reproduce these numbers exactly. The population table
- * (`stacks`) is the driver, never a full scan of the measured tables.
+ * THE BOARD IS MOVING ONTO A PER-STACK ROLLUP (ADR-0014). #82 recorded that
+ * reads are live and that "a later rollup must reproduce these numbers
+ * exactly". The live read folds every measured stack's days inside one query.
+ * With 9 measured stacks that already costs about one second of JS time, which
+ * is the Convex limit per function, and about half of the `/leaderboard`
+ * requests on prod returned HTTP 500.
+ *
+ * ONE DERIVATION, TWO WAYS TO REACH IT. `deriveFigures` is the only code that
+ * turns a stack's inventory and days into board figures (ADR-0011).
+ *   - `refreshStack` runs it for one stack, at sync time and hourly, over a
+ *     day read bounded to the window, and stores the result in
+ *     `leaderboardRollups`.
+ *   - `readRollupPopulation` reads those rows. No day is folded at read time.
+ *   - `readPopulation` is the LIVE path: it runs the derivation for every
+ *     stack inside the query. It is retained only until phase B.
+ *
+ * PHASE A (this file today): `get` and `model` stay on the live path, and
+ * `getRolledUp` serves the same board from the rollups so the two can be
+ * compared on real data. PHASE B swaps `readPopulation` for
+ * `readRollupPopulation` in `get` and `model`, then deletes `getRolledUp`,
+ * `readPopulation` and `readStack`.
+ *
+ * WHAT A ROLLUP STORES AND WHAT IS READ LIVE is decided in `StackFigures` and
+ * `toReading`. Stored: the figures of the 30-day fold. Read live: everything
+ * that changes outside a sync (the stack's name, slug, quality flag and
+ * `publishCost`, the creator, the model display names) and `living`, which
+ * depends on the clock.
  *
  * EXCLUSIONS (#82, applied here once so every figure agrees):
  *   - `isLowQuality` stacks do not exist here at all. The board is discovery,
@@ -115,59 +141,87 @@ const Board = v.object({
 export type BoardReading = Infer<typeof Board>
 export type ModelRanking = Infer<typeof Ranking>
 
-type StackReading = {
-  stack: Doc<'stacks'>
-  creator: Doc<'creators'> | null
-  living: boolean
+/**
+ * What one stack's inventory and 30-day fold contribute to the board. This is
+ * exactly what a `leaderboardRollups` row stores (ADR-0014).
+ *
+ * WHAT IS IN HERE depends only on the stack's measured rows, the window and
+ * the price table:
+ *   - `lastSyncMs`, `tokens`, `sessions`, `points`, `activeHarnesses` and
+ *     `modelTokens` change only when a sync writes rows or the window slides
+ *     at UTC midnight. The model keys are the RAW measured ids, so a catalog
+ *     rename cannot touch them.
+ *   - `spend` and `pricingTables` also depend on `modelPrices`, for the days
+ *     the CLI left unpriced and the backend fills. A stored copy is stale
+ *     after a price change until the next refresh, at most one hour.
+ *
+ * WHAT IS NOT IN HERE is read or evaluated when the board is assembled, in
+ * `toReading`, so it cannot go stale at all.
+ */
+type StackFigures = {
   lastSyncMs: number
   tokens: number
   sessions: number
   /** One point per measured UTC date in the window, oldest first. */
   points: { at: number; tokens: number }[]
   activeHarnesses: { name: string; tokens: number }[]
-  /** Over the 30-day fold; `unknown` kept for totals. */
-  modelTokens: Map<string, number>
+  /** Over the 30-day fold, in fold order; `unknown` kept for totals. */
+  modelTokens: { id: string; tokens: number }[]
   spend: { lowerBoundUSD: number; coverage: number; exact: boolean } | null
   pricingTables: string[]
 }
 
+type StackReading = StackFigures & {
+  stack: Doc<'stacks'>
+  creator: Doc<'creators'> | null
+  living: boolean
+}
+
+type DateWindow = { from: string; to: string }
+
+/** The 30 UTC dates the board folds, ending today. */
+function boardWindow(now: number): DateWindow {
+  return rangeDates('30d', now)
+}
+
 /**
- * One stack's board reading: freshness off the inventory rows, every sum off
+ * One stack's board figures: freshness off the inventory rows, every sum off
  * the 30-day fold of its days (ADR-0011). A stack that published no days but
  * carries a legacy figure from the retirement migration reads that figure:
  * tokens and sessions only, no series and no price.
+ *
+ * `null` means the stack is not on the board: it has no inventory, or neither
+ * a usage day inside the window nor a legacy figure.
+ *
+ * `loadDays` is the only difference between the two callers. The live path
+ * loads the stack's whole history; the rollup loads the window through
+ * `by_stack_date`. Both are filtered to the window here and arrive in the
+ * same order, so the fold sees identical rows.
  */
-async function readStack(
-  ctx: QueryCtx,
-  stack: Doc<'stacks'>,
-  now: number,
-  catalog: ModelCatalog
-): Promise<StackReading | null> {
+async function deriveFigures(
+  ctx: QueryCtx | MutationCtx,
+  stackId: Id<'stacks'>,
+  window: DateWindow,
+  catalog: ModelCatalog,
+  publishCost: boolean,
+  loadDays: (window: DateWindow) => Promise<Doc<'measuredDays'>[]>
+): Promise<StackFigures | null> {
   const inventory = newestInventoryPerSource(
-    await inventoryForStack(ctx, stack._id)
+    await inventoryForStack(ctx, stackId)
   )
   if (inventory.length === 0) return null
   const lastSyncMs = Math.max(...inventory.map((r) => r.receivedAt))
 
-  const window = rangeDates('30d', now)
-  const days = (await measuredDaysForStack(ctx, stack._id))
+  const days = (await loadDays(window))
     .filter((row) => row.usage !== undefined && inDateRange(row.date, window))
     .map((row) => ({ date: row.date, usage: row.usage as UsageDay }))
-  const publishCost = stack.publishCost !== false
   const reading = readUsageWindow(days, catalog, publishCost)
-
-  const base = {
-    stack,
-    creator: await ctx.db.get(stack.creatorId),
-    living: now - lastSyncMs <= SEVEN_DAYS_MS,
-    lastSyncMs,
-  }
 
   if (reading === null) {
     const legacy = inventory.filter((r) => r.legacy !== undefined)
     if (legacy.length === 0) return null
     return {
-      ...base,
+      lastSyncMs,
       tokens: legacy.reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
       sessions: legacy.reduce((a, r) => a + (r.legacy?.sessions ?? 0), 0),
       points: [],
@@ -179,7 +233,7 @@ async function readStack(
           .filter((r) => r.harness === name)
           .reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
       })).filter((h) => h.tokens > 0),
-      modelTokens: new Map(),
+      modelTokens: [],
       spend: null,
       pricingTables: [],
     }
@@ -210,12 +264,12 @@ async function readStack(
     .map(([date, tokens]) => ({ at: Date.parse(`${date}T00:00:00.000Z`), tokens }))
 
   return {
-    ...base,
+    lastSyncMs,
     tokens: reading.totalTokens,
     sessions: reading.sessions,
     points,
     activeHarnesses,
-    modelTokens: new Map(reading.models.map((m) => [m.id, m.totalTokens])),
+    modelTokens: reading.models.map((m) => ({ id: m.id, tokens: m.totalTokens })),
     spend: reading.cost
       ? {
           lowerBoundUSD: reading.cost.usd,
@@ -225,6 +279,58 @@ async function readStack(
       : null,
     pricingTables: reading.cost?.pricingTables ?? [],
   }
+}
+
+/**
+ * A stack's figures as the board reads them at `now`. Everything decided here
+ * is decided at READ time, on both paths, so none of it can be stale:
+ *
+ *   - `living` compares the stored `lastSyncMs` against the clock. A stack
+ *     goes quiet 7 days after its last sync with no write anywhere.
+ *   - `publishCost` is the consent gate (AGENTS.md, Pricing: check the flag).
+ *     The flag changes nothing in a reading except the cost: with it off,
+ *     `readUsageWindow` returns the same tokens, sessions, models and
+ *     harnesses and a null cost. So the rollup stores the priced figures and
+ *     the flag is checked here, on the live stack row. A toggle takes effect
+ *     on the next read, and no writer of the flag needs a hook. The live path
+ *     already derived with the real flag; the check is a no-op there.
+ *   - `stack` and `creator` are the live rows. The board takes the name, slug
+ *     and creator name from them when it builds a row.
+ */
+function toReading(
+  stack: Doc<'stacks'>,
+  creator: Doc<'creators'> | null,
+  figures: StackFigures,
+  now: number
+): StackReading {
+  const publishCost = stack.publishCost !== false
+  return {
+    ...figures,
+    spend: publishCost ? figures.spend : null,
+    pricingTables: publishCost ? figures.pricingTables : [],
+    stack,
+    creator,
+    living: now - figures.lastSyncMs <= SEVEN_DAYS_MS,
+  }
+}
+
+/** LIVE PATH, retained only until phase B: one stack's reading, derived in the query. */
+async function readStack(
+  ctx: QueryCtx,
+  stack: Doc<'stacks'>,
+  now: number,
+  catalog: ModelCatalog
+): Promise<StackReading | null> {
+  const figures = await deriveFigures(
+    ctx,
+    stack._id,
+    boardWindow(now),
+    catalog,
+    stack.publishCost !== false,
+    () => measuredDaysForStack(ctx, stack._id)
+  )
+  if (figures === null) return null
+  return toReading(stack, await ctx.db.get(stack.creatorId), figures, now)
 }
 
 type Bucket = { tokens: number; stacks: number; leads: number }
@@ -243,6 +349,8 @@ function bump(
 }
 
 /**
+ * LIVE PATH, retained only until phase B.
+ *
  * The measured population: public and not flagged. The quality flag is enforced HERE, not left to the client -
  * the board is discovery (#82), and a filter the frontend applies is a filter
  * a crawler does not. `/model` (#223) reads the same population, so the two
@@ -261,8 +369,85 @@ async function readPopulation(ctx: QueryCtx, now: number) {
   return { readings, catalog }
 }
 
+/** A rollup row back in the shape the derivation produced it. */
+function figuresOfRollup(rollup: Doc<'leaderboardRollups'>): StackFigures {
+  return {
+    lastSyncMs: rollup.lastSyncMs,
+    tokens: rollup.tokens,
+    sessions: rollup.sessions,
+    points: rollup.points,
+    activeHarnesses: rollup.activeHarnesses,
+    modelTokens: rollup.modelTokens,
+    spend: rollup.spend,
+    pricingTables: rollup.pricingTables,
+  }
+}
+
+/**
+ * The same population as `readPopulation`, read from the rollups (ADR-0014).
+ * A drop-in replacement: same `{ readings, catalog }`, and no day is folded.
+ *
+ * THE ROLLUP TABLE IS THE DRIVER. A rollup exists exactly for the stacks the
+ * live path would return a reading for, so there is no scan of `stacks` and
+ * no read of a measured table. Per rollup the query gets two rows by id:
+ *
+ *   - the stack, for `isLowQuality`, `publishCost`, the name and the slug.
+ *     These change outside a sync (an admin flags a stack, the owner renames
+ *     it or turns cost off). Reading the row is the option that cannot go
+ *     stale, and it needs no hook in any of those writers. A rollup whose
+ *     stack is gone is skipped, so an orphan never reaches the board;
+ *   - the creator, for the name on the row.
+ *
+ * MODEL NAMES resolve here, from `models`, so a catalog rename shows on the
+ * next read. `modelPrices` is not read at all: prices are already inside the
+ * stored spend.
+ *
+ * THE ORDER IS THE LIVE PATH'S ORDER. The live path walks `stacks` in creation
+ * order, and that order breaks ties in the board (two stacks with the same
+ * tokens and name, two models with the same share). Rollups are created in
+ * sync order, so the readings are sorted back by the stack's creation time.
+ *
+ * WHAT CAN DIFFER FROM THE LIVE BOARD, and for how long: a rollup holds the
+ * window and the prices of its last refresh. After UTC midnight, or after a
+ * price change, it is stale until the hourly cron reaches it.
+ */
+async function readRollupPopulation(ctx: QueryCtx, now: number) {
+  const [rollups, catalog] = await Promise.all([
+    ctx.db.query('leaderboardRollups').collect(),
+    loadModelNames(ctx),
+  ])
+  const stacks = await Promise.all(rollups.map((r) => ctx.db.get(r.stackId)))
+
+  // One reading per stack. `refreshStack` keeps one row per stack; a second
+  // one would double the stack's tokens, so the read does not trust that.
+  const seen = new Set<Id<'stacks'>>()
+  const visible: { stack: Doc<'stacks'>; rollup: Doc<'leaderboardRollups'> }[] = []
+  rollups.forEach((rollup, i) => {
+    const stack = stacks[i]
+    if (!stack || stack.isLowQuality === true || seen.has(stack._id)) return
+    seen.add(stack._id)
+    visible.push({ stack, rollup })
+  })
+  const creators = await Promise.all(
+    visible.map(({ stack }) => ctx.db.get(stack.creatorId))
+  )
+
+  const readings = visible
+    .map(({ stack, rollup }, i) =>
+      toReading(stack, creators[i], figuresOfRollup(rollup), now)
+    )
+    .sort(
+      (a, b) =>
+        a.stack._creationTime - b.stack._creationTime ||
+        (a.stack._id < b.stack._id ? -1 : a.stack._id > b.stack._id ? 1 : 0)
+    )
+  return { readings, catalog }
+}
+
 function namedModels(r: StackReading): [string, number][] {
-  return [...r.modelTokens.entries()].filter(([id]) => id !== 'unknown')
+  return r.modelTokens
+    .filter((m) => m.id !== 'unknown')
+    .map((m) => [m.id, m.tokens])
 }
 
 function leadOf(named: [string, number][]): [string, number] | null {
@@ -273,7 +458,7 @@ function leadOf(named: [string, number][]): [string, number] | null {
 }
 
 /** Every named model over the population, token-weighted over attributed tokens. */
-function rankModels(readings: StackReading[], catalog: ModelCatalog) {
+function rankModels(readings: StackReading[], catalog: ModelNames) {
   let attributed = 0
   const models = new Map<string, Bucket>()
   for (const r of readings) {
@@ -342,121 +527,282 @@ export const model = query({
   },
 })
 
+/**
+ * The board over one population. Both read paths hand it their readings, so
+ * the live board and the rollup board are assembled by the same code.
+ */
+function buildBoard(
+  readings: StackReading[],
+  catalog: ModelNames,
+  requestedPage: number | undefined
+): BoardReading {
+  const byTokens = (a: StackReading, b: StackReading) =>
+    b.tokens - a.tokens || a.stack.name.localeCompare(b.stack.name)
+  const living = readings.filter((r) => r.living).sort(byTokens)
+  const quiet = readings.filter((r) => !r.living)
+
+  // --- rail figures, over the whole measured population -------------------
+
+  let totalTokens = 0
+  let totalSessions = 0
+  let spendLowerBoundUSD = 0
+  let costPublishers = 0
+  const pricingTables = new Set<string>()
+  const harnesses = new Map<string, Bucket>()
+  const { attributed, models } = rankModels(readings, catalog)
+
+  for (const r of readings) {
+    totalTokens += r.tokens
+    totalSessions += r.sessions
+    if (r.spend) {
+      spendLowerBoundUSD += r.spend.lowerBoundUSD
+      costPublishers += 1
+      for (const table of r.pricingTables) pricingTables.add(table)
+    }
+    const leadHarness = r.activeHarnesses.reduce(
+      (a, b) => (a === null || b.tokens > a.tokens ? b : a),
+      null as { name: string; tokens: number } | null
+    )
+    for (const h of r.activeHarnesses) {
+      bump(harnesses, h.name, h.tokens, leadHarness?.name === h.name)
+    }
+  }
+
+  const modelName = (id: string) =>
+    resolveModelId(catalog, id).catalogName ?? id
+
+  const rankOf = (
+    map: Map<string, Bucket>,
+    denominator: number,
+    name: (key: string) => string
+  ) =>
+    [...map.entries()]
+      .map(([key, b]) => ({
+        key,
+        name: name(key),
+        tokenShare: denominator > 0 ? b.tokens / denominator : 0,
+        stackCount: b.stacks,
+        leadsCount: b.leads,
+      }))
+      .sort(
+        (a, b) => b.tokenShare - a.tokenShare || b.stackCount - a.stackCount
+      )
+
+  const syncs = readings.map((r) => r.lastSyncMs)
+  const windowSpreadDays =
+    syncs.length > 1
+      ? (Math.max(...syncs) - Math.min(...syncs)) / DAY_MS
+      : 0
+
+  // --- the board ----------------------------------------------------------
+
+  const totalPages = Math.max(1, Math.ceil(living.length / PAGE_SIZE))
+  const page = Math.min(Math.max(1, Math.round(requestedPage ?? 1)), totalPages)
+  const rows = living
+    .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    .map((r, i) => {
+      const top = leadOf(namedModels(r))
+      return {
+        rank: (page - 1) * PAGE_SIZE + i + 1,
+        slug: `${r.stack.slug}-${r.stack.shortId}`,
+        name: r.stack.name,
+        creatorName: r.creator?.name ?? '',
+        tokens: r.tokens,
+        lastSyncMs: r.lastSyncMs,
+        syncCount: r.points.length,
+        points: r.points.slice(-MAX_POINTS),
+        topModel:
+          top && r.tokens > 0
+            ? { name: modelName(top[0]), share: top[1] / r.tokens }
+            : null,
+        harnesses: r.activeHarnesses.map((h) => h.name),
+        spend: r.spend,
+      }
+    })
+
+  return {
+    stackCount: readings.length,
+    livingCount: living.length,
+    totalTokens,
+    totalSessions,
+    spendLowerBoundUSD: round2(spendLowerBoundUSD),
+    costPublishers,
+    unattributedShare:
+      totalTokens > 0 ? (totalTokens - attributed) / totalTokens : 0,
+    windowSpreadDays,
+    models: models.slice(0, MAX_RAIL_MODELS),
+    harnesses: rankOf(harnesses, totalTokens, (k) => k).slice(
+      0,
+      MAX_RAIL_HARNESSES
+    ),
+    quiet: {
+      count: quiet.length,
+      tokens: quiet.reduce((a, r) => a + r.tokens, 0),
+    },
+    pricingTables: [...pricingTables].sort(),
+    page,
+    pageSize: PAGE_SIZE,
+    totalPages,
+    rows,
+  }
+}
+
 export const get = query({
   args: { page: v.optional(v.number()) },
   returns: Board,
   handler: async (ctx, args) => {
-    const now = Date.now()
-    const { readings, catalog } = await readPopulation(ctx, now)
+    const { readings, catalog } = await readPopulation(ctx, Date.now())
+    return buildBoard(readings, catalog, args.page)
+  },
+})
 
-    const byTokens = (a: StackReading, b: StackReading) =>
-      b.tokens - a.tokens || a.stack.name.localeCompare(b.stack.name)
-    const living = readings.filter((r) => r.living).sort(byTokens)
-    const quiet = readings.filter((r) => !r.living)
+/**
+ * TEMPORARY (phase A, ADR-0014): the same board as `get`, read from the
+ * rollups. It exists so the two can be compared on prod through the public
+ * query API before `get` moves over. Phase B deletes it.
+ */
+export const getRolledUp = query({
+  args: { page: v.optional(v.number()) },
+  returns: Board,
+  handler: async (ctx, args) => {
+    const { readings, catalog } = await readRollupPopulation(ctx, Date.now())
+    return buildBoard(readings, catalog, args.page)
+  },
+})
 
-    // --- rail figures, over the whole measured population -------------------
+// ---------------------------------------------------------------------------
+// The rollup write (ADR-0014)
+// ---------------------------------------------------------------------------
 
-    let totalTokens = 0
-    let totalSessions = 0
-    let spendLowerBoundUSD = 0
-    let costPublishers = 0
-    const pricingTables = new Set<string>()
-    const harnesses = new Map<string, Bucket>()
-    const { attributed, models } = rankModels(readings, catalog)
+type RollupContent = StackFigures & {
+  stackId: Id<'stacks'>
+  windowFrom: string
+  windowTo: string
+}
 
-    for (const r of readings) {
-      totalTokens += r.tokens
-      totalSessions += r.sessions
-      if (r.spend) {
-        spendLowerBoundUSD += r.spend.lowerBoundUSD
-        costPublishers += 1
-        for (const table of r.pricingTables) pricingTables.add(table)
-      }
-      const leadHarness = r.activeHarnesses.reduce(
-        (a, b) => (a === null || b.tokens > a.tokens ? b : a),
-        null as { name: string; tokens: number } | null
-      )
-      for (const h of r.activeHarnesses) {
-        bump(harnesses, h.name, h.tokens, leadHarness?.name === h.name)
-      }
-    }
-
-    const modelName = (id: string) =>
-      resolveModelId(catalog, id).catalogName ?? id
-
-    const rankOf = (
-      map: Map<string, Bucket>,
-      denominator: number,
-      name: (key: string) => string
-    ) =>
-      [...map.entries()]
-        .map(([key, b]) => ({
-          key,
-          name: name(key),
-          tokenShare: denominator > 0 ? b.tokens / denominator : 0,
-          stackCount: b.stacks,
-          leadsCount: b.leads,
-        }))
-        .sort(
-          (a, b) => b.tokenShare - a.tokenShare || b.stackCount - a.stackCount
-        )
-
-    const syncs = readings.map((r) => r.lastSyncMs)
-    const windowSpreadDays =
-      syncs.length > 1
-        ? (Math.max(...syncs) - Math.min(...syncs)) / DAY_MS
-        : 0
-
-    // --- the board ----------------------------------------------------------
-
-    const totalPages = Math.max(1, Math.ceil(living.length / PAGE_SIZE))
-    const page = Math.min(Math.max(1, Math.round(args.page ?? 1)), totalPages)
-    const rows = living
-      .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-      .map((r, i) => {
-        const top = leadOf(namedModels(r))
-        return {
-          rank: (page - 1) * PAGE_SIZE + i + 1,
-          slug: `${r.stack.slug}-${r.stack.shortId}`,
-          name: r.stack.name,
-          creatorName: r.creator?.name ?? '',
-          tokens: r.tokens,
-          lastSyncMs: r.lastSyncMs,
-          syncCount: r.points.length,
-          points: r.points.slice(-MAX_POINTS),
-          topModel:
-            top && r.tokens > 0
-              ? { name: modelName(top[0]), share: top[1] / r.tokens }
-              : null,
-          harnesses: r.activeHarnesses.map((h) => h.name),
-          spend: r.spend,
+/**
+ * The content of a rollup in one fixed key order, so two of them compare as
+ * strings. `computedAt` is left out on purpose: it is when the content last
+ * changed, and it must not make an unchanged recompute look like a change.
+ */
+function rollupContent(row: RollupContent): RollupContent {
+  return {
+    stackId: row.stackId,
+    windowFrom: row.windowFrom,
+    windowTo: row.windowTo,
+    lastSyncMs: row.lastSyncMs,
+    tokens: row.tokens,
+    sessions: row.sessions,
+    points: row.points.map((p) => ({ at: p.at, tokens: p.tokens })),
+    activeHarnesses: row.activeHarnesses.map((h) => ({
+      name: h.name,
+      tokens: h.tokens,
+    })),
+    modelTokens: row.modelTokens.map((m) => ({ id: m.id, tokens: m.tokens })),
+    spend: row.spend
+      ? {
+          lowerBoundUSD: row.spend.lowerBoundUSD,
+          coverage: row.spend.coverage,
+          exact: row.spend.exact,
         }
-      })
+      : null,
+    pricingTables: [...row.pricingTables],
+  }
+}
 
-    return {
-      stackCount: readings.length,
-      livingCount: living.length,
-      totalTokens,
-      totalSessions,
-      spendLowerBoundUSD: round2(spendLowerBoundUSD),
-      costPublishers,
-      unattributedShare:
-        totalTokens > 0 ? (totalTokens - attributed) / totalTokens : 0,
-      windowSpreadDays,
-      models: models.slice(0, MAX_RAIL_MODELS),
-      harnesses: rankOf(harnesses, totalTokens, (k) => k).slice(
-        0,
-        MAX_RAIL_HARNESSES
-      ),
-      quiet: {
-        count: quiet.length,
-        tokens: quiet.reduce((a, r) => a + r.tokens, 0),
-      },
-      pricingTables: [...pricingTables].sort(),
-      page,
-      pageSize: PAGE_SIZE,
-      totalPages,
-      rows,
+const RefreshOutcome = v.union(
+  /** The rollup was inserted or replaced. */
+  v.literal('written'),
+  /** The recompute equals the stored row. Nothing was written. */
+  v.literal('unchanged'),
+  /** The stack has no board reading anymore, or is gone. The row was removed. */
+  v.literal('deleted'),
+  /** No board reading and no row. Nothing to do. */
+  v.literal('absent')
+)
+
+/**
+ * Recompute one stack's rollup and store it. One stack per mutation, so each
+ * refresh has its own one-second budget however many stacks there are.
+ *
+ * The day read is bounded to the window through `by_stack_date`. A stack with
+ * a year of history reads at most 30 dates per machine here, where the live
+ * path loads every day the stack ever published.
+ *
+ * PRICED AS IF `publishCost` WERE ON. The flag is checked at read time
+ * (`toReading`), so the stored row does not depend on it and a toggle needs no
+ * refresh. For a stack with the flag off, the row therefore holds dollars the
+ * stack never published, including the backend's estimate for days the CLI
+ * left unpriced. `toReading` is the only way out of this table: any new
+ * reader must go through it, or it bypasses the consent gate.
+ *
+ * AN UNCHANGED RECOMPUTE WRITES NOTHING. A write to the table invalidates the
+ * board's cached query result, so an idle hour of the cron must not write.
+ *
+ * A stack that lost its reading (no inventory, no day in the window and no
+ * legacy figure) or that no longer exists has its row deleted, so no orphan
+ * outlives the next refresh.
+ */
+export const refreshStack = internalMutation({
+  args: { stackId: v.id('stacks') },
+  returns: RefreshOutcome,
+  handler: async (ctx, args) => {
+    const [existing, ...duplicates] = await ctx.db
+      .query('leaderboardRollups')
+      .withIndex('by_stack', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    for (const row of duplicates) await ctx.db.delete(row._id)
+
+    const now = Date.now()
+    const window = boardWindow(now)
+    const stack = await ctx.db.get(args.stackId)
+    const figures = stack
+      ? await deriveFigures(
+          ctx,
+          stack._id,
+          window,
+          await loadModelCatalog(ctx),
+          true,
+          (range) => measuredDaysForStackInRange(ctx, stack._id, range)
+        )
+      : null
+
+    if (figures === null) {
+      if (!existing) return 'absent' as const
+      await ctx.db.delete(existing._id)
+      return 'deleted' as const
     }
+
+    const next = rollupContent({
+      stackId: args.stackId,
+      windowFrom: window.from,
+      windowTo: window.to,
+      ...figures,
+    })
+    if (!existing) {
+      await ctx.db.insert('leaderboardRollups', { ...next, computedAt: now })
+      return 'written' as const
+    }
+    if (JSON.stringify(rollupContent(existing)) === JSON.stringify(next)) {
+      return 'unchanged' as const
+    }
+    await ctx.db.replace(existing._id, { ...next, computedAt: now })
+    return 'written' as const
+  },
+})
+
+/**
+ * The hourly cron's function: schedule one `refreshStack` per measured stack.
+ * It folds nothing itself. See `fanOutRollupRefresh`.
+ *
+ * Two things move a rollup without a sync, and this is what catches both: the
+ * window slides at UTC midnight, and a price change re-prices the days the
+ * backend fills. Either is on the board within one run.
+ */
+export const refreshAll = internalMutation({
+  args: {},
+  returns: v.object({ scheduled: v.number() }),
+  handler: async (ctx): Promise<{ scheduled: number }> => {
+    return await fanOutRollupRefresh(ctx)
   },
 })

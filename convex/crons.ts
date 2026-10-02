@@ -94,4 +94,21 @@ crons.daily(
 
 crons.interval('discord-stats-cleanup', { hours: 1 }, internal.discordSessions.cleanup)
 
+// The leaderboard rollup refresh (ADR-0014). A sync refreshes its own stack's
+// rollup; this run catches what moves a rollup without a sync. The 30-day
+// window slides at UTC midnight, and a price change re-prices the days the
+// backend fills. So a rollup is at most one hour behind the live figures.
+//
+// On the hour, not on an interval from deploy time: the run at 00:00 UTC is
+// the one that slides the window, and it should land right at the date change.
+//
+// It fans out one scheduled mutation per measured stack, each with its own
+// time budget, and a refresh that finds nothing changed writes nothing. An
+// idle hour therefore leaves the board's cached query result alone.
+crons.hourly(
+  'leaderboard-rollup-refresh',
+  { minuteUTC: 0 },
+  internal.leaderboard.refreshAll,
+)
+
 export default crons

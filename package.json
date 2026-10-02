@@ -118,7 +118,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^5.0.4",
-    "convex-test": "^0.0.51",
+    "convex-test": "^0.0.53",
     "jimp": "^1.6.1",
     "jsdom": "^27.0.0",
     "typescript": "^5.7.2",

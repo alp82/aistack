@@ -50,6 +50,7 @@ import type * as lib_hackerNews from "../lib/hackerNews.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_knowledgeBasePublication from "../lib/knowledgeBasePublication.js";
+import type * as lib_leaderboardRollup from "../lib/leaderboardRollup.js";
 import type * as lib_machineOrdinals from "../lib/machineOrdinals.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_measuredDays from "../lib/measuredDays.js";
@@ -86,6 +87,7 @@ import type * as migrations_20260831_auto_sync_six_hours from "../migrations/202
 import type * as migrations_20260831_stacks_always_public from "../migrations/20260831_stacks_always_public.js";
 import type * as migrations_20260908_model_display_names from "../migrations/20260908_model_display_names.js";
 import type * as migrations_20260910_grok_build_model from "../migrations/20260910_grok_build_model.js";
+import type * as migrations_20261002_leaderboard_rollups from "../migrations/20261002_leaderboard_rollups.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -165,6 +167,7 @@ declare const fullApi: ApiFromModules<{
   "lib/iconUrl": typeof lib_iconUrl;
   "lib/ids": typeof lib_ids;
   "lib/knowledgeBasePublication": typeof lib_knowledgeBasePublication;
+  "lib/leaderboardRollup": typeof lib_leaderboardRollup;
   "lib/machineOrdinals": typeof lib_machineOrdinals;
   "lib/mailer": typeof lib_mailer;
   "lib/measuredDays": typeof lib_measuredDays;
@@ -201,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260831_stacks_always_public": typeof migrations_20260831_stacks_always_public;
   "migrations/20260908_model_display_names": typeof migrations_20260908_model_display_names;
   "migrations/20260910_grok_build_model": typeof migrations_20260910_grok_build_model;
+  "migrations/20261002_leaderboard_rollups": typeof migrations_20261002_leaderboard_rollups;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

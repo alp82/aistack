@@ -239,6 +239,9 @@ export async function findMeasuredDay(
  *
  * Complete scans replace the day. Partial scans extend it conservatively:
  * missing entries survive and overlapping model records are never added.
+ *
+ * A caller that writes days also calls `scheduleRollupRefresh` for the stack,
+ * once per mutation: the leaderboard reads a rollup of these rows (ADR-0014).
  */
 export async function storeMeasuredDays(
   ctx: MutationCtx,
@@ -303,6 +306,35 @@ export async function measuredDaysForStack(
     .collect()
 }
 
+/**
+ * One stack's day rows inside an inclusive date range, across every machine,
+ * in the order `measuredDaysForStack` returns them.
+ *
+ * This is the bounded read: `by_stack_date` loads only the rows of the range,
+ * where `by_stack` loads the stack's whole history. Convex cannot project
+ * fields, so a row still arrives with its `workflow` block; reading fewer rows
+ * is the only lever.
+ *
+ * The rows are put back into creation order because a fold sums dollars as
+ * floats, and float addition depends on order. Same order, same sum.
+ */
+export async function measuredDaysForStackInRange(
+  ctx: QueryCtx | MutationCtx,
+  stackId: Id<'stacks'>,
+  range: { from: string; to: string }
+): Promise<Doc<'measuredDays'>[]> {
+  const rows = await ctx.db
+    .query('measuredDays')
+    .withIndex('by_stack_date', (q) =>
+      q.eq('stackId', stackId).gte('date', range.from).lte('date', range.to)
+    )
+    .collect()
+  return rows.sort(
+    (a, b) =>
+      a._creationTime - b._creationTime || (a._id < b._id ? -1 : a._id > b._id ? 1 : 0)
+  )
+}
+
 /** One machine's day rows, in date order. */
 export async function measuredDaysForMachine(
   ctx: QueryCtx | MutationCtx,
@@ -364,6 +396,10 @@ export type UpsertInventoryArgs = {
 /**
  * Replace the (stack, machine, harness) inventory row from one snapshot
  * payload. Latest per source, never a sum (ADR-0011).
+ *
+ * A caller that writes inventory also calls `scheduleRollupRefresh` for the
+ * stack, once per mutation: the leaderboard's rollup stores the last sync
+ * time and the legacy figure read from these rows (ADR-0014).
  */
 export async function upsertInventory(
   ctx: MutationCtx,
