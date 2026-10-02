@@ -11,7 +11,6 @@ import { internalMutation, query } from './_generated/server'
 import { fanOutRollupRefresh } from './lib/leaderboardRollup'
 import {
   inventoryForStack,
-  measuredDaysForStack,
   measuredDaysForStackInRange,
   newestInventoryPerSource,
 } from './lib/measuredDays'
@@ -27,27 +26,26 @@ import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured
  * The read model behind `/leaderboard`. Wayfinder ticket #83 (map #76), spine
  * locked by #92, scope by #82.
  *
- * THE BOARD IS MOVING ONTO A PER-STACK ROLLUP (ADR-0014). #82 recorded that
- * reads are live and that "a later rollup must reproduce these numbers
- * exactly". The live read folds every measured stack's days inside one query.
- * With 9 measured stacks that already costs about one second of JS time, which
- * is the Convex limit per function, and about half of the `/leaderboard`
- * requests on prod returned HTTP 500.
+ * THE BOARD READS A PER-STACK ROLLUP (ADR-0014). #82 recorded that reads are
+ * live and that "a later rollup must reproduce these numbers exactly". The
+ * live read folded every measured stack's days inside one query. With 9
+ * measured stacks that already cost about one second of JS time, which is the
+ * Convex limit per function, and about half of the `/leaderboard` requests on
+ * prod returned HTTP 500. That read path is gone.
  *
- * ONE DERIVATION, TWO WAYS TO REACH IT. `deriveFigures` is the only code that
- * turns a stack's inventory and days into board figures (ADR-0011).
+ * ONE DERIVATION, WRITTEN AHEAD OF THE READ. `deriveFigures` is the only code
+ * that turns a stack's inventory and days into board figures (ADR-0011).
  *   - `refreshStack` runs it for one stack, at sync time and hourly, over a
  *     day read bounded to the window, and stores the result in
  *     `leaderboardRollups`.
- *   - `readRollupPopulation` reads those rows. No day is folded at read time.
- *   - `readPopulation` is the LIVE path: it runs the derivation for every
- *     stack inside the query. It is retained only until phase B.
+ *   - `readRollupPopulation` reads those rows for `get` and `model`. No day
+ *     is folded at read time, so a stack is on the board only once its
+ *     refresh has run.
  *
- * PHASE A (this file today): `get` and `model` stay on the live path, and
- * `getRolledUp` serves the same board from the rollups so the two can be
- * compared on real data. PHASE B swaps `readPopulation` for
- * `readRollupPopulation` in `get` and `model`, then deletes `getRolledUp`,
- * `readPopulation` and `readStack`.
+ * THE LIVE BOARD SURVIVES IN THE TESTS ONLY, as the oracle the rollup board
+ * is compared against (`leaderboard.testOracle.ts`). It is assembled from the
+ * same `deriveFigures`, `toReading` and `buildBoard`, which are exported for
+ * that reason alone.
  *
  * WHAT A ROLLUP STORES AND WHAT IS READ LIVE is decided in `StackFigures` and
  * `toReading`. Stored: the figures of the 30-day fold. Read live: everything
@@ -179,8 +177,8 @@ type StackReading = StackFigures & {
 
 type DateWindow = { from: string; to: string }
 
-/** The 30 UTC dates the board folds, ending today. */
-function boardWindow(now: number): DateWindow {
+/** The 30 UTC dates the board folds, ending today. Exported for the test oracle. */
+export function boardWindow(now: number): DateWindow {
   return rangeDates('30d', now)
 }
 
@@ -193,12 +191,14 @@ function boardWindow(now: number): DateWindow {
  * `null` means the stack is not on the board: it has no inventory, or neither
  * a usage day inside the window nor a legacy figure.
  *
- * `loadDays` is the only difference between the two callers. The live path
- * loads the stack's whole history; the rollup loads the window through
- * `by_stack_date`. Both are filtered to the window here and arrive in the
- * same order, so the fold sees identical rows.
+ * `loadDays` is the caller's day read. `refreshStack` loads the window through
+ * `by_stack_date`. The test oracle loads the stack's whole history, as the
+ * retired live read did. Both are filtered to the window here and arrive in
+ * the same order, so the fold sees identical rows.
+ *
+ * Exported for the test oracle. `refreshStack` is the only production caller.
  */
-async function deriveFigures(
+export async function deriveFigures(
   ctx: QueryCtx | MutationCtx,
   stackId: Id<'stacks'>,
   window: DateWindow,
@@ -283,7 +283,7 @@ async function deriveFigures(
 
 /**
  * A stack's figures as the board reads them at `now`. Everything decided here
- * is decided at READ time, on both paths, so none of it can be stale:
+ * is decided at READ time, so none of it can be stale:
  *
  *   - `living` compares the stored `lastSyncMs` against the clock. A stack
  *     goes quiet 7 days after its last sync with no write anywhere.
@@ -292,12 +292,13 @@ async function deriveFigures(
  *     `readUsageWindow` returns the same tokens, sessions, models and
  *     harnesses and a null cost. So the rollup stores the priced figures and
  *     the flag is checked here, on the live stack row. A toggle takes effect
- *     on the next read, and no writer of the flag needs a hook. The live path
- *     already derived with the real flag; the check is a no-op there.
+ *     on the next read, and no writer of the flag needs a hook.
  *   - `stack` and `creator` are the live rows. The board takes the name, slug
  *     and creator name from them when it builds a row.
+ *
+ * Exported for the test oracle.
  */
-function toReading(
+export function toReading(
   stack: Doc<'stacks'>,
   creator: Doc<'creators'> | null,
   figures: StackFigures,
@@ -312,25 +313,6 @@ function toReading(
     creator,
     living: now - figures.lastSyncMs <= SEVEN_DAYS_MS,
   }
-}
-
-/** LIVE PATH, retained only until phase B: one stack's reading, derived in the query. */
-async function readStack(
-  ctx: QueryCtx,
-  stack: Doc<'stacks'>,
-  now: number,
-  catalog: ModelCatalog
-): Promise<StackReading | null> {
-  const figures = await deriveFigures(
-    ctx,
-    stack._id,
-    boardWindow(now),
-    catalog,
-    stack.publishCost !== false,
-    () => measuredDaysForStack(ctx, stack._id)
-  )
-  if (figures === null) return null
-  return toReading(stack, await ctx.db.get(stack.creatorId), figures, now)
 }
 
 type Bucket = { tokens: number; stacks: number; leads: number }
@@ -348,27 +330,6 @@ function bump(
   map.set(key, cur)
 }
 
-/**
- * LIVE PATH, retained only until phase B.
- *
- * The measured population: public and not flagged. The quality flag is enforced HERE, not left to the client -
- * the board is discovery (#82), and a filter the frontend applies is a filter
- * a crawler does not. `/model` (#223) reads the same population, so the two
- * can never disagree on a share.
- */
-async function readPopulation(ctx: QueryCtx, now: number) {
-  const stacks = await ctx.db.query('stacks').collect()
-
-  const catalog = await loadModelCatalog(ctx)
-  const readings: StackReading[] = []
-  for (const stack of stacks) {
-    if (stack.isLowQuality === true) continue
-    const reading = await readStack(ctx, stack, now, catalog)
-    if (reading) readings.push(reading)
-  }
-  return { readings, catalog }
-}
-
 /** A rollup row back in the shape the derivation produced it. */
 function figuresOfRollup(rollup: Doc<'leaderboardRollups'>): StackFigures {
   return {
@@ -384,11 +345,16 @@ function figuresOfRollup(rollup: Doc<'leaderboardRollups'>): StackFigures {
 }
 
 /**
- * The same population as `readPopulation`, read from the rollups (ADR-0014).
- * A drop-in replacement: same `{ readings, catalog }`, and no day is folded.
+ * The measured population: every stack with a rollup that is not flagged
+ * (ADR-0014). No day is folded here.
  *
- * THE ROLLUP TABLE IS THE DRIVER. A rollup exists exactly for the stacks the
- * live path would return a reading for, so there is no scan of `stacks` and
+ * The quality flag is enforced HERE, not left to the client. The board is
+ * discovery (#82), and a filter the frontend applies is a filter a crawler
+ * does not. `/model` (#223) reads the same population, so the two can never
+ * disagree on a share.
+ *
+ * THE ROLLUP TABLE IS THE DRIVER. `refreshStack` keeps a rollup exactly for
+ * the stacks that have a board reading, so there is no scan of `stacks` and
  * no read of a measured table. Per rollup the query gets two rows by id:
  *
  *   - the stack, for `isLowQuality`, `publishCost`, the name and the slug.
@@ -402,20 +368,36 @@ function figuresOfRollup(rollup: Doc<'leaderboardRollups'>): StackFigures {
  * next read. `modelPrices` is not read at all: prices are already inside the
  * stored spend.
  *
- * THE ORDER IS THE LIVE PATH'S ORDER. The live path walks `stacks` in creation
- * order, and that order breaks ties in the board (two stacks with the same
- * tokens and name, two models with the same share). Rollups are created in
- * sync order, so the readings are sorted back by the stack's creation time.
+ * THE ORDER IS THE STACKS' CREATION ORDER. That order breaks ties in the
+ * board (two stacks with the same tokens and name, two models with the same
+ * share). Rollups are created in sync order, so the readings are sorted back
+ * by the stack's creation time.
  *
- * WHAT CAN DIFFER FROM THE LIVE BOARD, and for how long: a rollup holds the
- * window and the prices of its last refresh. After UTC midnight, or after a
- * price change, it is stale until the hourly cron reaches it.
+ * WHAT CAN BE BEHIND, and for how long: a rollup holds the window and the
+ * prices of its last refresh. After UTC midnight, or after a price change, it
+ * is stale until the hourly cron reaches it.
+ *
+ * A STALE WINDOW IS LOGGED AND STILL SERVED. A rollup whose `windowTo` is not
+ * today's is behind by at least one refresh. Right after UTC midnight that is
+ * the cron's normal lag of a few seconds. If the warning keeps appearing, a
+ * `refreshStack` keeps failing (a stack too heavy for the one-second limit,
+ * for example) and the board serves that stack's old window. The rows are
+ * neither dropped nor changed: an old figure is better than a missing stack.
  */
 async function readRollupPopulation(ctx: QueryCtx, now: number) {
   const [rollups, catalog] = await Promise.all([
     ctx.db.query('leaderboardRollups').collect(),
     loadModelNames(ctx),
   ])
+
+  const windowTo = boardWindow(now).to
+  const stale = rollups.filter((r) => r.windowTo !== windowTo)
+  if (stale.length > 0) {
+    console.warn(
+      `leaderboard: ${stale.length} of ${rollups.length} rollups hold a window that does not end ${windowTo}, for example stack ${stale[0].stackId} (window ends ${stale[0].windowTo})`
+    )
+  }
+
   const stacks = await Promise.all(rollups.map((r) => ctx.db.get(r.stackId)))
 
   // One reading per stack. `refreshStack` keeps one row per stack; a second
@@ -498,7 +480,7 @@ export const model = query({
   handler: async (ctx, args) => {
     const wanted = args.name.trim().toLowerCase()
     if (wanted === '' || wanted === 'unknown') return null
-    const { readings, catalog } = await readPopulation(ctx, Date.now())
+    const { readings, catalog } = await readRollupPopulation(ctx, Date.now())
     const ranked = rankModels(readings, catalog)
 
     const catalogRow =
@@ -528,10 +510,11 @@ export const model = query({
 })
 
 /**
- * The board over one population. Both read paths hand it their readings, so
- * the live board and the rollup board are assembled by the same code.
+ * The board over one population. Exported for the test oracle, which hands it
+ * live readings, so the oracle board and the served board are assembled by
+ * the same code.
  */
-function buildBoard(
+export function buildBoard(
   readings: StackReading[],
   catalog: ModelNames,
   requestedPage: number | undefined
@@ -651,20 +634,6 @@ export const get = query({
   args: { page: v.optional(v.number()) },
   returns: Board,
   handler: async (ctx, args) => {
-    const { readings, catalog } = await readPopulation(ctx, Date.now())
-    return buildBoard(readings, catalog, args.page)
-  },
-})
-
-/**
- * TEMPORARY (phase A, ADR-0014): the same board as `get`, read from the
- * rollups. It exists so the two can be compared on prod through the public
- * query API before `get` moves over. Phase B deletes it.
- */
-export const getRolledUp = query({
-  args: { page: v.optional(v.number()) },
-  returns: Board,
-  handler: async (ctx, args) => {
     const { readings, catalog } = await readRollupPopulation(ctx, Date.now())
     return buildBoard(readings, catalog, args.page)
   },
@@ -726,8 +695,8 @@ const RefreshOutcome = v.union(
  * refresh has its own one-second budget however many stacks there are.
  *
  * The day read is bounded to the window through `by_stack_date`. A stack with
- * a year of history reads at most 30 dates per machine here, where the live
- * path loads every day the stack ever published.
+ * a year of history reads at most 30 dates per machine here, where the
+ * retired live read loaded every day the stack ever published.
  *
  * PRICED AS IF `publishCost` WERE ON. The flag is checked at read time
  * (`toReading`), so the stored row does not depend on it and a toggle needs no

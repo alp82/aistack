@@ -25,7 +25,7 @@ board field for field at the same instant.
 There is one derivation. `deriveFigures` in `convex/leaderboard.ts` turns a stack's
 inventory and its window of days into board figures. The live read called it inside the
 query for every stack. `leaderboard.refreshStack` calls it for one stack in a mutation
-of its own and stores the result. The rollup's day read is bounded to the 30-day window
+of its own and stores the result, and it is the only production caller. The rollup's day read is bounded to the 30-day window
 through the `by_stack_date` index. Convex cannot project fields, so a day row still
 arrives with its `workflow` block, which the board does not use; reading 30 dates per
 machine instead of the whole history is the lever.
@@ -88,6 +88,17 @@ A rollup can be behind the live figures in three cases:
 Nothing else on the board can be stale. A refresh that fails leaves the previous row in
 place, and the next cron run tries again.
 
+A refresh that keeps failing would leave the board serving an old window with no error
+anywhere. A stack too heavy for the one-second limit is the likely cause. So every read
+compares each rollup's `windowTo` with the current window's last date. When they differ
+it logs one `console.warn` with the number of stale rollups and one stack id. The rows
+are still served, unchanged: after UTC midnight every rollup is stale for the seconds
+the cron needs, and an old figure is better than a missing stack. A warning that
+persists past the cron run is the signal to look at that stack's refresh.
+
+A stack is on the board only once its first refresh has run. Before that the read finds
+no rollup for it, so a first sync appears a moment after the publish returns.
+
 Two alternatives lost. **Bounding the live read to the window** removes the unbounded
 history read and keeps reads live, but the fold of every stack still runs inside one
 query, so the limit returns as the population grows. **One board document** written by a
@@ -96,13 +107,26 @@ and a sync could not update its own row without rebuilding the whole board.
 
 ## Consequences
 
-The rollout has two phases, because an empty board must never be served. Phase A adds
+The rollout had two phases, because an empty board must never be served. Phase A added
 the table, the write hooks, the cron, the backfill migration
 `migrations/20261002_leaderboard_rollups:run` and a temporary public query
-`leaderboard.getRolledUp`, while `get`, `model` and the Discord commands stay on the
-live path. After the deploy the cron or the migration fills the table and the two
-queries are compared on prod. Phase B moves `get` and `model` onto
-`readRollupPopulation` and deletes `getRolledUp`, `readPopulation` and `readStack`.
+`leaderboard.getRolledUp`, while `get`, `model` and the Discord commands stayed on the
+live path. The cron and the migration filled the table and the two queries were compared
+on prod.
+
+Phase B is done. `leaderboard.get` and `leaderboard.model` read through
+`readRollupPopulation`, and the Discord commands follow because they call those two
+queries. `getRolledUp`, `readPopulation` and `readStack` are deleted. No production code
+folds more than one stack per function.
+
+The live board remains as a test oracle. `convex/leaderboard.testOracle.ts` derives the
+board from the measured rows the way the retired read path did: it scans `stacks` and
+runs `deriveFigures` over an unbounded read of each stack's days, with the stack's real
+`publishCost` flag. The tests assert that `leaderboard.get` equals it field for field,
+on every page, once the refreshes have run. The Convex bundler skips a file with two
+dots in its name, so the oracle is never deployed. `deriveFigures`, `toReading`,
+`buildBoard` and `boardWindow` are exported from `convex/leaderboard.ts` for it and have
+no other outside caller.
 
 There is no stack-delete or machine-removal path today. One that lands must call
 `scheduleRollupRefresh` like the publish paths do. Until it does, the cron removes the

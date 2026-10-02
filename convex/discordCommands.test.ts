@@ -146,6 +146,7 @@ async function seedDays(t: Ctx, stackId: Id<'stacks'>) {
 }
 
 /** The board reads freshness off the inventory rows, so a ranked stack needs one. */
+/** The stack's inventory row, then its leaderboard rollup. Call it after the days are seeded. */
 async function seedInventory(t: Ctx, stackId: Id<'stacks'>, harness = 'claude-code') {
   await t.run(async (ctx) => {
     await ctx.db.insert('measuredInventory', {
@@ -167,6 +168,10 @@ async function seedInventory(t: Ctx, stackId: Id<'stacks'>, harness = 'claude-co
       pricingTable: 'anthropic-list-2026-07-25',
     })
   })
+  // The rows above are inserted with no write hook. `/leaderboard` and `/model`
+  // read the rollup (ADR-0014), so the refresh a real sync schedules runs here.
+  // Seed the days before the inventory.
+  await t.mutation(internal.leaderboard.refreshStack, { stackId })
 }
 
 async function seedSecondStack(t: Ctx) {

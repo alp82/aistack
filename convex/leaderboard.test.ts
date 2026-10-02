@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
+import { liveBoard } from './leaderboard.testOracle'
 import schema from './schema'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
@@ -226,11 +227,41 @@ async function staleSync(
   })
 }
 
+// `get` and `model` read the rollups (ADR-0014). A sync only schedules its
+// stack's refresh, so every test runs the scheduled functions before it reads:
+// `settle` after a `sync`, `runCron` when a row was inserted with no write hook.
 describe('leaderboard.get', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  test('is empty until the scheduled refresh has run, and populated after', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Just Synced' })
+    await sync(t, stackId, { totalTokens: 1234 })
+
+    // The measured rows are there, and the live derivation already ranks the
+    // stack. The board does not: its rollup is not written yet.
+    expect((await t.run((ctx) => liveBoard(ctx))).rows).toHaveLength(1)
+    const before = await t.query(api.leaderboard.get, {})
+    expect(before).toMatchObject({ stackCount: 0, totalTokens: 0, rows: [] })
+    expect(await t.query(api.leaderboard.model, { name: 'model-alpha' })).toBeNull()
+
+    await settle(t)
+    const after = await t.query(api.leaderboard.get, {})
+    expect(after.stackCount).toBe(1)
+    expect(after.rows[0]).toMatchObject({ name: 'Just Synced', tokens: 1234 })
+    expect(await t.query(api.leaderboard.model, { name: 'model-alpha' })).toMatchObject({
+      stackCount: 1,
+    })
+  })
+
   test('includes Cursor tokens and history in the normal harness filter', async () => {
     const t = convexTest(schema, modules)
     const stack = await seedStack(t, { name: 'Cursor Stack' })
     await sync(t, stack.stackId, { totalTokens: 1234, harness: 'cursor' })
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0]).toMatchObject({ tokens: 1234, harnesses: ['cursor'] })
     expect(board.harnesses.some(h => h.key === 'cursor')).toBe(true)
@@ -250,6 +281,7 @@ describe('leaderboard.get', () => {
     // the flag (#444), so a flag set before it would not survive.
     await patchStack(t, spam.stackId, { isLowQuality: true })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows.map((r) => [r.rank, r.name, r.tokens])).toEqual([
       [1, 'Draft', 5000],
@@ -271,6 +303,7 @@ describe('leaderboard.get', () => {
     })
     await sync(t, stackId, { totalTokens: 100, machine: 'vps' })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0].tokens).toBe(1000)
   })
@@ -287,6 +320,7 @@ describe('leaderboard.get', () => {
     })
     await sync(t, stackId, { totalTokens: 100, machine: 'vps' })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0].harnesses).toEqual(['claude-code'])
     const claudeCode = board.harnesses.find((h) => h.key === 'claude-code')
@@ -301,6 +335,7 @@ describe('leaderboard.get', () => {
     await sync(t, living.stackId, { totalTokens: 100 })
     await staleSync(t, quiet.stackId, 8 * DAY, { totalTokens: 700 })
 
+    await runCron(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows).toHaveLength(1)
     expect(board.livingCount).toBe(1)
@@ -315,6 +350,7 @@ describe('leaderboard.get', () => {
     const quiet = await seedStack(t)
     await staleSync(t, quiet.stackId, 8 * DAY, { totalTokens: 700 })
 
+    await runCron(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows).toEqual([])
     expect(board.livingCount).toBe(0)
@@ -341,6 +377,7 @@ describe('leaderboard.get', () => {
       totalTokens: 120,
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     const row = board.rows[0]
     expect(row.points.map((p) => p.tokens)).toEqual([150, 120])
@@ -364,6 +401,7 @@ describe('leaderboard.get', () => {
     await sync(t, priced.stackId, { totalTokens: 1000, models })
     await sync(t, privately.stackId, { totalTokens: 1000, models })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     const byName = new Map(board.rows.map((r) => [r.name, r]))
     expect(byName.get('Priced')?.spend).toEqual({
@@ -384,6 +422,7 @@ describe('leaderboard.get', () => {
       models: [{ id: 'model-alpha', tokens: 1000, usd: 12 }],
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0].spend).toEqual({
       lowerBoundUSD: 12,
@@ -403,6 +442,7 @@ describe('leaderboard.get', () => {
       ],
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0].topModel).toEqual({ name: 'model-alpha', share: 0.1 })
     expect(board.unattributedShare).toBeCloseTo(0.9, 6)
@@ -417,6 +457,7 @@ describe('leaderboard.get', () => {
       models: [{ id: 'unknown', tokens: 1000 }],
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows[0].topModel).toBeNull()
   })
@@ -449,6 +490,7 @@ describe('leaderboard.get', () => {
       ],
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     const gptX = board.models.find((m) => m.key === 'gpt-x')
     // 400 of 600 attributed tokens, on both stacks, leading one of them -
@@ -483,6 +525,7 @@ describe('leaderboard.get', () => {
       models: [],
     })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     expect(board.harnesses.map((h) => h.key)).toEqual(['claude-code'])
     expect(board.rows[0].harnesses).toEqual(['claude-code'])
@@ -495,6 +538,7 @@ describe('leaderboard.get', () => {
       await sync(t, stackId, { totalTokens: 1000 - i })
     }
 
+    await settle(t)
     const first = await t.query(api.leaderboard.get, {})
     expect(first.rows).toHaveLength(10)
     expect(first.totalPages).toBe(2)
@@ -516,6 +560,7 @@ describe('leaderboard.get', () => {
     const { stackId } = await seedStack(t)
     await sync(t, stackId, { totalTokens: 10 })
 
+    await settle(t)
     const board = await t.query(api.leaderboard.get, {})
     const row = board.rows[0]
     expect(row.slug).toMatch(/^stack-\d+-sid\d+x$/)
@@ -524,6 +569,11 @@ describe('leaderboard.get', () => {
 })
 
 describe('leaderboard.model', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
   test('resolves a catalog name case-insensitively and a raw id as itself', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
@@ -546,6 +596,7 @@ describe('leaderboard.model', () => {
         { id: 'claude-y', tokens: 200 },
       ],
     })
+    await settle(t)
     expect(await t.query(api.leaderboard.model, { name: 'gpt x' })).toEqual({
       key: 'gpt-x',
       name: 'GPT X',
@@ -586,9 +637,10 @@ describe('leaderboard.model', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The rollup (ADR-0014). Every test here compares `getRolledUp` with `get` at
-// one frozen instant: the rollup board must equal the live board field for
-// field, and the clock is the only thing the two reads do not share.
+// The rollup (ADR-0014). Every test here compares `get`, which reads the
+// rollups, with `liveBoard`, the live derivation kept for tests as the oracle,
+// at one frozen instant. The served board must equal the live board field for
+// field.
 // ---------------------------------------------------------------------------
 
 const NOW = Date.parse('2026-08-03T12:00:00Z')
@@ -615,20 +667,31 @@ async function rollupOf(t: Ctx, stackId: Id<'stacks'>) {
   return (await rollups(t)).find((row) => row.stackId === stackId) ?? null
 }
 
+/** The oracle: the board derived live from the measured rows, right now. */
+async function live(t: Ctx, page?: number) {
+  return await t.run((ctx) => liveBoard(ctx, page))
+}
+
 /**
- * Both boards at the same instant, asserted equal on every page. Returns the
- * first page so a test can also assert what the board says.
+ * The served board and the live board at the same instant, asserted equal on
+ * every page. Returns the first served page so a test can also assert what
+ * the board says.
  */
 async function sameBoard(t: Ctx) {
-  const live = await t.query(api.leaderboard.get, {})
-  const rolled = await t.query(api.leaderboard.getRolledUp, {})
-  expect(rolled).toEqual(live)
-  for (let page = 2; page <= live.totalPages; page++) {
-    expect(await t.query(api.leaderboard.getRolledUp, { page })).toEqual(
-      await t.query(api.leaderboard.get, { page })
+  const expected = await live(t)
+  const served = await t.query(api.leaderboard.get, {})
+  expect(served).toEqual(expected)
+  for (let page = 2; page <= expected.totalPages; page++) {
+    expect(await t.query(api.leaderboard.get, { page })).toEqual(
+      await live(t, page)
     )
   }
-  return rolled
+  return served
+}
+
+/** Capture the stale-window warning of a read, and keep it off the test log. */
+function spyOnWarn() {
+  return vi.spyOn(console, 'warn').mockImplementation(() => {})
 }
 
 /** One day row, inserted directly: any date, any machine, and no write hook. */
@@ -724,7 +787,10 @@ describe('leaderboard rollup', () => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
   })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
 
   test('serves the live board, field for field, over a mixed population', async () => {
     const t = convexTest(schema, modules)
@@ -885,7 +951,7 @@ describe('leaderboard rollup', () => {
 
     // The publish only scheduled the refresh: nothing is rolled up yet.
     expect(await rollupOf(t, stackId)).toBeNull()
-    expect((await t.query(api.leaderboard.getRolledUp, {})).stackCount).toBe(0)
+    expect((await t.query(api.leaderboard.get, {})).stackCount).toBe(0)
 
     await settle(t)
     expect((await sameBoard(t)).rows[0]).toMatchObject({ name: 'Synced', tokens: 100 })
@@ -1063,6 +1129,8 @@ describe('leaderboard rollup', () => {
     expect((await sameBoard(t)).livingCount).toBe(1)
 
     // Seven days and a second later, same UTC date range for the stored day.
+    // No cron ran, so the read reports the old window. That is expected here.
+    spyOnWarn()
     vi.setSystemTime(NOW + 7 * DAY + 1000)
     const board = await sameBoard(t)
     expect(board.livingCount).toBe(0)
@@ -1093,13 +1161,18 @@ describe('leaderboard rollup', () => {
     expect((await sameBoard(t)).totalTokens).toBe(1087)
 
     // Past midnight UTC, before the cron: the live board already dropped the
-    // oldest date, the rollups still hold yesterday's window.
+    // oldest date, the rollups still hold yesterday's window. The served
+    // board is behind, and the read says so.
+    const warn = spyOnWarn()
     vi.setSystemTime(Date.parse('2026-08-04T00:00:30Z'))
-    expect((await t.query(api.leaderboard.get, {})).totalTokens).toBe(10)
-    expect((await t.query(api.leaderboard.getRolledUp, {})).totalTokens).toBe(1087)
+    expect((await live(t)).totalTokens).toBe(10)
+    expect((await t.query(api.leaderboard.get, {})).totalTokens).toBe(1087)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockClear()
 
     expect(await runCron(t)).toEqual({ scheduled: 2 })
     const board = await sameBoard(t)
+    expect(warn).not.toHaveBeenCalled()
     expect(board.totalTokens).toBe(10)
     expect(board.stackCount).toBe(1)
     expect(await rollupOf(t, sliding.stackId)).toMatchObject({
@@ -1139,9 +1212,9 @@ describe('leaderboard rollup', () => {
         createdAt: NOW,
       })
     })
-    // The live board prices it at once. The rollup is behind until the cron.
-    expect((await t.query(api.leaderboard.get, {})).rows[0].spend).not.toBeNull()
-    expect((await t.query(api.leaderboard.getRolledUp, {})).rows[0].spend).toBeNull()
+    // The live board prices it at once. The served board is behind until the cron.
+    expect((await live(t)).rows[0].spend).not.toBeNull()
+    expect((await t.query(api.leaderboard.get, {})).rows[0].spend).toBeNull()
 
     await runCron(t)
     const board = await sameBoard(t)
@@ -1268,5 +1341,55 @@ describe('leaderboard rollup', () => {
 
     await t.mutation(internal.leaderboard.refreshStack, { stackId })
     expect(await rollups(t)).toHaveLength(1)
+  })
+
+  test('a rollup holding an old window is served unchanged and logged once per read', async () => {
+    const t = convexTest(schema, modules)
+    const stuck = await seedStack(t, { name: 'Stuck' })
+    const fresh = await seedStack(t, { name: 'Fresh' })
+    await sync(t, stuck.stackId, { totalTokens: 300 })
+    await sync(t, fresh.stackId, { totalTokens: 100 })
+    await settle(t)
+
+    // Every rollup ends today: a read logs nothing.
+    const warn = spyOnWarn()
+    await t.query(api.leaderboard.get, {})
+    await t.query(api.leaderboard.model, { name: 'model-alpha' })
+    expect(warn).not.toHaveBeenCalled()
+
+    // The next UTC day. One stack syncs and is refreshed. The other stack's
+    // refresh never ran, as if it kept failing.
+    vi.setSystemTime(Date.parse('2026-08-04T09:00:00Z'))
+    await sync(t, fresh.stackId, { totalTokens: 50 })
+    await settle(t)
+    const stored = await rollupOf(t, stuck.stackId)
+    expect(stored?.windowTo).toBe('2026-08-03')
+    expect((await rollupOf(t, fresh.stackId))?.windowTo).toBe('2026-08-04')
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(warn).toHaveBeenCalledTimes(1)
+    const message = String(warn.mock.calls[0][0])
+    expect(message).toContain('1 of 2 rollups')
+    expect(message).toContain('2026-08-04')
+    expect(message).toContain(stuck.stackId)
+
+    // The stale row is neither dropped nor altered, and the board carries no
+    // trace of the warning.
+    expect(board.rows.map((r) => [r.name, r.tokens])).toEqual([
+      ['Stuck', 300],
+      ['Fresh', 150],
+    ])
+    expect(board.stackCount).toBe(2)
+    expect(await rollupOf(t, stuck.stackId)).toEqual(stored)
+
+    // `model` reads the same population and logs the same way, once.
+    await t.query(api.leaderboard.model, { name: 'model-alpha' })
+    expect(warn).toHaveBeenCalledTimes(2)
+
+    // The cron reaches the stack: the window is current and the log is quiet.
+    warn.mockClear()
+    await runCron(t)
+    await sameBoard(t)
+    expect(warn).not.toHaveBeenCalled()
   })
 })
