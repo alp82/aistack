@@ -731,8 +731,10 @@ const RefreshOutcome = v.union(
  *
  * PRICED AS IF `publishCost` WERE ON. The flag is checked at read time
  * (`toReading`), so the stored row does not depend on it and a toggle needs no
- * refresh. The dollars are already on the stack's `measuredDays` rows; this
- * stores nothing the database did not hold.
+ * refresh. For a stack with the flag off, the row therefore holds dollars the
+ * stack never published, including the backend's estimate for days the CLI
+ * left unpriced. `toReading` is the only way out of this table: any new
+ * reader must go through it, or it bypasses the consent gate.
  *
  * AN UNCHANGED RECOMPUTE WRITES NOTHING. A write to the table invalidates the
  * board's cached query result, so an idle hour of the cron must not write.

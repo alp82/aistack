@@ -241,11 +241,14 @@ describe('leaderboard.get', () => {
     const small = await seedStack(t, { name: 'Small' })
     const big = await seedStack(t, { name: 'Big' })
     const draft = await seedStack(t, { name: 'Draft', published: false })
-    const spam = await seedStack(t, { name: 'Spam', isLowQuality: true })
+    const spam = await seedStack(t, { name: 'Spam' })
     await sync(t, small.stackId, { totalTokens: 100 })
     await sync(t, big.stackId, { totalTokens: 900 })
     await sync(t, draft.stackId, { totalTokens: 5000 })
     await sync(t, spam.stackId, { totalTokens: 4000 })
+    // Flagged after the sync: a sync reopens the stack's reports and clears
+    // the flag (#444), so a flag set before it would not survive.
+    await patchStack(t, spam.stackId, { isLowQuality: true })
 
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows.map((r) => [r.rank, r.name, r.tokens])).toEqual([
