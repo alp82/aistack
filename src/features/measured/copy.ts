@@ -55,6 +55,7 @@ export const SYNC_LABEL_TOKENS = "add your tokens";
 export const SYNC_LABEL_BOARD = "get on the board";
 export const SYNC_LABEL_STATS = "get your own stats";
 export const SYNC_LABEL_OWNER = "add your stats";
+export const SYNC_LABEL_SYNC = "sync your stack";
 export const SYNC_COPIED = "Copied";
 export const SYNC_HOW = "how it works";
 export const SYNC_PRIVACY = "No sensitive data leaves your machine.";
@@ -62,6 +63,8 @@ export const SYNC_BOARD_NOTE =
 	"The board ranks what the command measures on your machine.";
 export const SYNC_STATS_NOTE =
 	"Every number in this section came from one command.";
+export const SYNC_EDITOR_NOTE =
+	"The command fills in Stats and measured models from your machine.";
 export const SYNC_OWNER_NOTE =
 	"Your stack has no Stats yet. Only you see this.";
 

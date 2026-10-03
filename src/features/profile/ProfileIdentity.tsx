@@ -3,6 +3,8 @@ import { useMutation, useQuery } from "convex/react";
 import { BadgeCheck, Globe, Pencil, Plus, User, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { AvatarEditor } from "@/components/AvatarEditor";
+import { SYNC_LABEL_STATS, SYNC_LABEL_SYNC } from "@/features/measured/copy";
+import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { PendingAvatar } from "@/features/stack-editor/types";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
@@ -165,6 +167,17 @@ function ProfileIdentity({ profile, isOwner }: ProfileIdentityProps) {
 					Edit profile
 				</button>
 			)}
+			{/* The owner's own command, or the reader's invitation. */}
+			<div className="mt-8 border-t border-stroke-subtle pt-6">
+				<SyncCommand
+					stacked
+					className="w-full"
+					label={isOwner ? SYNC_LABEL_SYNC : SYNC_LABEL_STATS}
+				/>
+				<div className="mt-3">
+					<SyncHowLink />
+				</div>
+			</div>
 		</aside>
 	);
 }

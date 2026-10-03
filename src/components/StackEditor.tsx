@@ -6,6 +6,8 @@ import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
 import { SignInDialog } from "@/components/SignInDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import { SYNC_EDITOR_NOTE, SYNC_LABEL_SYNC } from "@/features/measured/copy";
+import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
@@ -501,6 +503,19 @@ export function StackEditor({
 											Dismiss
 										</button>
 									</div>
+								</div>
+							)}
+
+							{/* Sync comes before step 1: it fills in what the steps cannot. */}
+							{mode === "edit" && (
+								<div className="mb-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-stroke-subtle pb-8 sm:mb-12">
+									<SyncCommand label={SYNC_LABEL_SYNC} />
+									<span className="text-sm text-fg-muted">
+										{SYNC_EDITOR_NOTE}
+									</span>
+									<span className="ml-auto">
+										<SyncHowLink />
+									</span>
 								</div>
 							)}
 
