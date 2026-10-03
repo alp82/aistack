@@ -1,5 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { BASE_URL } from "./api.js";
@@ -68,8 +74,9 @@ function readCredentials(file: string): {
 }
 
 function writeCredentials(file: string, data: CredentialsFile): void {
-	mkdirSync(dirname(file), { recursive: true });
-	writeFileSync(file, JSON.stringify(data, null, 2));
+	mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+	writeFileSync(file, JSON.stringify(data, null, 2), { mode: 0o600 });
+	if (process.platform !== "win32") chmodSync(file, 0o600);
 }
 
 export function getToken(
