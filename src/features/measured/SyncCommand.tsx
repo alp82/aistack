@@ -52,7 +52,12 @@ export function SyncCommand({
 			>
 				<span className={cn(copied && "invisible")}>{label}</span>
 				{copied && (
-					<output className={cn("absolute inset-0 flex items-center", pad)}>
+					<output
+						className={cn(
+							"absolute inset-0 flex items-center justify-center",
+							pad,
+						)}
+					>
 						{SYNC_COPIED}
 					</output>
 				)}
