@@ -104,9 +104,11 @@ describe("the hero", () => {
 		expect(container.textContent).not.toContain("alp/ai-stack-ab12");
 	});
 
-	it("sends the visitor to the sync story, not a form", () => {
+	it("hands the visitor the sync command and the sync story", () => {
 		render(<PulseHero band={band()} />);
-		expect(screen.getByText(/add your tokens/i).closest("a")).toHaveAttribute(
+		const command = screen.getByText(/add your tokens/i).closest("button");
+		expect(command?.textContent).toContain("npx @use-aistack/cli sync");
+		expect(screen.getByText(/how it works/i).closest("a")).toHaveAttribute(
 			"href",
 			"/sync",
 		);

@@ -11,7 +11,12 @@ import {
 	PRIVACY_FOOTNOTE,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
+	SYNC_LABEL_OWNER,
+	SYNC_LABEL_STATS,
+	SYNC_OWNER_NOTE,
+	SYNC_STATS_NOTE,
 } from "@/features/measured/copy";
+import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import { cn } from "@/lib/utils";
 import { NOT_MEASURED, NOT_MEASURED_NOTE, type RangeId } from "./copy";
 
@@ -68,6 +73,40 @@ export function OwnerNotMeasured() {
 			>
 				how syncing works <ArrowRight size={14} />
 			</Link>
+		</div>
+	);
+}
+
+/**
+ * The reader's invitation under someone else's Stats: the numbers they just
+ * read, and the command that produces them for their own stack.
+ */
+export function StatsSyncInvite() {
+	return (
+		<div className="mt-14 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-t border-stroke-subtle pt-6">
+			<p className="text-sm text-fg-muted">{SYNC_STATS_NOTE}</p>
+			<div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+				<SyncCommand label={SYNC_LABEL_STATS} />
+				<SyncHowLink />
+			</div>
+		</div>
+	);
+}
+
+/**
+ * The owner's bar above the header of a stack that has never synced. It is
+ * the first thing an owner sees after creating a stack.
+ */
+export function OwnerSyncBar() {
+	return (
+		<div className="border-b border-stroke-strong bg-bg-panel px-6">
+			<div className="mx-auto flex max-w-content flex-wrap items-center gap-x-5 gap-y-3 py-3">
+				<SyncCommand label={SYNC_LABEL_OWNER} />
+				<span className="text-sm text-fg-muted">{SYNC_OWNER_NOTE}</span>
+				<span className="ml-auto">
+					<SyncHowLink />
+				</span>
+			</div>
 		</div>
 	);
 }

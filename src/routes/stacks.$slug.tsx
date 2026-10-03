@@ -35,6 +35,7 @@ import {
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { PAGE_RANGE } from "@/features/usage/copy";
+import { OwnerSyncBar } from "@/features/usage/NotMeasured";
 import { UsageSection } from "@/features/usage/UsageSection";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
@@ -390,6 +391,10 @@ function StackDetailsPage() {
 			/>
 			<div className={accentClassFor(stack.accentPreset)}>
 				<div className="bg-bg-canvas">
+					{upvoteStatus?.isOwner &&
+						usage !== undefined &&
+						!usage?.hasDays &&
+						!usage?.legacy && <OwnerSyncBar />}
 					<StackHeader
 						stack={stack}
 						reading={heroReading}

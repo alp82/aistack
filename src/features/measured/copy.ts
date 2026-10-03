@@ -47,6 +47,24 @@ export const HARNESS = "Claude Code";
 export const SYNC_CMD = "npx @use-aistack/cli sync";
 export const SYNC_CMD_COMMENT = "link, scan, review, approve";
 
+/**
+ * The command as a call to action (`SyncCommand`). One label per page it sits
+ * on, and one privacy sentence that travels with it.
+ */
+export const SYNC_LABEL_TOKENS = "add your tokens";
+export const SYNC_LABEL_BOARD = "get on the board";
+export const SYNC_LABEL_STATS = "get your own stats";
+export const SYNC_LABEL_OWNER = "add your stats";
+export const SYNC_COPIED = "Copied";
+export const SYNC_HOW = "how it works";
+export const SYNC_PRIVACY = "No sensitive data leaves your machine.";
+export const SYNC_BOARD_NOTE =
+	"The board ranks what the command measures on your machine.";
+export const SYNC_STATS_NOTE =
+	"Every number in this section came from one command.";
+export const SYNC_OWNER_NOTE =
+	"Your stack has no Stats yet. Only you see this.";
+
 /** Shared mono label treatment, matching the journey's section kickers. */
 export const MONO_LABEL =
 	"font-mono text-[11px] font-semibold uppercase tracking-[0.25em]";

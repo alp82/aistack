@@ -213,7 +213,8 @@ it("drops skills under 1%, preserves call shares, and splits typed calls in the 
 });
 it("honors unavailable workflow and cost readings", () => {
 	setup(usage({ current: reading({ cost: null }) }), null);
-	expect(document.body.textContent).not.toContain("$");
+	// A dollar FIGURE: the sync command under the section carries a shell "$".
+	expect(document.body.textContent).not.toMatch(/\$\d/);
 	expect(screen.queryByText("median session")).toBeNull();
 	expect(screen.queryByRole("region", { name: "Context per call" })).toBeNull();
 });

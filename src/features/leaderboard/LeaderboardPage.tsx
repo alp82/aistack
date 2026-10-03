@@ -19,6 +19,8 @@
 
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/features/charts";
+import { SYNC_BOARD_NOTE, SYNC_LABEL_BOARD } from "@/features/measured/copy";
+import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { Board, BoardRow } from "./board";
 import { harnessLabel, trendOf, trendWords } from "./board";
 import * as f from "./format";
@@ -64,6 +66,19 @@ export function LeaderboardPage({
 				<div className="grid grid-cols-1 gap-14 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-20 xl:gap-28">
 					<aside className="lg:sticky lg:top-24 lg:self-start">
 						<Rail board={board} />
+						<div className="mt-10 border-t border-stroke-subtle pt-6">
+							<SyncCommand
+								stacked
+								className="w-full"
+								label={SYNC_LABEL_BOARD}
+							/>
+							<p className="mt-3 text-xs leading-relaxed text-fg-muted">
+								{SYNC_BOARD_NOTE}
+							</p>
+							<div className="mt-2">
+								<SyncHowLink />
+							</div>
+						</div>
 					</aside>
 
 					<main>

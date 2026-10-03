@@ -5,7 +5,11 @@ import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { api } from "../../../convex/_generated/api";
 import { NO_DAYS_IN_RANGE, type RangeId, type UsageRead } from "./copy";
 import { LegacyStats } from "./LegacyStats";
-import { NeverMeasured, OwnerNotMeasured } from "./NotMeasured";
+import {
+	NeverMeasured,
+	OwnerNotMeasured,
+	StatsSyncInvite,
+} from "./NotMeasured";
 import { StatsBlocks } from "./StatsBlocks";
 import type { StatsRead } from "./stats";
 
@@ -73,6 +77,7 @@ export function UsageSection({
 						</p>
 					)}
 					<StatsBlocks key={slug} usage={usage ?? null} stats={stats ?? null} />
+					{!isOwner && <StatsSyncInvite />}
 				</>
 			)}
 		</Section>

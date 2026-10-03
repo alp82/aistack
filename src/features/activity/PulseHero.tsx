@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { RelativeTime } from "@/components/RelativeTime";
 import {
 	BrutalistSelect,
 	type BrutalistSelectOption,
 } from "@/components/ui/brutalist-select";
-import { Button } from "@/components/ui/button";
 import { formatDay, Sparkline } from "@/features/charts";
+import { SYNC_LABEL_TOKENS, SYNC_PRIVACY } from "@/features/measured/copy";
+import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { Band, DayPoint } from "./feed";
 import { fmtCount, fmtTokens, liveDays, MONO_LABEL, rowSummary } from "./feed";
 import { fmtSeconds, PaceCounter, usePace } from "./PaceCounter";
@@ -326,18 +326,18 @@ export function PulseHero({ band }: { readonly band: Band }) {
 
 				<TokenTrend points={points} />
 
-				<div className="mt-8 flex items-center gap-6">
-					<Button asChild size="lg">
-						<Link to="/sync" className={MONO_LABEL}>
-							add your tokens <ArrowRight className="h-3 w-3" />
+				<div className="mt-10 flex w-full flex-col items-center gap-4">
+					<SyncCommand size="lg" label={SYNC_LABEL_TOKENS} />
+					<p className="text-center text-xs text-fg-muted">{SYNC_PRIVACY}</p>
+					<div className="flex items-center gap-6">
+						<SyncHowLink />
+						<Link
+							to="/activity"
+							className={`${MONO_LABEL} text-fg-muted transition-colors hover:text-fg-primary`}
+						>
+							all activity
 						</Link>
-					</Button>
-					<Link
-						to="/activity"
-						className={`${MONO_LABEL} text-fg-muted transition-colors hover:text-fg-primary`}
-					>
-						all activity
-					</Link>
+					</div>
 				</div>
 
 				{latest ? (
