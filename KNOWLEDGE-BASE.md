@@ -73,6 +73,7 @@ https://vercel.com/blog/introducing-eve
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
 https://github.com/spot-techno/shelldeck
+https://gentle-ai.gentlemanprogramming.com
 https://www.augmentcode.com/product/intent
 https://code.claude.com/docs/en/agent-teams
 https://github.com/GoogleCloudPlatform/scion

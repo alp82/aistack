@@ -9,6 +9,9 @@
     * nicer description cards - with remove button
     * model card: replace with other version
     * reorder tools and models
+* og image
+    * bigger tool icons
+    * image per subpage
 * news last 7 days, last 5 items
 * value proposition should be shown before/with CTA
     profile for sharing
@@ -81,8 +84,3 @@
     * https://x.com/hridoyreh/status/2032720794682581474
     * https://solaris.buildclub.ai
     * https://buildclub.ai
-* multiple stacks per user
-    * work & private
-* admin for editing aliases
-    * e.g. amp, opus, etc.
-* og image: bigger tool icons

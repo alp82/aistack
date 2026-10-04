@@ -13,7 +13,8 @@
     "lint": "biome lint",
     "check": "biome check",
     "discord:prototype": "node --env-file-if-exists=.env.discord-prototype.local scripts/discord-prototype.mjs",
-    "discord:prototype:watch": "node --watch --watch-preserve-output --env-file-if-exists=.env.discord-prototype.local scripts/discord-prototype.mjs"
+    "discord:prototype:watch": "node --watch --watch-preserve-output --env-file-if-exists=.env.discord-prototype.local scripts/discord-prototype.mjs",
+    "prototype:sync": "vite dev --port 3019 --open /prototype/sync-discovery?variant=D"
   },
   "dependencies": {
     "@aistack/pricing": "workspace:*",

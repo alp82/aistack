@@ -34,6 +34,11 @@ import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsTokenEfficiencyRouteImport } from './routes/settings.token-efficiency'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as PrototypeSyncEntryRouteImport } from './routes/prototype.sync-entry'
+import { Route as PrototypeSyncDiscoveryRouteImport } from './routes/prototype.sync-discovery'
+import { Route as PrototypeStatsMobileRouteImport } from './routes/prototype.stats-mobile'
+import { Route as PrototypeStatsBlocksRouteImport } from './routes/prototype.stats-blocks'
+import { Route as PrototypeOgImagesRouteImport } from './routes/prototype.og-images'
 import { Route as PrototypeDiscordRepliesRouteImport } from './routes/prototype.discord-replies'
 import { Route as PrototypeDiscordCommandFlowRouteImport } from './routes/prototype.discord-command-flow'
 import { Route as NewsSlugRouteImport } from './routes/news.$slug'
@@ -56,6 +61,7 @@ import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
 import { Route as ApiCliAutoSyncRouteImport } from './routes/api.cli.auto-sync'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiOgStackSlugRouteImport } from './routes/api.og.stack.$slug'
+import { Route as ApiOgPrototypeCardRouteImport } from './routes/api.og.prototype.$card'
 import { Route as ApiCliStacksCollectRouteImport } from './routes/api.cli.stacks.collect'
 import { Route as ApiCliAuthStartRouteImport } from './routes/api.cli.auth.start'
 import { Route as ApiCliAuthPollRouteImport } from './routes/api.cli.auth.poll'
@@ -185,6 +191,31 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeSyncEntryRoute = PrototypeSyncEntryRouteImport.update({
+  id: '/prototype/sync-entry',
+  path: '/prototype/sync-entry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeSyncDiscoveryRoute = PrototypeSyncDiscoveryRouteImport.update({
+  id: '/prototype/sync-discovery',
+  path: '/prototype/sync-discovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeStatsMobileRoute = PrototypeStatsMobileRouteImport.update({
+  id: '/prototype/stats-mobile',
+  path: '/prototype/stats-mobile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeStatsBlocksRoute = PrototypeStatsBlocksRouteImport.update({
+  id: '/prototype/stats-blocks',
+  path: '/prototype/stats-blocks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeOgImagesRoute = PrototypeOgImagesRouteImport.update({
+  id: '/prototype/og-images',
+  path: '/prototype/og-images',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrototypeDiscordRepliesRoute = PrototypeDiscordRepliesRouteImport.update({
   id: '/prototype/discord-replies',
   path: '/prototype/discord-replies',
@@ -296,6 +327,11 @@ const ApiOgStackSlugRoute = ApiOgStackSlugRouteImport.update({
   path: '/api/og/stack/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOgPrototypeCardRoute = ApiOgPrototypeCardRouteImport.update({
+  id: '/api/og/prototype/$card',
+  path: '/api/og/prototype/$card',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCliStacksCollectRoute = ApiCliStacksCollectRouteImport.update({
   id: '/collect',
   path: '/collect',
@@ -339,6 +375,11 @@ export interface FileRoutesByFullPath {
   '/news/$slug': typeof NewsSlugRoute
   '/prototype/discord-command-flow': typeof PrototypeDiscordCommandFlowRoute
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
+  '/prototype/og-images': typeof PrototypeOgImagesRoute
+  '/prototype/stats-blocks': typeof PrototypeStatsBlocksRoute
+  '/prototype/stats-mobile': typeof PrototypeStatsMobileRoute
+  '/prototype/sync-discovery': typeof PrototypeSyncDiscoveryRoute
+  '/prototype/sync-entry': typeof PrototypeSyncEntryRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
@@ -362,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
   '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
+  '/api/og/prototype/$card': typeof ApiOgPrototypeCardRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
 }
 export interface FileRoutesByTo {
@@ -391,6 +433,11 @@ export interface FileRoutesByTo {
   '/news/$slug': typeof NewsSlugRoute
   '/prototype/discord-command-flow': typeof PrototypeDiscordCommandFlowRoute
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
+  '/prototype/og-images': typeof PrototypeOgImagesRoute
+  '/prototype/stats-blocks': typeof PrototypeStatsBlocksRoute
+  '/prototype/stats-mobile': typeof PrototypeStatsMobileRoute
+  '/prototype/sync-discovery': typeof PrototypeSyncDiscoveryRoute
+  '/prototype/sync-entry': typeof PrototypeSyncEntryRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
@@ -414,6 +461,7 @@ export interface FileRoutesByTo {
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
   '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
+  '/api/og/prototype/$card': typeof ApiOgPrototypeCardRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
 }
 export interface FileRoutesById {
@@ -444,6 +492,11 @@ export interface FileRoutesById {
   '/news/$slug': typeof NewsSlugRoute
   '/prototype/discord-command-flow': typeof PrototypeDiscordCommandFlowRoute
   '/prototype/discord-replies': typeof PrototypeDiscordRepliesRoute
+  '/prototype/og-images': typeof PrototypeOgImagesRoute
+  '/prototype/stats-blocks': typeof PrototypeStatsBlocksRoute
+  '/prototype/stats-mobile': typeof PrototypeStatsMobileRoute
+  '/prototype/sync-discovery': typeof PrototypeSyncDiscoveryRoute
+  '/prototype/sync-entry': typeof PrototypeSyncEntryRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/settings/token-efficiency': typeof SettingsTokenEfficiencyRoute
@@ -467,6 +520,7 @@ export interface FileRoutesById {
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
   '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
+  '/api/og/prototype/$card': typeof ApiOgPrototypeCardRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
 }
 export interface FileRouteTypes {
@@ -498,6 +552,11 @@ export interface FileRouteTypes {
     | '/news/$slug'
     | '/prototype/discord-command-flow'
     | '/prototype/discord-replies'
+    | '/prototype/og-images'
+    | '/prototype/stats-blocks'
+    | '/prototype/stats-mobile'
+    | '/prototype/sync-discovery'
+    | '/prototype/sync-entry'
     | '/settings/analytics'
     | '/settings/machines'
     | '/settings/token-efficiency'
@@ -521,6 +580,7 @@ export interface FileRouteTypes {
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
     | '/api/cli/stacks/collect'
+    | '/api/og/prototype/$card'
     | '/api/og/stack/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -550,6 +610,11 @@ export interface FileRouteTypes {
     | '/news/$slug'
     | '/prototype/discord-command-flow'
     | '/prototype/discord-replies'
+    | '/prototype/og-images'
+    | '/prototype/stats-blocks'
+    | '/prototype/stats-mobile'
+    | '/prototype/sync-discovery'
+    | '/prototype/sync-entry'
     | '/settings/analytics'
     | '/settings/machines'
     | '/settings/token-efficiency'
@@ -573,6 +638,7 @@ export interface FileRouteTypes {
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
     | '/api/cli/stacks/collect'
+    | '/api/og/prototype/$card'
     | '/api/og/stack/$slug'
   id:
     | '__root__'
@@ -602,6 +668,11 @@ export interface FileRouteTypes {
     | '/news/$slug'
     | '/prototype/discord-command-flow'
     | '/prototype/discord-replies'
+    | '/prototype/og-images'
+    | '/prototype/stats-blocks'
+    | '/prototype/stats-mobile'
+    | '/prototype/sync-discovery'
+    | '/prototype/sync-entry'
     | '/settings/analytics'
     | '/settings/machines'
     | '/settings/token-efficiency'
@@ -625,6 +696,7 @@ export interface FileRouteTypes {
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
     | '/api/cli/stacks/collect'
+    | '/api/og/prototype/$card'
     | '/api/og/stack/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -655,6 +727,11 @@ export interface RootRouteChildren {
   NewsSlugRoute: typeof NewsSlugRoute
   PrototypeDiscordCommandFlowRoute: typeof PrototypeDiscordCommandFlowRoute
   PrototypeDiscordRepliesRoute: typeof PrototypeDiscordRepliesRoute
+  PrototypeOgImagesRoute: typeof PrototypeOgImagesRoute
+  PrototypeStatsBlocksRoute: typeof PrototypeStatsBlocksRoute
+  PrototypeStatsMobileRoute: typeof PrototypeStatsMobileRoute
+  PrototypeSyncDiscoveryRoute: typeof PrototypeSyncDiscoveryRoute
+  PrototypeSyncEntryRoute: typeof PrototypeSyncEntryRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   SettingsTokenEfficiencyRoute: typeof SettingsTokenEfficiencyRoute
@@ -677,6 +754,7 @@ export interface RootRouteChildren {
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
   ApiCliAuthStartRoute: typeof ApiCliAuthStartRoute
+  ApiOgPrototypeCardRoute: typeof ApiOgPrototypeCardRoute
   ApiOgStackSlugRoute: typeof ApiOgStackSlugRoute
 }
 
@@ -857,6 +935,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/sync-entry': {
+      id: '/prototype/sync-entry'
+      path: '/prototype/sync-entry'
+      fullPath: '/prototype/sync-entry'
+      preLoaderRoute: typeof PrototypeSyncEntryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/sync-discovery': {
+      id: '/prototype/sync-discovery'
+      path: '/prototype/sync-discovery'
+      fullPath: '/prototype/sync-discovery'
+      preLoaderRoute: typeof PrototypeSyncDiscoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/stats-mobile': {
+      id: '/prototype/stats-mobile'
+      path: '/prototype/stats-mobile'
+      fullPath: '/prototype/stats-mobile'
+      preLoaderRoute: typeof PrototypeStatsMobileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/stats-blocks': {
+      id: '/prototype/stats-blocks'
+      path: '/prototype/stats-blocks'
+      fullPath: '/prototype/stats-blocks'
+      preLoaderRoute: typeof PrototypeStatsBlocksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/og-images': {
+      id: '/prototype/og-images'
+      path: '/prototype/og-images'
+      fullPath: '/prototype/og-images'
+      preLoaderRoute: typeof PrototypeOgImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype/discord-replies': {
       id: '/prototype/discord-replies'
       path: '/prototype/discord-replies'
@@ -1011,6 +1124,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOgStackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/og/prototype/$card': {
+      id: '/api/og/prototype/$card'
+      path: '/api/og/prototype/$card'
+      fullPath: '/api/og/prototype/$card'
+      preLoaderRoute: typeof ApiOgPrototypeCardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli/stacks/collect': {
       id: '/api/cli/stacks/collect'
       path: '/collect'
@@ -1074,6 +1194,11 @@ const rootRouteChildren: RootRouteChildren = {
   NewsSlugRoute: NewsSlugRoute,
   PrototypeDiscordCommandFlowRoute: PrototypeDiscordCommandFlowRoute,
   PrototypeDiscordRepliesRoute: PrototypeDiscordRepliesRoute,
+  PrototypeOgImagesRoute: PrototypeOgImagesRoute,
+  PrototypeStatsBlocksRoute: PrototypeStatsBlocksRoute,
+  PrototypeStatsMobileRoute: PrototypeStatsMobileRoute,
+  PrototypeSyncDiscoveryRoute: PrototypeSyncDiscoveryRoute,
+  PrototypeSyncEntryRoute: PrototypeSyncEntryRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   SettingsTokenEfficiencyRoute: SettingsTokenEfficiencyRoute,
@@ -1096,6 +1221,7 @@ const rootRouteChildren: RootRouteChildren = {
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,
   ApiCliAuthStartRoute: ApiCliAuthStartRoute,
+  ApiOgPrototypeCardRoute: ApiOgPrototypeCardRoute,
   ApiOgStackSlugRoute: ApiOgStackSlugRoute,
 }
 export const routeTree = rootRouteImport
