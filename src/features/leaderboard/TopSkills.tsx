@@ -7,8 +7,8 @@
  * skills included, and the note states how much of that whole the list covers.
  *
  * Chips shrink with rank. The stack count and the stack names live in the tip.
- * Hovering a chip or a segment dims the other chips and frames the skill's
- * segment. The bar never changes color.
+ * Hovering a chip or a segment frames the skill's segment, and hovering a
+ * segment also dims the other chips. The bar never changes color.
  */
 
 import { useState } from "react";
@@ -70,13 +70,19 @@ function SkillTip({ skill }: { readonly skill: Skill }) {
 
 export function TopSkills({ board }: { readonly board: Board }) {
 	const [active, setActive] = useState<string | null>(null);
+	const [from, setFrom] = useState<"bar" | "chip">("chip");
 	if (board.skills.length === 0) return null;
 
-	const hover = (name: string) => ({
-		onMouseEnter: () => setActive(name),
+	const hover = (name: string, source: "bar" | "chip") => ({
+		onMouseEnter: () => {
+			setActive(name);
+			setFrom(source);
+		},
 		onMouseLeave: () => setActive(null),
 	});
-	const dimmed = (name: string) => active !== null && active !== name;
+	// Only the bar dims the chips: among the chips the pointer already marks one.
+	const dimmed = (name: string) =>
+		from === "bar" && active !== null && active !== name;
 
 	const measured = board.skills.filter(
 		(s) => s.callShare !== null && s.callShare > 0,
@@ -124,7 +130,7 @@ export function TopSkills({ board }: { readonly board: Board }) {
 								{segments.map((s) => (
 									<div
 										key={s.key}
-										{...hover(s.key)}
+										{...hover(s.key, "bar")}
 										style={{
 											left: `${s.left * 100}%`,
 											width: `${s.share * 100}%`,
@@ -178,7 +184,7 @@ export function TopSkills({ board }: { readonly board: Board }) {
 					{board.skills.map((s, i) => (
 						<li
 							key={s.name}
-							{...hover(s.name)}
+							{...hover(s.name, "chip")}
 							className={cn(
 								"max-w-full transition-opacity",
 								dimmed(s.name) && "opacity-30",

@@ -1,7 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { harnessLabel, trendOf, trendShort } from "../board";
-import { DATA_LICENSE } from "../jsonLd";
 import { LeaderboardPage } from "../LeaderboardPage";
 import { board, NOW, row } from "./fixture";
 
@@ -104,26 +103,6 @@ describe("the board", () => {
 		expect(screen.getByText("cost not published")).toBeInTheDocument();
 	});
 
-	it("folds the quiet group into one line with count and token mass", () => {
-		setup();
-		expect(
-			screen.getByText(
-				/2 more stacks have measured history but no sync in the last seven days/,
-			),
-		).toBeInTheDocument();
-		expect(
-			screen.getByText(/302.0B tokens sit in that group/),
-		).toBeInTheDocument();
-	});
-
-	it("prints the licence the structured data declares", () => {
-		setup();
-		expect(screen.getByRole("link", { name: "CC BY 4.0" })).toHaveAttribute(
-			"href",
-			DATA_LICENSE.url,
-		);
-	});
-
 	it("lists the top skills with their calls and no stack count", () => {
 		setup(
 			board({
@@ -174,15 +153,6 @@ describe("the board", () => {
 });
 
 describe("the rail", () => {
-	it("states the excluded share next to the shares it explains", () => {
-		setup();
-		expect(
-			screen.getByText(
-				/5.9% of measured tokens carry no model name and are left out of these shares/,
-			),
-		).toBeInTheDocument();
-	});
-
 	it("names the harnesses in words, not wire ids", () => {
 		setup();
 		expect(screen.getAllByText("Claude Code").length).toBeGreaterThan(0);

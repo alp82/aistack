@@ -13,8 +13,7 @@
  *      the handle and the spend hide, and the signed trend takes the spend's
  *      place under the tokens.
  *   3. BELOW `lg` THE BOARD COMES FIRST. The header is two lines that carry
- *      the totals, the skills and the rail follow the pager, and the notes are
- *      hidden.
+ *      the totals, and the skills and the rail follow the pager.
  *
  * The sparkline refuses rather than guesses: fewer than two readings draws no
  * line at all - a flat stroke through one dot claims days nobody measured -
@@ -28,7 +27,6 @@ import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { Board, BoardRow } from "./board";
 import { harnessLabel, trendOf, trendShort } from "./board";
 import * as f from "./format";
-import { DATA_LICENSE } from "./jsonLd";
 import { Pager } from "./Pager";
 import { TopSkills } from "./TopSkills";
 
@@ -123,25 +121,6 @@ export function LeaderboardPage({
 						/>
 
 						<TopSkills board={board} />
-
-						{board.quiet.count > 0 && (
-							<div className="hidden lg:block">
-								<QuietLine board={board} />
-							</div>
-						)}
-
-						<p className="mt-6 hidden font-mono text-xs leading-relaxed text-fg-muted lg:block">
-							These figures are free to reuse with credit to AI Stack, under{" "}
-							<a
-								href={DATA_LICENSE.url}
-								rel="license noopener noreferrer"
-								target="_blank"
-								className="text-fg-secondary underline hover:text-accent-lime"
-							>
-								{DATA_LICENSE.name}
-							</a>
-							.
-						</p>
 					</main>
 				</div>
 			</div>
@@ -272,23 +251,6 @@ function Trend({ row }: { readonly row: BoardRow }) {
 	);
 }
 
-/**
- * The quiet group is one line (#92): the count and the token mass keep the
- * ranked board honest about what it left out, without a roll call of who has
- * been idle.
- */
-function QuietLine({ board }: { readonly board: Board }) {
-	const n = board.quiet.count;
-	return (
-		<p className="mt-16 border-t border-dashed border-stroke-subtle pt-4 font-mono text-xs leading-relaxed text-fg-muted">
-			{n} more stack{n === 1 ? "" : "s"} {n === 1 ? "has" : "have"} measured
-			history but no sync in the last seven days, so{" "}
-			{n === 1 ? "it is" : "they are"} not ranked.{" "}
-			{f.tokens(board.quiet.tokens)} tokens sit in that group.
-		</p>
-	);
-}
-
 function Rail({ board }: { readonly board: Board }) {
 	return (
 		<div className="space-y-10">
@@ -325,11 +287,6 @@ function Rail({ board }: { readonly board: Board }) {
 					share: h.tokenShare,
 				}))}
 			/>
-
-			<p className="hidden font-mono text-[11px] leading-relaxed text-fg-muted lg:block">
-				{f.pct(board.unattributedShare, 1)} of measured tokens carry no model
-				name and are left out of these shares. Spend is always a lower bound.
-			</p>
 		</div>
 	);
 }
