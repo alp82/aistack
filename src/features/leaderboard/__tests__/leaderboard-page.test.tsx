@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { harnessLabel, trendOf, trendWords } from "../board";
+import { harnessLabel, trendOf, trendShort } from "../board";
 import { DATA_LICENSE } from "../jsonLd";
 import { LeaderboardPage } from "../LeaderboardPage";
 import { board, NOW, row } from "./fixture";
@@ -39,24 +39,14 @@ describe("the trend", () => {
 		).toBeCloseTo(-0.21, 6);
 	});
 
-	it("speaks for the narrow layout that cannot draw it", () => {
+	it("signs the trend for the narrow layout, or says nothing", () => {
 		expect(
-			trendWords([
+			trendShort([
 				{ at: 1, tokens: 100 },
 				{ at: 2, tokens: 79 },
 			]),
-		).toBe("−21% over 2 syncs");
-		expect(trendWords([{ at: 1, tokens: 100 }])).toBe("1 sync");
-	});
-
-	it("labels the percentage with the span it covers, not the sync count", () => {
-		// The server caps `points` at 60 while reporting the true count, so a
-		// stack past the cap used to print a span it never measured (#129).
-		const points = Array.from({ length: 60 }, (_, i) => ({
-			at: i,
-			tokens: 100 - i,
-		}));
-		expect(trendWords(points, 84)).toBe("−59% over 60 syncs");
+		).toBe("−21%");
+		expect(trendShort([{ at: 1, tokens: 100 }])).toBeNull();
 	});
 });
 
@@ -93,10 +83,12 @@ describe("the board", () => {
 
 	it("colors a fall like a rise - the sign carries the direction (#129)", () => {
 		setup();
-		// Anchored: the drawn cell states the percentage alone, the narrow
-		// layout states it inside a sentence.
-		expect(screen.getByText(/^−20%$/)).toHaveClass("text-accent-lime");
-		expect(screen.getByText(/^\+17%$/)).toHaveClass("text-accent-lime");
+		// Twice per row: the drawn cell and the narrow layout's signed figure.
+		for (const sign of [/^−20%$/, /^\+17%$/]) {
+			const cells = screen.getAllByText(sign);
+			expect(cells).toHaveLength(2);
+			for (const cell of cells) expect(cell).toHaveClass("text-accent-lime");
+		}
 	});
 
 	it("prints spend as a lower bound with its coverage, or exactly", () => {
@@ -130,6 +122,45 @@ describe("the board", () => {
 			"href",
 			DATA_LICENSE.url,
 		);
+	});
+
+	it("lists the top skills with their calls and no stack count", () => {
+		setup(
+			board({
+				skillPublishers: 3,
+				skills: [
+					{
+						name: "grilling",
+						stackCount: 3,
+						stacks: ["OrcDev", "Alper"],
+						calls: 41,
+						callShare: 0.2,
+					},
+					{
+						name: "tdd",
+						stackCount: 2,
+						stacks: ["OrcDev"],
+						calls: null,
+						callShare: null,
+					},
+				],
+			}),
+		);
+		expect(
+			screen.getByRole("heading", { name: "Top skills" }),
+		).toBeInTheDocument();
+		// Once in the bar, once as a chip.
+		expect(screen.getAllByText("grilling")).toHaveLength(2);
+		expect(screen.getByText("41")).toBeInTheDocument();
+		// A skill with no count has a chip and no segment.
+		expect(screen.getAllByText("tdd")).toHaveLength(1);
+		// The bar spans the listed skills and says what they cover.
+		expect(screen.getByText(/these 1 cover 20%/)).toBeInTheDocument();
+	});
+
+	it("draws no skills block when no stack publishes one", () => {
+		setup();
+		expect(screen.queryByRole("heading", { name: "Top skills" })).toBeNull();
 	});
 
 	it("says so when every stack is quiet, instead of an empty frame", () => {

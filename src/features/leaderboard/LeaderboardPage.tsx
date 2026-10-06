@@ -10,7 +10,11 @@
  *      grid, so an `auto` column sizes off that row's own content and the
  *      trend column lands somewhere different on every row.
  *   2. BELOW `md` THE TREND CELL IS `display:none` and drops out of the grid,
- *      the handle hides, and the meta line carries the trend in words.
+ *      the handle and the spend hide, and the signed trend takes the spend's
+ *      place under the tokens.
+ *   3. BELOW `lg` THE BOARD COMES FIRST. The header is two lines that carry
+ *      the totals, the skills and the rail follow the pager, and the notes are
+ *      hidden.
  *
  * The sparkline refuses rather than guesses: fewer than two readings draws no
  * line at all - a flat stroke through one dot claims days nobody measured -
@@ -22,10 +26,11 @@ import { Sparkline } from "@/features/charts";
 import { SYNC_BOARD_NOTE, SYNC_LABEL_BOARD } from "@/features/measured/copy";
 import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { Board, BoardRow } from "./board";
-import { harnessLabel, trendOf, trendWords } from "./board";
+import { harnessLabel, trendOf, trendShort } from "./board";
 import * as f from "./format";
 import { DATA_LICENSE } from "./jsonLd";
 import { Pager } from "./Pager";
+import { TopSkills } from "./TopSkills";
 
 /** The trend cell is fixed at every size, so the column reads as a column. */
 const SPARK_WIDTH = 128;
@@ -43,17 +48,23 @@ export function LeaderboardPage({
 }) {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
-			<div className="border-b-2 border-stroke-strong px-6 py-10 md:px-12">
-				<div className="mx-auto flex max-w-content flex-col gap-6 md:flex-row md:items-end md:justify-between">
+			<div className="border-b-2 border-stroke-strong px-4 pb-3 pt-5 lg:px-12 lg:py-10">
+				<div className="mx-auto flex max-w-content items-end justify-between gap-6">
 					<div>
-						<p className="font-mono text-sm text-accent-lime">
+						<p className="hidden font-mono text-sm text-accent-lime lg:block">
 							{"//"} MEASURED · LAST 30 DAYS
 						</p>
-						<h1 className="mt-3 text-4xl font-black uppercase leading-none tracking-tighter text-fg-primary md:text-6xl">
+						<h1 className="text-2xl font-black uppercase leading-none tracking-tighter text-fg-primary lg:mt-3 lg:text-6xl">
 							What builders run
 						</h1>
+						<p className="mt-2 font-mono text-[11px] text-fg-muted lg:hidden">
+							<span className="text-accent-lime">
+								{f.tokens(board.totalTokens)} tokens
+							</span>
+							{` · ${f.count(board.stackCount)} stacks · at least ${f.usd(board.spendLowerBoundUSD)} · 30 days`}
+						</p>
 					</div>
-					<p className="max-w-md font-mono text-xs leading-relaxed text-fg-muted">
+					<p className="hidden max-w-md font-mono text-xs leading-relaxed text-fg-muted lg:block">
 						Counted on {board.stackCount} builders&apos; own machines and
 						published by them.
 						{board.windowSpreadDays >= 1 &&
@@ -62,9 +73,9 @@ export function LeaderboardPage({
 				</div>
 			</div>
 
-			<div className="mx-auto max-w-content px-6 py-14 md:px-12">
-				<div className="grid grid-cols-1 gap-14 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-20 xl:gap-28">
-					<aside className="lg:sticky lg:top-24 lg:self-start">
+			<div className="mx-auto max-w-content px-4 pb-16 lg:px-12 lg:py-14">
+				<div className="grid grid-cols-1 gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-20 xl:gap-28">
+					<aside className="order-2 lg:sticky lg:top-24 lg:order-1 lg:self-start">
 						<Rail board={board} />
 						<div className="mt-10 border-t border-stroke-subtle pt-6">
 							<SyncCommand
@@ -81,8 +92,8 @@ export function LeaderboardPage({
 						</div>
 					</aside>
 
-					<main>
-						<div className="flex items-baseline justify-between gap-4">
+					<main className="order-1 lg:order-2">
+						<div className="hidden items-baseline justify-between gap-4 lg:flex">
 							<h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-fg-muted">
 								Ranked by measured tokens
 							</h2>
@@ -98,7 +109,7 @@ export function LeaderboardPage({
 							</p>
 						)}
 
-						<ol className="mt-4 border-t border-stroke-subtle">
+						<ol className="border-stroke-subtle lg:mt-4 lg:border-t">
 							{board.rows.map((row) => (
 								<Row key={row.slug} row={row} nowMs={nowMs} />
 							))}
@@ -108,12 +119,18 @@ export function LeaderboardPage({
 							page={board.page}
 							totalPages={board.totalPages}
 							onPage={onPage}
-							className="mt-10"
+							className="mt-5 lg:mt-10"
 						/>
 
-						{board.quiet.count > 0 && <QuietLine board={board} />}
+						<TopSkills board={board} />
 
-						<p className="mt-6 font-mono text-xs leading-relaxed text-fg-muted">
+						{board.quiet.count > 0 && (
+							<div className="hidden lg:block">
+								<QuietLine board={board} />
+							</div>
+						)}
+
+						<p className="mt-6 hidden font-mono text-xs leading-relaxed text-fg-muted lg:block">
 							These figures are free to reuse with credit to AI Stack, under{" "}
 							<a
 								href={DATA_LICENSE.url}
@@ -140,8 +157,8 @@ function Row({
 	readonly nowMs: number;
 }) {
 	return (
-		<li className="grid grid-cols-[2rem_minmax(0,1fr)_9rem] items-baseline gap-x-4 gap-y-1 border-b border-stroke-subtle py-4 hover:bg-bg-panel md:grid-cols-[2.5rem_minmax(0,1fr)_9rem_14rem] md:gap-x-5">
-			<span className="row-span-2 font-mono text-xl font-black text-fg-muted">
+		<li className="grid grid-cols-[1.75rem_minmax(0,1fr)_4.5rem] items-baseline gap-x-2 gap-y-0.5 border-b border-stroke-subtle py-2.5 hover:bg-bg-panel md:grid-cols-[2.5rem_minmax(0,1fr)_9rem_14rem] md:gap-x-5 md:gap-y-1 md:py-4">
+			<span className="row-span-2 font-mono text-base font-black text-fg-muted md:text-xl">
 				{row.rank}
 			</span>
 
@@ -160,22 +177,26 @@ function Row({
 
 			<Trend row={row} />
 
-			<span className="whitespace-nowrap text-right font-mono text-base font-black text-fg-primary">
+			<span className="whitespace-nowrap text-right font-mono text-sm font-black text-fg-primary md:text-base">
 				{f.tokens(row.tokens)}
 			</span>
 
-			<span className="min-w-0 truncate font-mono text-xs text-fg-muted">
-				<span className="md:hidden">
-					{trendWords(row.points, row.syncCount)} ·{" "}
-				</span>
+			<span className="min-w-0 truncate font-mono text-[11px] text-fg-muted md:text-xs">
 				{row.topModel
 					? `${row.topModel.name} ${f.pct(row.topModel.share)} · `
 					: "no model named · "}
-				{row.harnesses.map(harnessLabel).join(" + ")} · synced{" "}
-				{f.ago(row.lastSyncMs, nowMs)}
+				{row.harnesses.map(harnessLabel).join(" + ")}
+				<span className="hidden md:inline">
+					{" "}
+					· synced {f.ago(row.lastSyncMs, nowMs)}
+				</span>
 			</span>
 
-			<span className="whitespace-nowrap text-right font-mono text-xs text-fg-secondary">
+			<span className="text-right font-mono text-[11px] text-accent-lime md:hidden">
+				{trendShort(row.points)}
+			</span>
+
+			<span className="hidden whitespace-nowrap text-right font-mono text-xs text-fg-secondary md:block">
 				{row.spend === null ? (
 					<span className="text-fg-muted">cost not published</span>
 				) : (
@@ -271,7 +292,7 @@ function QuietLine({ board }: { readonly board: Board }) {
 function Rail({ board }: { readonly board: Board }) {
 	return (
 		<div className="space-y-10">
-			<dl className="border-2 border-stroke-strong">
+			<dl className="hidden border-2 border-stroke-strong lg:block">
 				<Figure
 					label="measured tokens"
 					value={f.tokens(board.totalTokens)}
@@ -305,7 +326,7 @@ function Rail({ board }: { readonly board: Board }) {
 				}))}
 			/>
 
-			<p className="font-mono text-[11px] leading-relaxed text-fg-muted">
+			<p className="hidden font-mono text-[11px] leading-relaxed text-fg-muted lg:block">
 				{f.pct(board.unattributedShare, 1)} of measured tokens carry no model
 				name and are left out of these shares. Spend is always a lower bound.
 			</p>

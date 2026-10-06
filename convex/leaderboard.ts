@@ -20,6 +20,7 @@ import {
   resolveModelId,
 } from './lib/modelCatalog'
 import { round2 } from './lib/reprice'
+import { statsInventory } from './lib/stats'
 import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured'
 
 /**
@@ -73,6 +74,8 @@ export const PAGE_SIZE = 10
 const MAX_POINTS = 60
 const MAX_RAIL_MODELS = 6
 const MAX_RAIL_HARNESSES = 5
+const MAX_SKILLS = 24
+const MAX_SKILL_STACKS = 6
 
 const Ranking = v.object({
   key: v.string(),
@@ -83,6 +86,18 @@ const Ranking = v.object({
   stackCount: v.number(),
   /** How many stacks it leads - the honest population claim (#92). */
   leadsCount: v.number(),
+})
+
+const SkillRanking = v.object({
+  name: v.string(),
+  /** Stacks whose published inventory names this skill. */
+  stackCount: v.number(),
+  /** Their names, heaviest caller first, capped at `MAX_SKILL_STACKS`. */
+  stacks: v.array(v.string()),
+  /** Known calls summed across those stacks; null when one publishes no count. */
+  calls: v.union(v.number(), v.null()),
+  /** Share of every skill call in the population, withheld names included. */
+  callShare: v.union(v.number(), v.null()),
 })
 
 const Row = v.object({
@@ -127,6 +142,10 @@ const Board = v.object({
   windowSpreadDays: v.number(),
   models: v.array(Ranking),
   harnesses: v.array(Ranking),
+  /** Ranked by calls, then stacks. Inventory is latest-per-machine, not 30-day. */
+  skills: v.array(SkillRanking),
+  /** Stacks that publish at least one named skill. */
+  skillPublishers: v.number(),
   quiet: v.object({ count: v.number(), tokens: v.number() }),
   /** Every price table behind `spendLowerBoundUSD`, sorted. */
   pricingTables: v.array(v.string()),
@@ -149,6 +168,9 @@ export type ModelRanking = Infer<typeof Ranking>
  *     `modelTokens` change only when a sync writes rows or the window slides
  *     at UTC midnight. The model keys are the RAW measured ids, so a catalog
  *     rename cannot touch them.
+ *   - `skills` is the stack's skill inventory, combined across its machines
+ *     by call counts. It is stored whatever `publishWorkflow` says; the flag
+ *     is checked in `toReading`, like `publishCost`.
  *   - `spend` and `pricingTables` also depend on `modelPrices`, for the days
  *     the CLI left unpriced and the backend fills. A stored copy is stale
  *     after a price change until the next refresh, at most one hour.
@@ -167,9 +189,18 @@ type StackFigures = {
   modelTokens: { id: string; tokens: number }[]
   spend: { lowerBoundUSD: number; coverage: number; exact: boolean } | null
   pricingTables: string[]
+  skills: SkillFigures
 }
 
-type StackReading = StackFigures & {
+type SkillFigures = {
+  /** Every skill call, withheld names included. Null when a source has no count. */
+  totalCalls: number | null
+  atoms: { name: string; knownCalls: number; countsComplete: boolean }[]
+}
+
+type StackReading = Omit<StackFigures, 'skills'> & {
+  /** Null when `publishWorkflow` is off: stored inventory is not consent. */
+  skills: SkillFigures | null
   stack: Doc<'stacks'>
   creator: Doc<'creators'> | null
   living: boolean
@@ -206,10 +237,18 @@ export async function deriveFigures(
   publishCost: boolean,
   loadDays: (window: DateWindow) => Promise<Doc<'measuredDays'>[]>
 ): Promise<StackFigures | null> {
-  const inventory = newestInventoryPerSource(
-    await inventoryForStack(ctx, stackId)
-  )
+  const storedInventory = await inventoryForStack(ctx, stackId)
+  const inventory = newestInventoryPerSource(storedInventory)
   if (inventory.length === 0) return null
+  const inventorySkills = statsInventory(storedInventory).skills
+  const skills: SkillFigures = {
+    totalCalls: inventorySkills.totalCalls,
+    atoms: inventorySkills.atoms.map((a) => ({
+      name: a.name,
+      knownCalls: a.knownCalls,
+      countsComplete: a.countsComplete,
+    })),
+  }
   const lastSyncMs = Math.max(...inventory.map((r) => r.receivedAt))
 
   const days = (await loadDays(window))
@@ -236,6 +275,7 @@ export async function deriveFigures(
       modelTokens: [],
       spend: null,
       pricingTables: [],
+      skills,
     }
   }
 
@@ -278,6 +318,7 @@ export async function deriveFigures(
         }
       : null,
     pricingTables: reading.cost?.pricingTables ?? [],
+    skills,
   }
 }
 
@@ -293,6 +334,8 @@ export async function deriveFigures(
  *     harnesses and a null cost. So the rollup stores the priced figures and
  *     the flag is checked here, on the live stack row. A toggle takes effect
  *     on the next read, and no writer of the flag needs a hook.
+ *   - `publishWorkflow` gates the skills the same way: stored for every
+ *     stack, dropped here when the flag is off.
  *   - `stack` and `creator` are the live rows. The board takes the name, slug
  *     and creator name from them when it builds a row.
  *
@@ -309,6 +352,7 @@ export function toReading(
     ...figures,
     spend: publishCost ? figures.spend : null,
     pricingTables: publishCost ? figures.pricingTables : [],
+    skills: stack.publishWorkflow === false ? null : figures.skills,
     stack,
     creator,
     living: now - figures.lastSyncMs <= SEVEN_DAYS_MS,
@@ -341,6 +385,8 @@ function figuresOfRollup(rollup: Doc<'leaderboardRollups'>): StackFigures {
     modelTokens: rollup.modelTokens,
     spend: rollup.spend,
     pricingTables: rollup.pricingTables,
+    // A row written before the skills field holds none until its next refresh.
+    skills: rollup.skills ?? { totalCalls: null, atoms: [] },
   }
 }
 
@@ -551,6 +597,58 @@ export function buildBoard(
     }
   }
 
+  const skillBuckets = new Map<
+    string,
+    {
+      stacks: { name: string; calls: number }[]
+      calls: number
+      complete: boolean
+    }
+  >()
+  let skillPublishers = 0
+  let skillCalls = 0
+  let skillCallsComplete = true
+  for (const r of readings) {
+    if (!r.skills || r.skills.atoms.length === 0) continue
+    skillPublishers += 1
+    if (r.skills.totalCalls === null) skillCallsComplete = false
+    else skillCalls += r.skills.totalCalls
+    for (const atom of r.skills.atoms) {
+      const cur = skillBuckets.get(atom.name) ?? {
+        stacks: [],
+        calls: 0,
+        complete: true,
+      }
+      cur.stacks.push({ name: r.stack.name, calls: atom.knownCalls })
+      cur.calls += atom.knownCalls
+      if (!atom.countsComplete) cur.complete = false
+      skillBuckets.set(atom.name, cur)
+    }
+  }
+  const skills = [...skillBuckets.entries()]
+    .map(([name, b]) => ({
+      name,
+      stackCount: b.stacks.length,
+      stacks: b.stacks
+        .sort((x, y) => y.calls - x.calls || x.name.localeCompare(y.name))
+        .slice(0, MAX_SKILL_STACKS)
+        .map((s) => s.name),
+      calls: b.complete ? b.calls : null,
+      callShare:
+        b.complete && skillCallsComplete && skillCalls > 0
+          ? b.calls / skillCalls
+          : null,
+      known: b.calls,
+    }))
+    .sort(
+      (a, b) =>
+        b.known - a.known ||
+        b.stackCount - a.stackCount ||
+        a.name.localeCompare(b.name)
+    )
+    .slice(0, MAX_SKILLS)
+    .map(({ known: _known, ...skill }) => skill)
+
   const modelName = (id: string) =>
     resolveModelId(catalog, id).catalogName ?? id
 
@@ -618,6 +716,8 @@ export function buildBoard(
       0,
       MAX_RAIL_HARNESSES
     ),
+    skills,
+    skillPublishers,
     quiet: {
       count: quiet.length,
       tokens: quiet.reduce((a, r) => a + r.tokens, 0),
@@ -676,6 +776,14 @@ function rollupContent(row: RollupContent): RollupContent {
         }
       : null,
     pricingTables: [...row.pricingTables],
+    skills: {
+      totalCalls: row.skills.totalCalls,
+      atoms: row.skills.atoms.map((a) => ({
+        name: a.name,
+        knownCalls: a.knownCalls,
+        countsComplete: a.countsComplete,
+      })),
+    },
   }
 }
 
@@ -752,7 +860,9 @@ export const refreshStack = internalMutation({
       await ctx.db.insert('leaderboardRollups', { ...next, computedAt: now })
       return 'written' as const
     }
-    if (JSON.stringify(rollupContent(existing)) === JSON.stringify(next)) {
+    if (JSON.stringify(
+        rollupContent({ ...existing, ...figuresOfRollup(existing) })
+      ) === JSON.stringify(next)) {
       return 'unchanged' as const
     }
     await ctx.db.replace(existing._id, { ...next, computedAt: now })

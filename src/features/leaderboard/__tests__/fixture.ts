@@ -46,6 +46,8 @@ export function board(over: Partial<Board> = {}): Board {
 	];
 	return {
 		stackCount: 4,
+		skills: [],
+		skillPublishers: 0,
 		livingCount: rows.length,
 		totalTokens: 306_700_000_000,
 		totalSessions: 2537,
@@ -86,6 +88,7 @@ export function board(over: Partial<Board> = {}): Board {
 			},
 		],
 		quiet: { count: 2, tokens: 302_000_000_000 },
+		pricingTables: [],
 		page: 1,
 		pageSize: 10,
 		totalPages: 1,
