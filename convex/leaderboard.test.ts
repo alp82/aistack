@@ -568,6 +568,101 @@ describe('leaderboard.get', () => {
   })
 })
 
+describe('leaderboard.get skills', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  /**
+   * Skills ride the inventory row, so the fixture writes them there. A direct
+   * patch has no write hook, so each test runs the cron before it reads.
+   */
+  async function setSkills(
+    t: Ctx,
+    stackId: Id<'stacks'>,
+    skills: { name: string; calls?: number }[],
+    total?: number
+  ) {
+    await t.run(async (ctx) => {
+      const rows = (await ctx.db.query('measuredInventory').collect()).filter(
+        (row) => row.stackId === stackId
+      )
+      for (const row of rows) {
+        await ctx.db.patch(row._id, {
+          inventory: {
+            ...row.inventory,
+            skills: skills.map((s) => ({ ...s, callShare: 0 })),
+            ...(total === undefined
+              ? {}
+              : {
+                  calls: {
+                    builtinTools: 0,
+                    mcpServers: 0,
+                    skills: total,
+                    subagents: 0,
+                    slashCommands: 0,
+                  },
+                }),
+          },
+        })
+      }
+    })
+  }
+
+  test('ranks skills by calls and names the stacks, heaviest caller first', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    const b = await seedStack(t, { name: 'B' })
+    await sync(t, a.stackId)
+    await sync(t, b.stackId)
+    await setSkills(t, a.stackId, [
+      { name: 'tdd', calls: 5 },
+      { name: 'heavy', calls: 80 },
+    ], 100)
+    await setSkills(t, b.stackId, [{ name: 'tdd', calls: 15 }], 100)
+    await runCron(t)
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.skillPublishers).toBe(2)
+    // Withheld calls stay in the denominator: 200 observed, 100 named.
+    expect(board.skills).toEqual([
+      { name: 'heavy', stackCount: 1, stacks: ['A'], calls: 80, callShare: 0.4 },
+      { name: 'tdd', stackCount: 2, stacks: ['B', 'A'], calls: 20, callShare: 0.1 },
+    ])
+  })
+
+  test('prints no count or share a source did not publish', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    await sync(t, a.stackId)
+    await setSkills(t, a.stackId, [{ name: 'tdd' }])
+    await runCron(t)
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.skills).toEqual([
+      { name: 'tdd', stackCount: 1, stacks: ['A'], calls: null, callShare: null },
+    ])
+  })
+
+  test('leaves out a stack with publishWorkflow off', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    await sync(t, a.stackId)
+    await setSkills(t, a.stackId, [{ name: 'tdd', calls: 3 }], 3)
+    await runCron(t)
+    expect((await t.query(api.leaderboard.get, {})).skills).toHaveLength(1)
+    // The flag is checked at read time: no refresh runs after the toggle.
+    await t.run((ctx) => ctx.db.patch(a.stackId, { publishWorkflow: false }))
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.skills).toEqual([])
+    expect(board.skillPublishers).toBe(0)
+    // The tokens still rank: the flag gates the workflow reading only.
+    expect(board.rows).toHaveLength(1)
+  })
+})
+
 describe('leaderboard.model', () => {
   beforeEach(() => {
     vi.useFakeTimers()

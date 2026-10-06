@@ -1478,6 +1478,25 @@ export default defineSchema({
       v.null()
     ),
     pricingTables: v.array(v.string()),
+    /**
+     * The stack's skill inventory, combined across machines by call counts.
+     * Stored whatever `publishWorkflow` says; the board checks the flag at read
+     * time. Optional because a row written before this field has none until
+     * its next refresh, which the hourly cron runs.
+     */
+    skills: v.optional(
+      v.object({
+        /** Every skill call, withheld names included. Null when a source has no count. */
+        totalCalls: v.union(v.number(), v.null()),
+        atoms: v.array(
+          v.object({
+            name: v.string(),
+            knownCalls: v.number(),
+            countsComplete: v.boolean(),
+          })
+        ),
+      })
+    ),
   }).index('by_stack', ['stackId']),
 
   // Private registry for the public machine position (#250). The machine name

@@ -24,22 +24,13 @@ export function trendOf(points: readonly SeriesPoint[]): number | null {
 }
 
 /**
- * The trend in words, for the narrow layout that has no room to draw it.
- *
- * The percentage is labelled with the span it actually covers, `points.length`,
- * NOT with `syncCount` (#129). The server caps `points` at 60 while reporting
- * the row's true reading count, so a stack past 60 syncs printed
- * `−7% over 84 syncs` for a percentage that spanned 60. `syncCount` still
- * carries the one-reading case, where nothing is capped.
+ * The signed trend for the narrow layout, which has no room to draw it.
+ * `null` when there is no trend, so the cell stays empty.
  */
-export function trendWords(
-	points: readonly SeriesPoint[],
-	syncCount = points.length,
-): string {
+export function trendShort(points: readonly SeriesPoint[]): string | null {
 	const trend = trendOf(points);
-	if (trend === null) return syncCount === 1 ? "1 sync" : "no trend";
-	const sign = trend >= 0 ? "+" : "−";
-	return `${sign}${Math.abs(Math.round(trend * 100))}% over ${points.length} syncs`;
+	if (trend === null) return null;
+	return `${trend >= 0 ? "+" : "−"}${Math.abs(Math.round(trend * 100))}%`;
 }
 
 /** Wire names in words. An unknown harness keeps its wire spelling. */
