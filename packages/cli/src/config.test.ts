@@ -1,4 +1,11 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -23,6 +30,7 @@ const LOCAL = "http://localhost:3019";
 
 let dir: string;
 let file: string;
+const testOnPosix = test.skipIf(process.platform === "win32");
 
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "aistack-config-"));
@@ -34,6 +42,31 @@ afterEach(() => {
 });
 
 describe("saveToken / getToken", () => {
+	testOnPosix(
+		"creates credentials and its directory with restrictive permissions",
+		() => {
+			const configDir = join(dir, "config");
+			const credentialsFile = join(configDir, "credentials.json");
+
+			saveToken("tok-prod", "user-1", PROD, credentialsFile);
+
+			expect(statSync(configDir).mode & 0o777).toBe(0o700);
+			expect(statSync(credentialsFile).mode & 0o777).toBe(0o600);
+		},
+	);
+
+	testOnPosix(
+		"repairs an existing credentials file to restrictive permissions",
+		() => {
+			writeFileSync(file, JSON.stringify({ servers: {} }));
+			chmodSync(file, 0o644);
+
+			saveToken("tok-prod", "user-1", PROD, file);
+
+			expect(statSync(file).mode & 0o777).toBe(0o600);
+		},
+	);
+
 	test("round-trips a token for one server", () => {
 		saveToken("tok-prod", "user-1", PROD, file);
 		expect(getToken(PROD, file)).toBe("tok-prod");
@@ -72,10 +105,14 @@ describe("legacy flat-form migration", () => {
 
 	test("rewrites the flat form to the map on first read", () => {
 		writeFileSync(file, JSON.stringify({ token: "tok-flat", userId: "u1" }));
+		if (process.platform !== "win32") chmodSync(file, 0o644);
 		getToken(PROD, file);
 		const raw = JSON.parse(readFileSync(file, "utf-8"));
 		expect(raw.token).toBeUndefined();
 		expect(raw.servers[PROD]).toEqual({ token: "tok-flat", userId: "u1" });
+		if (process.platform !== "win32") {
+			expect(statSync(file).mode & 0o777).toBe(0o600);
+		}
 	});
 
 	test("a login on top of a legacy file keeps the migrated entry", () => {
