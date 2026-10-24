@@ -6,7 +6,7 @@ import { api, internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import type { Infer } from 'convex/values'
 import schema, { MeasuredPayload } from './schema'
-import { sha256Hex } from './httpCli'
+import { publishMeasuredSync, sha256Hex } from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES } from './lib/cliScopes'
 
 /**
@@ -414,6 +414,182 @@ describe('the legacy figure on the inventory row', () => {
     const read = await t.query(api.measured.getUsageByStackSlug, { slug })
     expect(read?.legacy?.activeDays).toBe(3)
     expect(read?.legacy?.sessions).toBe(payload().activity.sessions * 2)
+  })
+})
+
+describe('bounded HTTP sync publication', () => {
+  test('saves a full 400-day reading within the per-mutation day budget', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 400 }, (_, i) => {
+      const date = new Date(NOW - i * 86_400_000).toISOString().slice(0, 10)
+      return { date, usage: usageDay(), workflow: workflowDay(date) }
+    })
+    let writes = 0
+    const result = await publishMeasuredSync({
+      runMutation: async (fn, args) => {
+        // Model the production execution budget at the mutation boundary.
+        // Validation reads no stored day and does not spend the write budget.
+        if (args.phase !== 'validate') {
+          if ((args.measuredDays?.days.length ?? 0) > 20) {
+            throw new Error('Function execution timed out (maximum duration: 1s)')
+          }
+          writes++
+        }
+        return await t.mutation(fn, args)
+      },
+    }, { tokenId, payloads: [payload()], measuredDays: dayWire(days) })
+    expect(result.stackSlug).toBeTruthy()
+    expect(writes).toBeGreaterThan(1)
+    expect(await storedDays(t)).toHaveLength(400)
+    const manifest = await t.query(internal.measured.getDayManifestForToken, { tokenId })
+    expect(manifest.days).toHaveLength(400)
+    expect(new Set(manifest.days.map((day) => day.fingerprint)).size).toBe(400)
+    const inventories = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
+    expect(inventories).toHaveLength(1)
+    expect(inventories[0].legacy).toBeUndefined()
+    const events = await t.run((ctx) => ctx.db.query('activityEvents').collect())
+    expect(events.filter((row) => row.event.type === 'sync.landed')).toHaveLength(1)
+  })
+
+  test('bounds dense batches by bytes even below the day-count limit', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const usage = usageDay()
+    usage.harnesses[0].projectKeys = Array.from({ length: 1_000 }, (_, i) =>
+      i.toString(36).padStart(22, 'A'),
+    )
+    const days = Array.from({ length: 12 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10), usage,
+    }))
+    let batches = 0
+    await publishMeasuredSync({ runMutation: async (fn, args) => {
+      if (args.phase === 'days') {
+        batches++
+        expect(new TextEncoder().encode(JSON.stringify(args.measuredDays.days)).length)
+          .toBeLessThan(256 * 1024)
+      }
+      return await t.mutation(fn, args)
+    } }, { tokenId, payloads: [payload()], measuredDays: dayWire(days) })
+    expect(batches).toBeGreaterThan(1)
+    expect(await storedDays(t)).toHaveLength(12)
+  })
+
+  test('the HTTP route publishes all batches and one completion event', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await seedToken(t, 'tok_http', stackId, 'laptop')
+    const days = Array.from({ length: 41 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10), usage: usageDay(),
+    }))
+    const response = await t.fetch('/api/cli/sync', {
+      method: 'POST', headers: { Authorization: 'Bearer tok_http' },
+      body: JSON.stringify({ payloads: [payload()], measuredDays: dayWire(days) }),
+    })
+    expect(response.status).toBe(200)
+    expect(await storedDays(t)).toHaveLength(41)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(1)
+  })
+
+  test('rechecks automatic-sync permission between batches', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 41 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10), usage: usageDay(),
+    }))
+    let batches = 0
+    await expect(publishMeasuredSync({ runMutation: async (fn, args) => {
+      if (args.phase === 'days' && ++batches === 2) {
+        await t.run((ctx) => ctx.db.patch(stackId, { autoSync: { enabled: false, frequencyHours: 6 } }))
+      }
+      return await t.mutation(fn, args)
+    } }, { tokenId, trigger: 'auto', payloads: [payload()], measuredDays: dayWire(days) }))
+      .rejects.toThrow(/Auto-sync is off/)
+    expect(await storedDays(t)).toHaveLength(20)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(0)
+  })
+
+  test('refuses an invalid later day before storing the first batch', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 21 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10),
+      usage: usageDay(),
+    }))
+    days[20].usage.harnesses[0].sessions = -1
+    await expect(publishMeasuredSync({
+      runMutation: (fn, args) => t.mutation(fn, args),
+    }, { tokenId, payloads: [payload()], measuredDays: dayWire(days) }))
+      .rejects.toThrow(/non-negative/)
+    expect(await storedDays(t)).toHaveLength(0)
+  })
+
+  test('refuses an invalid inventory before committing any day batch', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 21 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10), usage: usageDay(),
+    }))
+    await expect(publishMeasuredSync({ runMutation: (fn, args) => t.mutation(fn, args) }, {
+      tokenId,
+      payloads: [payload({ harness: { name: 'claude-code', version: 'bad\nversion' } })],
+      measuredDays: dayWire(days),
+    })).rejects.toThrow(/harness.version/)
+    expect(await storedDays(t)).toHaveLength(0)
+  })
+
+  test('pins all batches to the stack approved at the HTTP boundary', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const { stackId: otherStackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 41 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10), usage: usageDay(),
+    }))
+    let batches = 0
+    await expect(publishMeasuredSync({ runMutation: async (fn, args) => {
+      if (args.phase === 'days' && ++batches === 2) {
+        await t.run((ctx) => ctx.db.patch(tokenId, { stackId: otherStackId }))
+      }
+      return await t.mutation(fn, args)
+    } }, { tokenId, expectedStackId: stackId, payloads: [payload()], measuredDays: dayWire(days) }))
+      .rejects.toThrow(/no longer linked/)
+    const stored = await storedDays(t)
+    expect(stored).toHaveLength(20)
+    expect(stored.every((day) => day.stackId === stackId)).toBe(true)
+  })
+
+  test('keeps committed days resumable when a later batch fails, without a completion event', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok', stackId, 'laptop')
+    const days = Array.from({ length: 41 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10),
+      usage: usageDay(),
+    }))
+    let batches = 0
+    await expect(publishMeasuredSync({
+      runMutation: async (fn, args) => {
+        if (args.phase === 'days' && ++batches === 2) throw new Error('Interrupted')
+        return await t.mutation(fn, args)
+      },
+    }, { tokenId, payloads: [payload()], measuredDays: dayWire(days) }))
+      .rejects.toThrow('Interrupted')
+    expect(await storedDays(t)).toHaveLength(20)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(0)
+    expect(await t.run((ctx) => ctx.db.query('measuredInventory').collect())).toHaveLength(0)
+    const manifest = await t.query(internal.measured.getDayManifestForToken, { tokenId })
+    const held = new Set(manifest.days.map((day) => day.date))
+    await publishMeasuredSync({ runMutation: (fn, args) => t.mutation(fn, args) }, {
+      tokenId, payloads: [payload()], measuredDays: dayWire(days.filter((day) => !held.has(day.date))),
+    })
+    expect(await storedDays(t)).toHaveLength(41)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(1)
   })
 })
 

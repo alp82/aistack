@@ -1,3 +1,5 @@
+import type { Infer } from 'convex/values'
+import type { PublishForTokenArgs } from './measured'
 import { httpAction } from './_generated/server'
 import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
@@ -530,6 +532,54 @@ function parseCliVersion(raw: unknown): string | undefined {
 }
 
 /**
+ * Keep historical backfills inside each mutation's one-second CPU budget.
+ * Validate all input first, then persist independently replaceable days, then
+ * commit the inventory and single completion event. The manifest resumes a
+ * request interrupted between batches. No CLI protocol change is required.
+ */
+export async function publishMeasuredSync(
+  ctx: Pick<TokenLookupCtx, 'runMutation'>,
+  args: Infer<typeof PublishForTokenArgs>,
+) {
+  const wire = args.measuredDays
+  if (!wire) return await ctx.runMutation(internal.measured.publishForToken, args)
+
+  const batches: typeof wire.days[] = []
+  let batch: typeof wire.days = []
+  let bytes = 0
+  const encoder = new TextEncoder()
+  for (const day of wire.days) {
+    const size = encoder.encode(JSON.stringify(day)).length
+    if (batch.length && (batch.length >= 20 || bytes + size > 256 * 1024)) {
+      batches.push(batch)
+      batch = []
+      bytes = 0
+    }
+    batch.push(day)
+    bytes += size
+  }
+  if (batch.length) batches.push(batch)
+  if (batches.length <= 1) {
+    return await ctx.runMutation(internal.measured.publishForToken, args)
+  }
+
+  await ctx.runMutation(internal.measured.publishForToken, { ...args, phase: 'validate' })
+  for (const days of batches) {
+    await ctx.runMutation(internal.measured.publishForToken, {
+      ...args,
+      phase: 'days',
+      measuredDays: { ...wire, days },
+      workflow: undefined,
+    })
+  }
+  return await ctx.runMutation(internal.measured.publishForToken, {
+    ...args,
+    measuredDays: { ...wire, days: [] },
+    workflow: undefined,
+  })
+}
+
+/**
  * POST /api/cli/sync - publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
@@ -577,8 +627,9 @@ export const syncPublish = httpAction(async (ctx, request) => {
     keptPrivate: { stored: number; machineStored: number; refused: boolean }
   }
   try {
-    result = await ctx.runMutation(internal.measured.publishForToken, {
+    result = await publishMeasuredSync(ctx, {
       tokenId: tokenId as Id<'cliTokens'>,
+      expectedStackId: authResult.stackId,
       payload: body.payload as any,
       payloads: body.payloads as any,
       keptPrivate: body.keptPrivate as any,

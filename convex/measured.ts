@@ -1788,71 +1788,77 @@ async function gcKeptPrivate(ctx: MutationCtx): Promise<number> {
  */
 const MAX_PAYLOADS_PER_PUBLISH = 8
 
-/** Convenience for the HTTP layer: publish + report what the gate should show. */
+/** Closed arguments shared by validation, day batches and completion. */
+export const PublishForTokenArgs = v.object({
+  tokenId: v.id('cliTokens'),
+  /**
+   * Pre-#67 clients send exactly one payload here. An installed CLI keeps
+   * working until a wire bump retires the field.
+   */
+  payload: v.optional(MeasuredPayload),
+  /**
+   * The batch (#66 decision 5): one payload per detected harness, landed in
+   * ONE atomic mutation. Atomicity is what closes the staged-names wipe
+   * hazard - `replaceKeptPrivate` is a whole-list replace per stack, so two
+   * sequential per-harness publishes would have the second wipe the first's
+   * names.
+   */
+  payloads: v.optional(v.array(MeasuredPayload)),
+  /**
+   * The unsealed half (#48), ONE union across harnesses - consent is per
+   * name, not per harness. Optional, because a client with the switch off
+   * sends the payloads alone - and because #41's gate must be able to sync
+   * before this half exists on the machine.
+   */
+  keptPrivate: v.optional(KeptPrivateNames),
+  /**
+   * The machine's standing auto-sync opt-in, as it currently stands (#77).
+   * Optional: the opt-in lives in `~/.config/aistack/settings.json` and older
+   * clients report nothing, which reads as "never told us".
+   */
+  autoSync: v.optional(AutoSyncState),
+  /**
+   * How this sync fired (#102). Absent reads as `manual` - a 0.6.x CLI sends
+   * nothing, and silence must not be read as a machine publishing on its own.
+   */
+  trigger: v.optional(SyncTrigger),
+  /**
+   * The measured workflow section (#213, spec "The wire"). ONE section per
+   * publish, beside the payloads: the Git half is per machine and the metric
+   * rows span every synced harness, so neither has a payload to sit in.
+   *
+   * Optional twice over. A pre-#213 CLI sends nothing, and a client whose
+   * owner turned `publishWorkflow` off sends nothing either - the switch is
+   * applied on the machine, so refusal and old-client look identical here, by
+   * design: there is no server-side state saying a section was withheld.
+   *
+   * ACCEPTED AND CHECKED HERE, STORED IN #218. The wire has to take the shape
+   * before anything can persist it, and the ticket that persists it also owns
+   * the fit and rotation state it feeds. Until then a section is validated,
+   * bounded, and dropped - so a CLI publishing one is never refused, and a
+   * malformed one never becomes someone else's problem to discover.
+   */
+  workflow: v.optional(WorkflowWire),
+  /**
+   * The per-day wire (#307, ADR-0010): both halves of each day the client
+   * found missing or changed against the manifest. When present it wins
+   * over `workflow`, which a client on this wire no longer sends.
+   */
+  measuredDays: v.optional(MeasuredDayWire),
+  /**
+   * Which CLI is publishing (#213). Additive and optional like `trigger`: an
+   * older client sends nothing, and an untagged row is exactly the answer -
+   * that machine is on a wire older than this field.
+   */
+  cliVersion: v.optional(v.string()),
+  // Internal orchestration only. The HTTP body cannot select a phase.
+  phase: v.optional(v.union(v.literal('validate'), v.literal('days'))),
+  expectedStackId: v.optional(v.id('stacks')),
+})
+
+/** Publish or validate the part of an approved sync selected by the HTTP layer. */
 export const publishForToken = internalMutation({
-  args: {
-    tokenId: v.id('cliTokens'),
-    /**
-     * Pre-#67 clients send exactly one payload here. An installed CLI keeps
-     * working until a wire bump retires the field.
-     */
-    payload: v.optional(MeasuredPayload),
-    /**
-     * The batch (#66 decision 5): one payload per detected harness, landed in
-     * ONE atomic mutation. Atomicity is what closes the staged-names wipe
-     * hazard - `replaceKeptPrivate` is a whole-list replace per stack, so two
-     * sequential per-harness publishes would have the second wipe the first's
-     * names.
-     */
-    payloads: v.optional(v.array(MeasuredPayload)),
-    /**
-     * The unsealed half (#48), ONE union across harnesses - consent is per
-     * name, not per harness. Optional, because a client with the switch off
-     * sends the payloads alone - and because #41's gate must be able to sync
-     * before this half exists on the machine.
-     */
-    keptPrivate: v.optional(KeptPrivateNames),
-    /**
-     * The machine's standing auto-sync opt-in, as it currently stands (#77).
-     * Optional: the opt-in lives in `~/.config/aistack/settings.json` and older
-     * clients report nothing, which reads as "never told us".
-     */
-    autoSync: v.optional(AutoSyncState),
-    /**
-     * How this sync fired (#102). Absent reads as `manual` - a 0.6.x CLI sends
-     * nothing, and silence must not be read as a machine publishing on its own.
-     */
-    trigger: v.optional(SyncTrigger),
-    /**
-     * The measured workflow section (#213, spec "The wire"). ONE section per
-     * publish, beside the payloads: the Git half is per machine and the metric
-     * rows span every synced harness, so neither has a payload to sit in.
-     *
-     * Optional twice over. A pre-#213 CLI sends nothing, and a client whose
-     * owner turned `publishWorkflow` off sends nothing either - the switch is
-     * applied on the machine, so refusal and old-client look identical here, by
-     * design: there is no server-side state saying a section was withheld.
-     *
-     * ACCEPTED AND CHECKED HERE, STORED IN #218. The wire has to take the shape
-     * before anything can persist it, and the ticket that persists it also owns
-     * the fit and rotation state it feeds. Until then a section is validated,
-     * bounded, and dropped - so a CLI publishing one is never refused, and a
-     * malformed one never becomes someone else's problem to discover.
-     */
-    workflow: v.optional(WorkflowWire),
-    /**
-     * The per-day wire (#307, ADR-0010): both halves of each day the client
-     * found missing or changed against the manifest. When present it wins
-     * over `workflow`, which a client on this wire no longer sends.
-     */
-    measuredDays: v.optional(MeasuredDayWire),
-    /**
-     * Which CLI is publishing (#213). Additive and optional like `trigger`: an
-     * older client sends nothing, and an untagged row is exactly the answer -
-     * that machine is on a wire older than this field.
-     */
-    cliVersion: v.optional(v.string()),
-  },
+  args: PublishForTokenArgs,
   returns: v.object({
     receivedAt: v.number(),
     stackSlug: v.string(),
@@ -1887,6 +1893,9 @@ export const publishForToken = internalMutation({
     }
     const stack = await ctx.db.get(token.stackId)
     if (!stack) throw new Error('Linked stack no longer exists')
+    if (args.expectedStackId && stack._id !== args.expectedStackId) {
+      throw new Error('Token is no longer linked to the approved stack')
+    }
 
     // The token's owner must still own the stack. A stack can change hands or be
     // deleted and recreated between link time and send time, and an immutable
@@ -1912,9 +1921,6 @@ export const publishForToken = internalMutation({
       )
     }
 
-    // Asked BEFORE the upserts, or every sync looks like the first one.
-    const isFirstSync = (await inventoryForStack(ctx, stack._id)).length === 0
-
     // Bounded on the way in, the way the payloads are (#213). Checked here
     // rather than only inside `storeWorkflowDays` so a malformed section
     // refuses the publish before any row is written - the same fail-fast the
@@ -1928,6 +1934,35 @@ export const publishForToken = internalMutation({
       ? args.cliVersion
       : undefined
 
+    // Validate the entire approved request before the first batch commits.
+    // Keep this on the common path so a malformed later payload or staged name
+    // cannot leave earlier days stored after a validation failure.
+    for (const payload of payloads) checkPayloadStrings(payload)
+    if (args.keptPrivate && stack.reviewKeptPrivate !== false) {
+      checkStagedNames(flattenStaged(args.keptPrivate))
+    }
+    if (args.phase) {
+      const receivedAt = Date.now()
+      if (args.phase === 'days') {
+        await storeDayArgs(ctx, args, {
+          stackId: stack._id,
+          machine: token.name,
+          capturedAt: Math.max(...payloads.map((payload) => payload.capturedAt)),
+          receivedAt,
+          cliVersion,
+        })
+      }
+      return {
+        receivedAt,
+        stackSlug: `${stack.slug}-${stack.shortId}`,
+        keptPrivate: { stored: 0, machineStored: 0, refused: false },
+      }
+    }
+
+    // Inventory, staged names, analytics and the activity event commit once,
+    // after every day batch succeeds. An interrupted day batch is resumable
+    // through the existing manifest and does not announce a completed sync.
+    const isFirstSync = (await inventoryForStack(ctx, stack._id)).length === 0
     let receivedAt = 0
     for (const payload of payloads) {
       // The machine is the TOKEN'S name, never the payload's (#243). A client

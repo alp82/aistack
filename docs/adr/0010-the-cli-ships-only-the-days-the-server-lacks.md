@@ -72,3 +72,22 @@ are omitted on partial scans. Complete scans retain the original replacement sem
 Deploy the backend's optional `partial` wire field before releasing a CLI that sends
 it. Old clients keep their existing behavior; an older backend rejects the new field
 instead of silently treating a partial reading as a full replacement.
+
+## Bounded publication (2026-10-25)
+
+A historical sync can carry 400 days. Saving them all in one mutation can exceed
+production's one-second execution limit. The HTTP endpoint now validates the
+whole request before writing, then saves measured days in batches of at most 20
+and approximately 256 KiB of day JSON. A single day stays intact. Each batch
+rechecks the token's linked stack, ownership and automatic-sync permission.
+
+Inventory, kept-private names, token settings and the single `sync.landed` event
+still commit together, after every batch succeeds. The endpoint returns success
+only after that completion mutation. The CLI wire and fingerprints are unchanged.
+
+Day batches are separate transactions. If a later batch fails, earlier days
+remain stored and readable, without an event announcing a completed sync. The
+next sync's manifest includes those days, so it resumes with the missing or
+changed dates. Partial-reading retention applies independently to every day as
+before. A validation failure writes no days, including when the malformed input
+appears after the first batch boundary.
