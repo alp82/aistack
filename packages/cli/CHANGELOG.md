@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/alp82/aistack/compare/cli-v0.20.0...cli-v0.20.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **cli:** discover Claude account profiles and deduplicate copied history ([4528515](https://github.com/alp82/aistack/commit/45285158c07e571dcc2e57d2fe1e9a276bc5c10d))
+
 ## [0.20.0](https://github.com/alp82/aistack/compare/cli-v0.19.2...cli-v0.20.0) (2026-09-27)
 
 
