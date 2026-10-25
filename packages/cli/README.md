@@ -27,6 +27,12 @@ On an unlinked machine, `sync` starts the login flow inline - your browser opens
 
 After a manual sync, the CLI offers auto-sync with three choices: Enable, Maybe later, and Never ask again. Maybe later asks again after your next manual sync. Existing declines from older CLI versions are treated as Maybe later.
 
+#### Multiple Claude Code accounts
+
+Sync combines the local histories of your Claude Code profiles into one Claude Code reading. It discovers `~/.claude*` folders, `claude*` folders under `XDG_CONFIG_HOME` (default `~/.config`), nested `profiles/` and `accounts/` folders, and Claude Swap session profiles under `~/.claude-swap-backup` or `$XDG_DATA_HOME/claude-swap` (default `~/.local/share/claude-swap`). A profile contributes only its `projects/` transcripts. Discovery does not open credentials, and the published aggregates do not include account names.
+
+`CLAUDE_CONFIG_DIR` can add custom locations as a comma-separated list. The default and discovered profiles still count when this variable is set, so running sync from an account-specific shell keeps the other accounts included. Linked transcript roots and copied records with the same Claude record UUID are counted once. A profile discovery error marks the reading as partial so previously published evidence is retained.
+
 #### A sync that looks stuck
 
 The scan runs on this machine and can take a few minutes when a harness keeps a large history. Cursor is the usual case: its global `state.vscdb` grows past a gigabyte, and the session listing walks all of it before the first result. Every harness is checked at the same time and gets its own row with a progress bar, so one slow harness shows as one slow row while the others finish. To see each step as it starts, with its duration, run with `--verbose`:

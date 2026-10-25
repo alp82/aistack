@@ -23,6 +23,8 @@ export function windowStartMs(now: number, days: number): number {
 }
 
 export type ScanStats = {
+	/** Local-only: false when profile discovery could not inspect every location. */
+	sourceDiscoveryComplete?: boolean;
 	/** Files found on disk before any window filter. */
 	filesFound: number;
 	/** Files actually opened and read. */

@@ -12,7 +12,6 @@ import { traceError } from "../../trace.js";
 
 import { createReadStream, type Dirent } from "node:fs";
 import { readdir, realpath, stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 
@@ -30,21 +29,9 @@ import {
 
 export { type ScanStats, windowStartMs };
 
-/** Discovery order mirrors ccusage's adapter: CLAUDE_CONFIG_DIR, then the defaults. */
-export function transcriptRoots(): string[] {
-	const env = process.env.CLAUDE_CONFIG_DIR;
-	if (env) {
-		return env
-			.split(",")
-			.map((s) => s.trim())
-			.filter(Boolean)
-			.map((s) => path.join(s, "projects"));
-	}
-	const roots = [path.join(homedir(), ".claude", "projects")];
-	const xdg = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config");
-	roots.push(path.join(xdg, "claude", "projects"));
-	return roots;
-}
+import { discoverClaudeRoots } from "./roots.js";
+
+export { transcriptRoots } from "./roots.js";
 
 /** What counts as a Claude Code transcript. Shared with `detect` (#101). */
 export function isTranscriptFile(basename: string): boolean {
@@ -108,7 +95,11 @@ export async function scan(
 	const visited = new Set<string>();
 	const projectWorkspaces = new Map<string, string>();
 
-	for (const root of opts.roots ?? transcriptRoots()) {
+	const discovery = opts.roots
+		? { roots: opts.roots, complete: true }
+		: await discoverClaudeRoots();
+	stats.sourceDiscoveryComplete = discovery.complete;
+	for (const root of discovery.roots) {
 		if (!(await exists(root))) continue;
 		for await (const file of walkJsonl(root)) {
 			stats.filesFound++;

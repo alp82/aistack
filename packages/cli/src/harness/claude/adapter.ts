@@ -11,7 +11,8 @@ import type {
 	HarnessScanOptions,
 } from "../types.js";
 import { createAggregate } from "./analyzer.js";
-import { isTranscriptFile, scan, transcriptRoots } from "./scan.js";
+import { discoverClaudeRoots } from "./roots.js";
+import { isTranscriptFile, scan } from "./scan.js";
 
 export const CLAUDE_HARNESS_NAME = "claude-code";
 
@@ -20,11 +21,11 @@ export const claudeAdapter: HarnessAdapter = {
 	builtinTools: BUILTIN_TOOLS,
 
 	async detect(opts: HarnessDetectOptions): Promise<boolean> {
-		return hasRecentFile(
-			opts.roots ?? transcriptRoots(),
-			isTranscriptFile,
-			opts.sinceMs,
-		);
+		const discovery = opts.roots
+			? { roots: opts.roots, complete: true }
+			: await discoverClaudeRoots();
+		if (!discovery.complete) return true;
+		return hasRecentFile(discovery.roots, isTranscriptFile, opts.sinceMs);
 	},
 
 	async scan(opts: HarnessScanOptions): Promise<HarnessScan> {
@@ -36,6 +37,7 @@ export const claudeAdapter: HarnessAdapter = {
 		return {
 			aggregate,
 			stats,
+			scanComplete: stats.sourceDiscoveryComplete !== false,
 			workflow: aggregate.workflow.finish(),
 			workflowLocal: aggregate.workflowLocal,
 		};

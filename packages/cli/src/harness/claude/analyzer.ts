@@ -104,6 +104,8 @@ type SeenEntry = { requestId: string | null; contribution: Contribution };
  * by `message.id` holding this adapter's replay/continuation bookkeeping.
  */
 export type Aggregate = SharedAggregate<SeenEntry> & {
+	/** Transcript record UUIDs shared by live profiles and saved copies. */
+	recordUuids: Set<string>;
 	workflow: HarnessWorkflowReducer;
 	workflowLocal: WorkflowLocalSources;
 	workflowSeenCalls: Set<string>;
@@ -134,6 +136,7 @@ export type Aggregate = SharedAggregate<SeenEntry> & {
 export function createAggregate(): Aggregate {
 	const workflowLocal = createWorkflowLocalSources();
 	return Object.assign(createSharedAggregate<SeenEntry>(), {
+		recordUuids: new Set<string>(),
 		workflow: createHarnessWorkflowReducer("claude-code", workflowLocal),
 		workflowLocal,
 		workflowSeenCalls: new Set<string>(),
@@ -196,6 +199,14 @@ export function ingestRecord(
 ): void {
 	const rec = asObj(raw);
 	if (!rec) return;
+
+	// Copies retain Claude's record UUID. Fold each record once so backup
+	// profiles cannot multiply content blocks, compactions or tool results.
+	const uuid = asStr(rec.uuid);
+	if (uuid) {
+		if (agg.recordUuids.has(uuid)) return;
+		agg.recordUuids.add(uuid);
+	}
 
 	agg.records++;
 	const projectDir = projectWorkspaceDirectory(rec) ?? ctx.projectDir;

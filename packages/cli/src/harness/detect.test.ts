@@ -12,7 +12,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,11 @@ import { claudeAdapter } from "./claude/adapter.js";
 import { codexAdapter } from "./codex/adapter.js";
 import { detectedAdapters, detectionSinceMs } from "./index.js";
 import { piAdapter } from "./pi/adapter.js";
+
+vi.mock("node:os", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:os")>();
+	return { ...actual, homedir: vi.fn(actual.homedir) };
+});
 
 const NOW = Date.UTC(2026, 7, 5, 12, 0, 0);
 const DAY = 86_400_000;
@@ -42,6 +47,7 @@ const savedEnv = {
 
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "aistack-detect-"));
+	vi.mocked(homedir).mockReturnValue(dir);
 	// Point every harness at the temp dir so the machine running the tests
 	// never leaks its own installs into `detectedAdapters`.
 	process.env.CURSOR_DATA_PATH = join(dir, "cursor-workspaces");
