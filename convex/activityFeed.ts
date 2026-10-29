@@ -5,14 +5,13 @@ import { query } from './_generated/server'
 import type { ActivityEventValue } from './activity'
 import {
   foldUsageDays,
-  inDateRange,
   rangeDates,
   totalOfTokens,
   type UsageDay,
 } from '@aistack/workflow-rules'
 import {
   inventoryForStack,
-  measuredDaysForStack,
+  measuredDaysForStackInRange,
   newestInventoryPerSource,
 } from './lib/measuredDays'
 import { ActivityEvent } from './schema'
@@ -294,11 +293,10 @@ async function priorTotal(
   before: number
 ): Promise<number | null> {
   const window = rangeDates('30d', before)
-  const earlier = (await measuredDaysForStack(ctx, stackId)).filter(
+  const earlier = (await measuredDaysForStackInRange(ctx, stackId, window)).filter(
     (row) =>
       row.receivedAt < before &&
-      row.usage !== undefined &&
-      inDateRange(row.date, window)
+      row.usage !== undefined
   )
   if (earlier.length === 0) return null
   let total = 0
@@ -408,8 +406,8 @@ async function usageFor(
       sessions += harness.sessions
     }
     const window = rangeDates('30d', row.at)
-    const days = (await measuredDaysForStack(ctx, row.stackId))
-      .filter((day) => day.usage !== undefined && inDateRange(day.date, window))
+    const days = (await measuredDaysForStackInRange(ctx, row.stackId, window))
+      .filter((day) => day.usage !== undefined)
       .map((day) => ({ date: day.date, usage: day.usage as UsageDay }))
     const fold = foldUsageDays(days)
     projects += fold.projectKeys.length

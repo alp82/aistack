@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
+import * as measuredDays from './lib/measuredDays'
 import { api } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
@@ -455,6 +456,26 @@ describe('movement', () => {
 // ---------------------------------------------------------------------------
 
 describe('the band', () => {
+  test('does not load a stack entire measured history for its 30-day totals or prior reading', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await snapshot(t, stackId, { capturedAt: now - 90 * DAY, models: ['old-model'], projects: 20 })
+    await snapshot(t, stackId, { capturedAt: now - DAY, models: ['opus'], projects: 3, totalTokens: 600 })
+    await emit(t, stackId, now, syncEvent({ totalTokens: 1000 }))
+
+    const historyRead = vi.spyOn(measuredDays, 'measuredDaysForStack')
+    try {
+      const band = await t.query(api.activityFeed.band, {})
+      expect(band.usage.projects).toBe(3)
+      expect(band.usage.models).toBe(1)
+      expect(band.rows[0].deltaTokens).toBe(400)
+      expect(historyRead).not.toHaveBeenCalled()
+    } finally {
+      historyRead.mockRestore()
+    }
+  })
+
   test('counts syncs and updates inside the 24-hour window only', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
