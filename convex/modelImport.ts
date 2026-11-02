@@ -61,6 +61,7 @@ const IconBackfillV = v.object({ modelSlug: v.string(), iconUrl: v.string() })
 const WindowBackfillV = v.object({ modelSlug: v.string(), contextWindow: v.number() })
 
 const LOG_KEEP = 500
+const MEASURED_PAGE_SIZE = 100
 
 type RunResult = { periods: number; models: number; source: string }
 
@@ -82,20 +83,39 @@ export function measuredIdsWithTokens(
   return [...ids].sort()
 }
 
-/**
- * The catalog, the periods and the measured ids, in one read. The days are
- * collected whole: the table is a few hundred rows a day of one machine, and
- * the ids are the only thing wanted from them.
- */
+/** The catalog and the periods. Both stay small, so one read holds them. */
 export const readState = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const [models, prices, days] = await Promise.all([
+    const [models, prices] = await Promise.all([
       ctx.db.query('models').collect(),
       ctx.db.query('modelPrices').collect(),
-      ctx.db.query('measuredDays').collect(),
     ])
-    return { models, prices, measuredIds: measuredIdsWithTokens(days) }
+    return { models, prices }
+  },
+})
+
+/**
+ * One page of the measured ids. The days are read in pages because the table
+ * grows with every stack and every date: reading it whole in one query passed
+ * the one-second limit on 2026-09-27, and the import then failed every day.
+ */
+export const measuredIdsPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({
+    ids: v.array(v.string()),
+    cursor: v.string(),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query('measuredDays')
+      .paginate({ cursor: args.cursor, numItems: MEASURED_PAGE_SIZE })
+    return {
+      ids: measuredIdsWithTokens(page.page),
+      cursor: page.continueCursor,
+      isDone: page.isDone,
+    }
   },
 })
 
@@ -169,7 +189,9 @@ export const apply = internalMutation({
       if (m.rates) {
         await ctx.db.insert('modelPrices', {
           modelSlug: m.slug,
-          from: now,
+          // A model's first period covers every day it was measured before
+          // the import found it. `from: 0` means since the model existed.
+          from: 0,
           ...m.rates,
           source,
           createdAt: now,
@@ -267,12 +289,21 @@ export const run = internalAction({
     try {
       const { dataset, source } = await fetchDataset()
       const state = await ctx.runQuery(internal.modelImport.readState, {})
+      const measuredIds = new Set<string>()
+      let cursor: string | null = null
+      for (;;) {
+        const page: { ids: string[]; cursor: string; isDone: boolean } =
+          await ctx.runQuery(internal.modelImport.measuredIdsPage, { cursor })
+        for (const id of page.ids) measuredIds.add(id)
+        if (page.isDone) break
+        cursor = page.cursor
+      }
       const plan = planImport({
         catalog: catalogFrom(state.models, state.prices),
         models: state.models,
         prices: state.prices,
         dataset,
-        measuredIds: state.measuredIds,
+        measuredIds: [...measuredIds].sort(),
         source,
         now,
       })

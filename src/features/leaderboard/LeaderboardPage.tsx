@@ -221,7 +221,7 @@ function Trend({ row }: { readonly row: BoardRow }) {
 				{drawable ? (
 					<Sparkline
 						points={row.points.map((p) => ({ at: p.at, value: p.tokens }))}
-						ariaLabel={`${row.name} measured tokens across ${row.points.length} syncs`}
+						ariaLabel={`${row.name} measured tokens across ${row.points.length} days`}
 						width={SPARK_WIDTH}
 						height={SPARK_HEIGHT}
 					/>
@@ -241,10 +241,10 @@ function Trend({ row }: { readonly row: BoardRow }) {
 							{up ? "+" : "−"}
 							{f.pct(Math.abs(trend ?? 0))}
 						</span>{" "}
-						· {row.points.length} syncs
+						· {row.points.length} days
 					</>
 				) : (
-					`${row.syncCount === 1 ? "1 sync" : `${row.syncCount} syncs`} · no trend`
+					`${row.syncCount === 1 ? "1 day" : `${row.syncCount} days`} · no trend`
 				)}
 			</span>
 		</span>

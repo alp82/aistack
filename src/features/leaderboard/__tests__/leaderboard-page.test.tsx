@@ -20,12 +20,28 @@ function setup(b = board()) {
 }
 
 describe("the trend", () => {
+	it("starts at the first day with a reading when the window opens idle", () => {
+		expect(
+			trendOf([
+				{ at: 1, tokens: 0 },
+				{ at: 2, tokens: 100 },
+				{ at: 3, tokens: 150 },
+			]),
+		).toBeCloseTo(0.5);
+	});
+
 	it("names Grok Build", () => {
 		expect(harnessLabel("grok-build")).toBe("Grok Build");
 		expect(harnessLabel("cursor")).toBe("Cursor");
 	});
 	it("is null below two readings - one dot is not a trend", () => {
 		expect(trendOf([{ at: 1, tokens: 100 }])).toBeNull();
+		expect(
+			trendOf([
+				{ at: 1, tokens: 0 },
+				{ at: 2, tokens: 0 },
+			]),
+		).toBeNull();
 		expect(trendOf([])).toBeNull();
 	});
 
@@ -71,7 +87,7 @@ describe("the board", () => {
 				],
 			}),
 		);
-		expect(screen.getByText("1 sync · no trend")).toBeInTheDocument();
+		expect(screen.getByText("1 day · no trend")).toBeInTheDocument();
 	});
 
 	it("renders a fall as a fall", () => {

@@ -364,7 +364,9 @@ export function planImport(args: {
     if (current && !ratesDiffer(current, rates)) continue
     periods.push({
       modelSlug: row.slug,
-      from: now,
+      // A rate change is dated to the run. A model's first rate covers its
+      // earlier days too, or everything measured before this run stays unpriced.
+      from: current ? now : 0,
       rates: mergedRates(current, rates),
       source,
       before: current

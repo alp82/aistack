@@ -394,6 +394,105 @@ describe('modelImport (#337)', () => {
   })
 })
 
+describe('a growing measured table', () => {
+  const NEW_MODEL = {
+    openai: {
+      id: 'openai',
+      models: {
+        'gpt-6.1-sol': {
+          id: 'gpt-6.1-sol',
+          name: 'GPT-6.1 Sol',
+          release_date: new Date().toISOString().slice(0, 10),
+          modalities: { input: ['text'], output: ['text'] },
+          cost: { input: 2, output: 10, cache_read: 0.1 },
+        },
+      },
+    },
+  }
+
+  async function seedDays(t: ReturnType<typeof convexTest>, count: number, lastModel: string) {
+    await t.run(async (ctx) => {
+      const creatorId = await ctx.db.insert('creators', {
+        userId: 'u1',
+        name: 'Owner',
+        slug: 'owner',
+        verified: false,
+        personalPages: [],
+        projectPages: [],
+        createdAt: 1,
+      })
+      const stackId = await ctx.db.insert('stacks', {
+        creatorId,
+        name: 'Stack',
+        slug: 'stack',
+        shortId: 'stack1',
+        oneLiner: 'A stack',
+        toolSubscriptions: [],
+        hasUsageComponent: false,
+        published: true,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      for (let i = 0; i < count; i++) {
+        await ctx.db.insert('measuredDays', {
+          stackId,
+          machine: 'm',
+          date: `2026-01-${String(i).padStart(3, '0')}`,
+          capturedAt: 1,
+          receivedAt: 1,
+          aggregateVersion: 'measured-days/v1',
+          fingerprint: 'f',
+          usage: {
+            harnesses: [
+              {
+                harness: 'codex',
+                sessions: 1,
+                subagentTokens: 0,
+                projectKeys: [],
+                excludedTokens: { unpriced: 0, synthetic: 0 },
+                models: [
+                  {
+                    model: i === count - 1 ? lastModel : 'gpt-5.6-sol',
+                    tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+                  },
+                ],
+              },
+            ],
+          },
+        } as never)
+      }
+    })
+  }
+
+  test('reads the days in pages, so a large table cannot time the import out', async () => {
+    const t = convexTest(schema, modules)
+    await seedDays(t, 250, 'gpt-6.1-sol')
+    const first = await t.query(internal.modelImport.measuredIdsPage, { cursor: null })
+    expect(first.isDone).toBe(false)
+
+    stubFetch({ [MODELS_DEV_URL]: NEW_MODEL })
+    const result = await t.action(internal.modelImport.run, {})
+    expect(result.models).toBeGreaterThan(0)
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', 'gpt-6.1-sol'))
+        .first()
+      expect(row).not.toBeNull()
+    })
+  })
+
+  test("a model's first rate also prices the days measured before the run", async () => {
+    const t = convexTest(schema, modules)
+    stubFetch({ [MODELS_DEV_URL]: NEW_MODEL })
+    await t.action(internal.modelImport.run, {})
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query('modelPrices').collect()
+      expect(rows.map((r) => [r.modelSlug, r.from])).toEqual([['gpt-6.1-sol', 0]])
+    })
+  })
+})
+
 describe('measuredIdsWithTokens', () => {
   test('keeps an id only when a day holds tokens for it', () => {
     const day = (models: Array<[string, number]>) => ({

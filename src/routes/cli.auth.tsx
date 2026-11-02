@@ -37,6 +37,10 @@ function CliAuthPage() {
 	const { isAuthenticated, isLoading } = useConvexAuth();
 	const approveSession = useMutation(api.cliSessions.approveSession);
 	const myStacks = useQuery(api.stacks.listMine, isAuthenticated ? {} : "skip");
+	const myMachines = useQuery(
+		api.cliTokens.listByUser,
+		isAuthenticated ? {} : "skip",
+	);
 	const [status, setStatus] = useState<
 		"idle" | "approving" | "approved" | "denied" | "error"
 	>("idle");
@@ -85,6 +89,15 @@ function CliAuthPage() {
 
 	const stacksLoading = isAuthenticated && myStacks === undefined;
 	const hasStacks = stacks.length > 0;
+	// Days are stored per machine NAME, so a second computer with this name
+	// would overwrite the first one's days instead of adding to them.
+	const nameTaken =
+		!replacingMachine &&
+		(myMachines ?? []).some(
+			(m) =>
+				m.stack?._id === selectedStackId &&
+				m.name === (machineName ?? "").trim(),
+		);
 	// A profile with no stack can still authorize the CLI for its other commands;
 	// the token simply carries no sync target until it is re-linked.
 	const pendingLoading = isAuthenticated && code && pending === undefined;
@@ -194,6 +207,13 @@ function CliAuthPage() {
 							Only you ever see this. It is how you tell your machines apart
 							when you revoke one.
 						</p>
+						{nameTaken && (
+							<p className="mt-2 font-mono text-[0.7rem] leading-relaxed text-warning">
+								{machineNameReadOnly
+									? "A machine with this name already publishes to this stack. If this is a different computer, cancel and run aistack login with another --label, or each sync overwrites the other's days."
+									: "A machine with this name already publishes to this stack. If this is a different computer, give it another name, or each sync overwrites the other's days."}
+							</p>
+						)}
 					</div>
 
 					{stacksLoading && (

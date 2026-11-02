@@ -1,3 +1,4 @@
+import { rangeDates, totalOfTokens } from '@aistack/workflow-rules'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { CliTokenScope } from './lib/cliScopes'
@@ -71,9 +72,19 @@ export const listByUser = query({
       // publishes, and a raw Id says nothing. Null when the token predates
       // link-time binding, or when the stack has since been deleted - both of
       // which render as "not linked to a stack".
-      stack: v.union(v.object({ name: v.string(), slug: v.string() }), v.null()),
+      stack: v.union(
+        v.object({ _id: v.id('stacks'), name: v.string(), slug: v.string() }),
+        v.null(),
+      ),
       // What this machine may do (#52).
       scopes: v.array(CliTokenScope),
+      // Tokens this machine's name published over the board's 30-day window.
+      tokens30d: v.number(),
+      // Newest publish among those days. Null when it published none.
+      lastPublishedAt: v.union(v.number(), v.null()),
+      // Days are keyed by the machine's NAME, so two tokens with one name on
+      // one stack overwrite each other's days.
+      sharesName: v.boolean(),
     }),
   ),
   handler: async (ctx) => {
@@ -86,17 +97,48 @@ export const listByUser = query({
       .withIndex('by_userId', (q) => q.eq('userId', userId))
       .collect()
 
+    const window = rangeDates('30d', Date.now())
     const rows = []
     for (const t of tokens) {
       const stack = t.stackId ? await ctx.db.get(t.stackId) : null
+      const days = stack
+        ? await ctx.db
+            .query('measuredDays')
+            .withIndex('by_stack_machine_date', (q) =>
+              q
+                .eq('stackId', stack._id)
+                .eq('machine', t.name)
+                .gte('date', window.from)
+                .lte('date', window.to),
+            )
+            .collect()
+        : []
+      let tokens30d = 0
+      for (const day of days) {
+        for (const harness of day.usage?.harnesses ?? []) {
+          for (const model of harness.models) tokens30d += totalOfTokens(model.tokens)
+        }
+      }
       rows.push({
         _id: t._id,
         name: t.name,
         createdAt: t.createdAt,
         lastUsedAt: t.lastUsedAt,
         expiresAt: t.expiresAt,
-        stack: stack ? { name: stack.name, slug: stack.slug } : null,
+        stack: stack ? { _id: stack._id, name: stack.name, slug: stack.slug } : null,
         scopes: t.scopes,
+        tokens30d,
+        lastPublishedAt:
+          days.length > 0 ? Math.max(...days.map((day) => day.receivedAt)) : null,
+        sharesName:
+          t.name !== undefined &&
+          t.stackId !== undefined &&
+          tokens.some(
+            (other) =>
+              other._id !== t._id &&
+              other.name === t.name &&
+              other.stackId === t.stackId,
+          ),
       })
     }
     // Most recently used first - the machine you are sitting at is the one you

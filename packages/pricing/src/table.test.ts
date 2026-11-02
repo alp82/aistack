@@ -317,3 +317,49 @@ describe("parsePriceTable", () => {
 		expect(t?.rows[0]?.vendor).toBe("xai");
 	});
 });
+
+describe("model setting suffixes", () => {
+	const pricer = new Pricer([
+		new PriceIndex({
+			id: "t",
+			rows: [
+				{
+					modelSlug: "claude-opus-5-5",
+					from: 0,
+					input: 4,
+					output: 20,
+					source: "s",
+				},
+				{
+					modelSlug: "claude-fable-5-1",
+					from: 0,
+					input: 10,
+					output: 50,
+					source: "s",
+				},
+				{ modelSlug: "grok-4.7", from: 0, input: 2, output: 6, source: "s" },
+				{ modelSlug: "exact-high", from: 0, input: 9, output: 9, source: "s" },
+				{ modelSlug: "exact", from: 0, input: 1, output: 1, source: "s" },
+			],
+		}),
+	]);
+
+	it.each([
+		["claude-opus-5-5-high", 4],
+		["claude-fable-5-1-thinking-high", 10],
+		["grok-4.7-xhigh-fast", 2],
+		["grok-4.7-low-fast", 2],
+		["grok-4.7-build", 2],
+		["grok-4.7-build-fast", 2],
+	])("%s borrows the base rate", (id, input) => {
+		expect(pricer.priceAt(id, 1)?.input).toBe(input);
+	});
+
+	it("prefers an exact rate over the base model", () => {
+		expect(pricer.priceAt("exact-high", 1)?.input).toBe(9);
+	});
+
+	it("leaves an unknown model unpriced", () => {
+		expect(pricer.isPriced("unknown-model-high")).toBe(false);
+	});
+});

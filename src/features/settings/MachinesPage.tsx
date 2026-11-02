@@ -3,6 +3,7 @@ import { Laptop, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { tokens as formatTokens } from "@/features/leaderboard/format";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -68,14 +69,46 @@ export function scopeLine(scopes: CliTokenScope[]): string {
 	return `Can ${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
 }
 
+/** A machine with no publish in this long is missing from current figures. */
+const STALE_AFTER_DAYS = 7;
+
+/**
+ * What this machine contributes to the stack's figures right now, and what to
+ * do when it contributes nothing. A stack's total is the sum of its machines,
+ * so one silent machine reads as a low total with no other explanation.
+ */
+export function publishLine(
+	machine: { tokens30d: number; lastPublishedAt: number | null },
+	now: number,
+): { text: string; warn: boolean } {
+	if (machine.lastPublishedAt === null) {
+		return {
+			text: "Nothing published in the last 30 days. Run npx @use-aistack/cli sync on it.",
+			warn: true,
+		};
+	}
+	const last = relativeDay(machine.lastPublishedAt, now);
+	const figure = `${formatTokens(machine.tokens30d)} tokens in the last 30 days`;
+	if (now - machine.lastPublishedAt < STALE_AFTER_DAYS * DAY) {
+		return { text: `${figure} · published ${last}`, warn: false };
+	}
+	return {
+		text: `${figure} · last published ${last}. Run npx @use-aistack/cli sync on it.`,
+		warn: true,
+	};
+}
+
 interface MachineRow {
 	_id: Id<"cliTokens">;
 	name?: string;
 	createdAt: number;
 	lastUsedAt: number;
 	expiresAt: number;
-	stack: { name: string; slug: string } | null;
+	stack: { _id: Id<"stacks">; name: string; slug: string } | null;
 	scopes: CliTokenScope[];
+	tokens30d: number;
+	lastPublishedAt: number | null;
+	sharesName: boolean;
 }
 
 export function MachinesPage() {
@@ -138,45 +171,62 @@ export function MachinesPage() {
 
 			{machines && machines.length > 0 && (
 				<ul className="mt-8 space-y-3">
-					{machines.map((m) => (
-						<li
-							key={m._id}
-							className="flex items-start gap-4 border-2 border-stroke-strong bg-bg-panel p-4"
-						>
-							<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center border border-stroke-strong bg-bg-canvas">
-								<Laptop className="size-4 text-fg-muted" />
-							</div>
-							<div className="min-w-0 flex-1">
-								<p className="truncate font-mono text-sm font-bold text-fg-primary">
-									{m.name ?? "Unnamed machine"}
-								</p>
-								<p className="mt-1 font-mono text-xs text-fg-muted">
-									Linked {relativeDay(m.createdAt, now)} · last used{" "}
-									{relativeDay(m.lastUsedAt, now)}
-								</p>
-								<p className="mt-1 font-mono text-xs text-fg-muted">
-									{m.stack
-										? `Publishes to ${m.stack.name}`
-										: "Not linked to a stack, so it cannot publish"}
-								</p>
-								<p className="mt-1 font-mono text-xs text-fg-muted">
-									{scopeLine(m.scopes)}
-								</p>
-								<p className="mt-1 font-mono text-xs text-fg-muted">
-									{expiryLabel(m.expiresAt, now)}
-								</p>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => setPending(m)}
-								className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider"
+					{machines.map((m) => {
+						const published = m.stack ? publishLine(m, now) : null;
+						return (
+							<li
+								key={m._id}
+								className="flex items-start gap-4 border-2 border-stroke-strong bg-bg-panel p-4"
 							>
-								<Trash2 className="size-3.5" />
-								Revoke
-							</Button>
-						</li>
-					))}
+								<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center border border-stroke-strong bg-bg-canvas">
+									<Laptop className="size-4 text-fg-muted" />
+								</div>
+								<div className="min-w-0 flex-1">
+									<p className="truncate font-mono text-sm font-bold text-fg-primary">
+										{m.name ?? "Unnamed machine"}
+									</p>
+									<p className="mt-1 font-mono text-xs text-fg-muted">
+										Linked {relativeDay(m.createdAt, now)} · last used{" "}
+										{relativeDay(m.lastUsedAt, now)}
+									</p>
+									<p className="mt-1 font-mono text-xs text-fg-muted">
+										{m.stack
+											? `Publishes to ${m.stack.name}`
+											: "Not linked to a stack, so it cannot publish"}
+									</p>
+									{published && (
+										<p
+											className={`mt-1 font-mono text-xs ${published.warn ? "text-warning" : "text-fg-muted"}`}
+										>
+											{published.text}
+										</p>
+									)}
+									{m.sharesName && (
+										<p className="mt-1 font-mono text-xs text-warning">
+											Another machine on this stack has this name, so each sync
+											overwrites the other's days. Revoke the one you no longer
+											use, or run aistack login --label on one of them.
+										</p>
+									)}
+									<p className="mt-1 font-mono text-xs text-fg-muted">
+										{scopeLine(m.scopes)}
+									</p>
+									<p className="mt-1 font-mono text-xs text-fg-muted">
+										{expiryLabel(m.expiresAt, now)}
+									</p>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setPending(m)}
+									className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider"
+								>
+									<Trash2 className="size-3.5" />
+									Revoke
+								</Button>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 

@@ -23,6 +23,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	expiryLabel,
 	MachinesPage,
+	publishLine,
 	relativeDay,
 	scopeLine,
 } from "@/features/settings/MachinesPage";
@@ -49,8 +50,11 @@ function machine(over: Record<string, unknown> = {}) {
 		createdAt: Date.now() - 30 * DAY,
 		lastUsedAt: Date.now() - 2 * DAY,
 		expiresAt: Date.now() + 90 * DAY,
-		stack: { name: "Main Stack", slug: "main-stack" },
+		stack: { _id: "stack_1", name: "Main Stack", slug: "main-stack" },
 		scopes: ["collect", "sync"],
+		tokens30d: 4_810_000_000,
+		lastPublishedAt: Date.now() - 2 * DAY,
+		sharesName: false,
 		...over,
 	};
 }
@@ -153,5 +157,44 @@ describe("copy helpers", () => {
 		const label = expiryLabel(now + 90 * DAY, now);
 		expect(label).toMatch(/after its last use/);
 		expect(expiryLabel(now - 1000, now)).toBe("Expired");
+	});
+});
+
+describe("what a machine contributes", () => {
+	const now = Date.UTC(2026, 10, 2);
+
+	it("prints the figure for a machine that is publishing", () => {
+		expect(
+			publishLine(
+				{ tokens30d: 3_180_000_000, lastPublishedAt: now - DAY },
+				now,
+			),
+		).toEqual({
+			text: "3.18B tokens in the last 30 days · published yesterday",
+			warn: false,
+		});
+	});
+
+	it("warns about a machine that stopped publishing", () => {
+		const line = publishLine(
+			{ tokens30d: 0, lastPublishedAt: now - 45 * DAY },
+			now,
+		);
+		expect(line.warn).toBe(true);
+		expect(line.text).toContain("last published last month");
+		expect(line.text).toContain("sync on it");
+	});
+
+	it("warns about a machine with no days in the window", () => {
+		expect(publishLine({ tokens30d: 0, lastPublishedAt: null }, now).warn).toBe(
+			true,
+		);
+	});
+});
+
+describe("two machines with one name", () => {
+	it("says that they overwrite each other", () => {
+		setup([machine({ sharesName: true })]);
+		expect(screen.getByText(/overwrites the other's days/)).toBeTruthy();
 	});
 });

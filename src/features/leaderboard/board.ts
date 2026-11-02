@@ -18,8 +18,10 @@ export type SeriesPoint = BoardRow["points"][number];
  */
 export function trendOf(points: readonly SeriesPoint[]): number | null {
 	if (points.length < 2) return null;
-	const first = points[0].tokens;
-	if (first <= 0) return null;
+	// A day with no tokens is no baseline. The trend starts at the first day
+	// with a reading, so one idle first day cannot hide the whole month.
+	const first = points.find((p) => p.tokens > 0)?.tokens;
+	if (first === undefined) return null;
 	return (points[points.length - 1].tokens - first) / first;
 }
 

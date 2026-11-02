@@ -58,7 +58,7 @@ ssh "$HOST" "
   mkdir -p /root/.aistack-convex-cli && cd /root/.aistack-convex-cli
   [ -f package.json ] || echo '{\"name\":\"aistack-convex-cli\",\"private\":true}' > package.json
   [ -d node_modules/convex ] || npm install --no-fund --no-audit convex >/dev/null
-  CONVEX_SELF_HOSTED_URL=http://localhost:3210 \
+  CONVEX_SELF_HOSTED_URL=http://10.0.0.20:3210 \
   CONVEX_SELF_HOSTED_ADMIN_KEY=\"\$KEY\" \
   npx -y convex $REMOTE_ARGS
 "

@@ -105,6 +105,55 @@ describe('getByTokenHash', () => {
 })
 
 describe('listByUser', () => {
+  test('reports what each machine published and flags a shared name', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    await seedToken(t, { tokenHash: 'a', name: 'Mac', stackId })
+    await seedToken(t, { tokenHash: 'b', name: 'Mac', stackId })
+    await seedToken(t, { tokenHash: 'c', name: 'silent', stackId })
+    const today = new Date().toISOString().slice(0, 10)
+    const day = (date: string, receivedAt: number) =>
+      t.run((ctx) =>
+        ctx.db.insert('measuredDays', {
+          stackId,
+          machine: 'Mac',
+          date,
+          capturedAt: receivedAt,
+          receivedAt,
+          aggregateVersion: 'measured-days/v1',
+          fingerprint: date,
+          usage: {
+            harnesses: [
+              {
+                harness: 'codex',
+                sessions: 1,
+                subagentTokens: 0,
+                projectKeys: [],
+                excludedTokens: { unpriced: 0, synthetic: 0 },
+                models: [
+                  {
+                    model: 'gpt-5.6-sol',
+                    tokens: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 },
+                  },
+                ],
+              },
+            ],
+          },
+        } as never),
+      )
+    await day(today, 500)
+    await day('2020-01-01', 900) // Outside the window, so it counts for nothing.
+
+    const rows = await t.withIdentity(IDENTITY).query(api.cliTokens.listByUser, {})
+    const mac = rows.find((r) => r.name === 'Mac')
+    expect(mac).toMatchObject({ tokens30d: 10, lastPublishedAt: 500, sharesName: true })
+    expect(rows.find((r) => r.name === 'silent')).toMatchObject({
+      tokens30d: 0,
+      lastPublishedAt: null,
+      sharesName: false,
+    })
+  })
+
   test('never returns the token or its digest', async () => {
     const t = convexTest(schema, modules)
     await seedToken(t, { tokenHash: 'digest', name: 'work laptop' })
@@ -125,7 +174,7 @@ describe('listByUser', () => {
     await seedToken(t, { tokenHash: 'hb', lastUsedAt: 1000 })
 
     const rows = await t.withIdentity(IDENTITY).query(api.cliTokens.listByUser, {})
-    expect(rows[0].stack).toEqual({ name: 'Main Stack', slug: 'main-stack' })
+    expect(rows[0].stack).toMatchObject({ name: 'Main Stack', slug: 'main-stack' })
     // The stack-less token is exactly the class that has no page under a
     // per-stack revoke surface, which is why this one is account-scoped.
     expect(rows[1].stack).toBeNull()
