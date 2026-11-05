@@ -85,6 +85,11 @@ or updates the CLI release pull request. Merging that pull request creates the
 `cli-v<version>` GitHub release and `.github/workflows/publish-cli.yml`
 publishes `@use-aistack/cli` to npm.
 
+Release Please only counts commits that touch `packages/cli`, and it has no
+option to watch more paths. The CLI bundles `@aistack/pricing` and
+`@aistack/workflow-rules`, so a fix there releases only when the same commit
+also changes `packages/cli`. Add a CLI test that covers the change.
+
 npm trusts `publish-cli.yml` directly through OIDC. The publish job needs
 `id-token: write` and must not use an npm write token. The trusted-publisher
 configuration identifies the workflow by its filename, so rename it only after
