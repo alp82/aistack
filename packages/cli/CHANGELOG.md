@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.2](https://github.com/alp82/aistack/compare/cli-v0.20.1...cli-v0.20.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **cli:** ship the Cursor model settings pricing ([767420c](https://github.com/alp82/aistack/commit/767420c15dc561992c77855d54742a1f28b623a5))
+
 ## [0.20.1](https://github.com/alp82/aistack/compare/cli-v0.20.0...cli-v0.20.1) (2026-10-25)
 
 
