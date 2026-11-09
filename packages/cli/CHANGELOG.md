@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.3](https://github.com/alp82/aistack/compare/cli-v0.20.2...cli-v0.20.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **cli:** restrict credential file permissions ([#354](https://github.com/alp82/aistack/issues/354)) ([1929bb6](https://github.com/alp82/aistack/commit/1929bb69ba87c9dd5d798feb5f7c39980454532f))
+
 ## [0.20.2](https://github.com/alp82/aistack/compare/cli-v0.20.1...cli-v0.20.2) (2026-11-05)
 
 
