@@ -61,7 +61,8 @@ const IconBackfillV = v.object({ modelSlug: v.string(), iconUrl: v.string() })
 const WindowBackfillV = v.object({ modelSlug: v.string(), contextWindow: v.number() })
 
 const LOG_KEEP = 500
-const MEASURED_PAGE_SIZE = 100
+const MEASURED_PAGE_SIZE = 32
+const MEASURED_PAGE_BYTES = 512 * 1024
 
 type RunResult = { periods: number; models: number; source: string }
 
@@ -96,9 +97,8 @@ export const readState = internalQuery({
 })
 
 /**
- * One page of the measured ids. The days are read in pages because the table
- * grows with every stack and every date: reading it whole in one query passed
- * the one-second limit on 2026-09-27, and the import then failed every day.
+ * One page of the measured ids. Each row includes its full workflow payload.
+ * Bound the prefetch by row count and let large days end the page early.
  */
 export const measuredIdsPage = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
@@ -110,7 +110,11 @@ export const measuredIdsPage = internalQuery({
   handler: async (ctx, args) => {
     const page = await ctx.db
       .query('measuredDays')
-      .paginate({ cursor: args.cursor, numItems: MEASURED_PAGE_SIZE })
+      .paginate({
+        cursor: args.cursor,
+        numItems: MEASURED_PAGE_SIZE,
+        maximumBytesRead: MEASURED_PAGE_BYTES,
+      })
     return {
       ids: measuredIdsWithTokens(page.page),
       cursor: page.continueCursor,

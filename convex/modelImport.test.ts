@@ -410,7 +410,12 @@ describe('a growing measured table', () => {
     },
   }
 
-  async function seedDays(t: ReturnType<typeof convexTest>, count: number, lastModel: string) {
+  async function seedDays(
+    t: ReturnType<typeof convexTest>,
+    count: number,
+    lastModel: string,
+    projectKeys: string[] = [],
+  ) {
     await t.run(async (ctx) => {
       const creatorId = await ctx.db.insert('creators', {
         userId: 'u1',
@@ -448,7 +453,7 @@ describe('a growing measured table', () => {
                 harness: 'codex',
                 sessions: 1,
                 subagentTokens: 0,
-                projectKeys: [],
+                projectKeys,
                 excludedTokens: { unpriced: 0, synthetic: 0 },
                 models: [
                   {
@@ -480,6 +485,20 @@ describe('a growing measured table', () => {
         .first()
       expect(row).not.toBeNull()
     })
+  })
+
+  test('ends a page early when large days reach the read budget and resumes after it', async () => {
+    const t = convexTest(schema, modules)
+    const projectKeys = Array.from({ length: 1_000 }, (_, i) => String(i).padStart(22, '0'))
+    await seedDays(t, 28, 'gpt-6.1-sol', projectKeys)
+
+    const first = await t.query(internal.modelImport.measuredIdsPage, { cursor: null })
+    expect(first.isDone).toBe(false)
+    expect(first.ids).toEqual(['gpt-5.6-sol'])
+
+    const next = await t.query(internal.modelImport.measuredIdsPage, { cursor: first.cursor })
+    expect(next.ids).toEqual(['gpt-5.6-sol', 'gpt-6.1-sol'])
+    expect(next.isDone).toBe(true)
   })
 
   test("a model's first rate also prices the days measured before the run", async () => {
