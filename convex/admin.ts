@@ -1,4 +1,4 @@
-import { mutation, query } from './_generated/server'
+import { mutation, query, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 // @ts-ignore - components will be generated after convex dev restarts
@@ -8,13 +8,23 @@ import { clearStackReports } from './lib/stackReports'
 import { assertValidIconUrl } from './lib/iconUrl'
 import { buildTiers } from './lib/tiers'
 
-async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
-  if (!subjectOrTokenId) return null
-  try {
-    const userId = subjectOrTokenId.includes('|')
-      ? subjectOrTokenId.split('|')[1]
-      : subjectOrTokenId
+type SubmitterInfo = {
+  name?: string
+  email?: string
+  image?: string
+}
 
+function submitterId(subjectOrTokenId: string | undefined) {
+  return subjectOrTokenId?.split('|')[1] ?? subjectOrTokenId
+}
+
+async function getUserInfo(
+  ctx: QueryCtx,
+  subjectOrTokenId: string | undefined,
+): Promise<SubmitterInfo | null> {
+  const userId = submitterId(subjectOrTokenId)
+  if (!userId) return null
+  try {
     const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: 'user',
       where: [{ field: '_id', value: userId }],
@@ -30,6 +40,47 @@ async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
     // Fallback if user lookup fails
   }
   return null
+}
+
+async function loadToolSubmitters(
+  ctx: QueryCtx,
+  userIds: string[],
+): Promise<Map<string, (SubmitterInfo & { profileSlug?: string }) | null>> {
+  if (userIds.length === 0) return new Map()
+
+  const authUsers = async () => {
+    try {
+      const { page }: { page: Array<SubmitterInfo & { _id: string }> } =
+        await ctx.runQuery(components.betterAuth.adapter.findMany, {
+          model: 'user',
+          where: [{ field: '_id', operator: 'in', value: userIds }],
+          paginationOpts: { numItems: userIds.length, cursor: null },
+        })
+      return new Map(page.map((user) => [user._id, user]))
+    } catch {
+      // A malformed historical ID can fail the batch lookup.
+      return new Map(await Promise.all(userIds.map(async (userId) =>
+        [userId, await getUserInfo(ctx, userId)] as const
+      )))
+    }
+  }
+
+  const [users, profiles] = await Promise.all([
+    authUsers(),
+    Promise.all(userIds.map((userId) => ctx.db.query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .first())),
+  ])
+  return new Map(userIds.map((userId, index) => {
+    const user = users.get(userId)
+    const profile = profiles[index]
+    return [userId, user || profile ? {
+      name: user?.name || profile?.name,
+      email: user?.email,
+      image: user?.image || profile?.avatarUrl,
+      profileSlug: profile?.slug,
+    } : null] as const
+  }))
 }
 
 export const getPendingReviewCount = query({
@@ -129,9 +180,30 @@ export const getPendingTools = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
 
+    if (tools.length === 0) return []
+
+    const userIds = [...new Set(tools.map((tool) => submitterId(tool.createdBy))
+      .filter((id): id is string => Boolean(id)))]
+    const [submitters, stacks] = await Promise.all([
+      loadToolSubmitters(ctx, userIds),
+      ctx.db.query('stacks').order('desc').collect(),
+    ])
+    const stacksByTool = new Map<string, Array<{ slug: string; name: string }>>(
+      tools.map((tool) => [tool.slug, []]),
+    )
+    for (const stack of stacks) {
+      const toolSlugs = new Set(stack.toolSubscriptions.map((sub) => sub.toolSlug))
+      for (const slug of toolSlugs) {
+        stacksByTool.get(slug)?.push({
+          slug: `${stack.slug}-${stack.shortId}`,
+          name: stack.name,
+        })
+      }
+    }
+
     const toolsWithUserInfo = await Promise.all(
       tools.map(async (tool) => {
-        const userInfo = await getUserInfo(ctx, tool.createdBy)
+        const userId = submitterId(tool.createdBy)
         const resolvedUrl = tool.iconStorageId
           ? await ctx.storage.getUrl(tool.iconStorageId)
           : null
@@ -152,7 +224,8 @@ export const getPendingTools = query({
           createdBy: tool.createdBy,
           createdAt: tool.createdAt,
           updatedAt: tool.updatedAt,
-          submitterInfo: userInfo,
+          submitterInfo: (userId ? submitters.get(userId) : null) ?? null,
+          stacks: stacksByTool.get(tool.slug) ?? [],
         }
       })
     )

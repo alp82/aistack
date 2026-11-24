@@ -378,7 +378,21 @@ export const listItems = query({
   },
 })
 
-/** The three state counts, for the tab badge and the sub-tab headers. */
+/** The navigation badge only needs to distinguish 99 from 99+. */
+export const getInboxBadgeCount = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+    const limit = 99
+    const items = await ctx.db
+      .query('newsItems')
+      .withIndex('by_state_collectedAt', (q) => q.eq('state', 'inbox'))
+      .take(limit + 1)
+    return { count: Math.min(items.length, limit), hasMore: items.length > limit }
+  },
+})
+
+/** The exact state counts for the News sub-tab headers. */
 export const countItems = query({
   args: {},
   handler: async (ctx) => {

@@ -485,6 +485,7 @@ describe('the inbox', () => {
 
     expect(await t.query(api.news.listItems, { state: 'inbox' })).toBeNull()
     expect(await t.query(api.news.countItems, {})).toBeNull()
+    expect(await t.query(api.news.getInboxBadgeCount, {})).toBeNull()
   })
 
   test('a stranger cannot move an item', async () => {
@@ -530,6 +531,17 @@ describe('the source digest', () => {
     }
     return ids
   }
+
+  test('the navigation badge caps the inbox count and the News view keeps the exact count', async () => {
+    const t = convexTest(schema, modules)
+    const admin = asAdmin(t)
+    await seedItems(t, 99, 'inbox')
+    await seedItems(t, 1, 'approved', { state: 'approved' })
+    expect(await admin.query(api.news.getInboxBadgeCount, {})).toEqual({ count: 99, hasMore: false })
+    await seedItems(t, 2, 'extra')
+    expect(await admin.query(api.news.getInboxBadgeCount, {})).toEqual({ count: 99, hasMore: true })
+    expect(await admin.query(api.news.countItems, {})).toEqual({ inbox: 101, approved: 1, discarded: 0 })
+  })
 
   test('the groups come back biggest first', async () => {
     const t = convexTest(schema, modules)

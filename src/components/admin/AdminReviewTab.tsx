@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { Brain, Check, Edit2, Package, Pencil, Wrench, X } from "lucide-react";
 import { useState } from "react";
@@ -9,10 +10,10 @@ import { AddModelForm, type ModelData } from "../AddModelModal";
 import { AddToolModal, type ToolData } from "../AddToolModal";
 import { Dialog } from "../ui/Dialog";
 import {
-	removePendingTool,
 	removePendingBundle,
 	removePendingModel,
 	removePendingSuggestion,
+	removePendingTool,
 } from "./optimisticUpdates";
 
 export function AdminReviewTab() {
@@ -235,7 +236,11 @@ export function AdminReviewTab() {
 						</h1>
 					</div>
 
-					{!pendingTools || pendingTools.length === 0 ? (
+					{pendingTools === undefined ? (
+						<p className="font-mono text-sm text-fg-muted">
+							Loading pending tools...
+						</p>
+					) : !pendingTools || pendingTools.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
 							<p className="font-mono text-sm text-fg-muted">
 								No pending tools to review
@@ -311,7 +316,32 @@ export function AdminReviewTab() {
 										</div>
 									</div>
 
-									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
+									<div className="mb-4">
+										<h4 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+											Stack usage
+										</h4>
+										{tool.stacks.length > 0 ? (
+											<ul className="flex flex-wrap gap-x-4 gap-y-1">
+												{tool.stacks.map((stack) => (
+													<li key={stack.slug}>
+														<Link
+															to="/stacks/$slug"
+															params={{ slug: stack.slug }}
+															className="font-mono text-xs text-accent-lime hover:underline"
+														>
+															{stack.name}
+														</Link>
+													</li>
+												))}
+											</ul>
+										) : (
+											<p className="font-mono text-xs text-fg-muted">
+												No stacks list this tool
+											</p>
+										)}
+									</div>
+
+									<div className="flex flex-wrap items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
 										<div className="flex gap-3">
 											<button
 												type="button"
@@ -346,10 +376,23 @@ export function AdminReviewTab() {
 																"?")[0].toUpperCase()}
 														</div>
 													)}
-													<span className="font-mono text-xs">
-														{tool.submitterInfo.name ||
-															tool.submitterInfo.email}
-													</span>
+													{tool.submitterInfo.profileSlug ? (
+														<Link
+															to="/$creator"
+															params={{
+																creator: `@${tool.submitterInfo.profileSlug}`,
+															}}
+															className="font-mono text-xs text-accent-lime hover:underline"
+														>
+															{tool.submitterInfo.name ||
+																tool.submitterInfo.email}
+														</Link>
+													) : (
+														<span className="font-mono text-xs">
+															{tool.submitterInfo.name ||
+																tool.submitterInfo.email}
+														</span>
+													)}
 												</div>
 											) : (
 												<span className="font-mono text-xs">Unknown</span>

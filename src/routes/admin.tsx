@@ -153,8 +153,13 @@ function AdminPage() {
 	const qualityCount = useQuery(api.admin.getQualityTabCount);
 	const importCount = useQuery(api.admin.getImportTabCount);
 	const { isLoading: authLoading } = useConvexAuth();
-	const newsCounts = useQuery(api.news.countItems);
-	const newsCount = newsCounts?.inbox ?? 0;
+	const inboxBadge = useQuery(
+		api.news.getInboxBadgeCount,
+		isAdmin ? {} : "skip",
+	);
+	const newsCount = inboxBadge?.hasMore
+		? `${inboxBadge.count}+`
+		: inboxBadge?.count;
 	const navigate = useNavigate({ from: "/admin" });
 	const {
 		tab: rawTab,
@@ -178,7 +183,7 @@ function AdminPage() {
 		key: AdminTab;
 		label: string;
 		icon: LucideIcon;
-		count?: number | null;
+		count?: number | string | null;
 		patch?: Partial<typeof ADMIN_SEARCH_DEFAULTS>;
 	}> = [
 		{
