@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { Upload, User, X } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { PendingAvatar } from "@/features/stack-editor/types";
 import { convertToCompactDataUrl } from "@/lib/imageProcessing";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function AvatarEditor({
 	const [error, setError] = useState("");
 	const [dragActive, setDragActive] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const titleId = useId();
 
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 	const getFileUrl = useMutation(api.files.getUrl);
@@ -142,12 +144,21 @@ export function AvatarEditor({
 
 	if (!isOpen) return null;
 
-	return (
+	// The profile sidebar is sticky and creates its own stacking context.
+	return createPortal(
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-			<div className="w-[400px] min-w-[360px] border-[3px] border-stroke-strong bg-bg-canvas p-6 shadow-[8px_8px_0_var(--stroke-strong)]">
+			<div
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={titleId}
+				className="w-[400px] min-w-[360px] border-[3px] border-stroke-strong bg-bg-canvas p-6 shadow-[8px_8px_0_var(--stroke-strong)]"
+			>
 				{/* Header */}
 				<div className="mb-6 flex items-center justify-between">
-					<h2 className="font-mono text-lg font-bold uppercase tracking-wider text-fg-primary">
+					<h2
+						id={titleId}
+						className="font-mono text-lg font-bold uppercase tracking-wider text-fg-primary"
+					>
 						Edit Avatar
 					</h2>
 					<button
@@ -256,6 +267,7 @@ export function AvatarEditor({
 					</button>
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }

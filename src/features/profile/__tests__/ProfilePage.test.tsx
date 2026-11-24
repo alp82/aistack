@@ -9,7 +9,13 @@
  * most-recent stack is the full-width callout; owner-only New/Edit
  * affordances gated on getOwnProfileView.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfilePage } from "@/features/profile/ProfilePage";
@@ -18,6 +24,7 @@ import { ProfilePage } from "@/features/profile/ProfilePage";
 // New-stack / Edit affordances - swap for plain anchors, matching the
 // StackHeader.test.tsx / landing-sections.test.tsx precedent.
 vi.mock("@tanstack/react-router", () => ({
+	useNavigate: () => vi.fn(),
 	Link: ({
 		children,
 		to,
@@ -35,6 +42,11 @@ vi.mock("@tanstack/react-router", () => ({
 			: to;
 		return <a href={href}>{children}</a>;
 	},
+}));
+
+vi.mock("convex/react", () => ({
+	useMutation: () => vi.fn(),
+	useQuery: () => undefined,
 }));
 
 afterEach(() => {
@@ -186,6 +198,26 @@ describe("ProfilePage - sparse profile (visitor)", () => {
 });
 
 describe("ProfilePage - owner view", () => {
+	it("opens the avatar editor outside the profile stacking context", () => {
+		const { container } = render(
+			<ProfilePage
+				profile={FULL_PROFILE}
+				stacks={[]}
+				ownProfile={{ isOwner: true }}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Edit profile" }));
+		fireEvent.click(screen.getByRole("button", { name: "Edit avatar" }));
+
+		const dialog = screen.getByRole("dialog", { name: "Edit Avatar" });
+		expect(document.body).toContainElement(dialog);
+		expect(container).not.toContainElement(dialog);
+
+		fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		expect(dialog).not.toBeInTheDocument();
+	});
+
 	it("shows a New-stack link and an Edit affordance when ownProfile is present", () => {
 		render(
 			<ProfilePage
