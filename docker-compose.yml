@@ -2,6 +2,7 @@ services:
   backend:
     # Change this to :${REV} if you want to pin to a specific version
     image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT
     ports:
