@@ -2,6 +2,10 @@
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import {
 	activePriceTableIds,
 	BUNDLED_PRICE_TABLE_ID,
@@ -9,8 +13,10 @@ import {
 } from "@aistack/pricing";
 import { dayFingerprint } from "@aistack/workflow-rules";
 import { describe, expect, test, vi } from "vitest";
+import { getProjectWorkspaceId } from "../config.js";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
 import { assistant } from "../harness/claude/fixtures.js";
+import { grokAdapter } from "../harness/grok/adapter.js";
 import type {
 	LoadedSyncConfig,
 	SyncConfig,
@@ -119,6 +125,134 @@ const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 };
 
 describe("stageSync", () => {
+	test("stages Grok history without turning each session into a project workspace", async () => {
+		const home = await mkdtemp(join(tmpdir(), "grok-stage-"));
+		const root = join(home, "sessions");
+		const cwd = resolve("/synthetic/repo with spaces");
+		const workspace = join(root, encodeURIComponent(cwd));
+		const projectId = (directory: string) =>
+			createHash("sha256")
+				.update(directory)
+				.digest()
+				.subarray(0, 16)
+				.toString("base64url");
+		try {
+			for (let i = 0; i <= 1_000; i++) {
+				const sessionId = `session-${i}`;
+				const session = join(workspace, sessionId);
+				await mkdir(session, { recursive: true });
+				await writeFile(
+					join(session, "usage.json"),
+					JSON.stringify({
+						sessionId,
+						turns: [
+							{
+								endedAt: "2026-07-20T12:00:00.000Z",
+								primaryModelId: "grok",
+								inputTokens: 4,
+								outputTokens: 1,
+							},
+						],
+					}),
+				);
+			}
+			vi.stubEnv("GROK_HOME", home);
+			const staged = await stageSync(
+				deps({
+					adaptersImpl: () => [grokAdapter],
+					getProjectWorkspaceIdImpl: projectId,
+					getSettingsImpl: () => ({}),
+					config: {
+						config: { ...FETCHED, publishWorkflow: false },
+						source: "fetched",
+					},
+				}),
+			);
+			expect(staged.body.payloads[0].activity.projectKeys).toEqual([
+				projectId(cwd),
+			]);
+			const usage = staged.body.measuredDays?.days[0]?.usage?.harnesses[0];
+			expect(usage?.projectKeys).toEqual([projectId(cwd)]);
+			expect(usage?.sessions).toBe(1_001);
+			expect(staged.bodyJson).not.toContain(cwd);
+			expect(staged.bodyJson).not.toContain("session-0");
+		} finally {
+			vi.unstubAllEnvs();
+			await rm(home, { recursive: true, force: true });
+		}
+	});
+
+	test("restages a held Grok day with an old session-based id and preserves local ids", async () => {
+		const home = await mkdtemp(join(tmpdir(), "grok-stage-manifest-"));
+		const cwd = resolve("/synthetic/repo");
+		const session = join(
+			home,
+			"sessions",
+			encodeURIComponent(cwd),
+			"legacy-session",
+		);
+		const projectFile = join(home, "projects.json");
+		const workspaceId = "AAAAAAAAAAAAAAAAAAAAAA";
+		const legacyId = "BBBBBBBBBBBBBBBBBBBBBB";
+		const storedProjects = JSON.stringify({
+			[cwd]: { workspaceId, excluded: [".env"] },
+			[session]: { workspaceId: legacyId },
+		});
+		try {
+			await mkdir(session, { recursive: true });
+			await writeFile(projectFile, storedProjects);
+			await writeFile(
+				join(session, "usage.json"),
+				JSON.stringify({
+					sessionId: "legacy-session",
+					turns: ["2026-07-19", "2026-07-20"].map((date) => ({
+						endedAt: `${date}T12:00:00Z`,
+						primaryModelId: "grok",
+						inputTokens: 4,
+						outputTokens: 1,
+					})),
+				}),
+			);
+			vi.stubEnv("GROK_HOME", home);
+			const input = deps({
+				adaptersImpl: () => [grokAdapter],
+				getProjectWorkspaceIdImpl: (directory) =>
+					getProjectWorkspaceId(directory, { file: projectFile }),
+				getSettingsImpl: () => ({}),
+				config: {
+					config: { ...FETCHED, publishWorkflow: false },
+					source: "fetched",
+				},
+			});
+			const full = await stageSync(input);
+			const held = structuredClone(full.body.measuredDays?.days ?? []);
+			expect(held.map((day) => day.date)).toEqual(["2026-07-19", "2026-07-20"]);
+			const oldReading = held[0].usage?.harnesses[0];
+			expect(oldReading?.projectKeys).toEqual([workspaceId]);
+			if (oldReading) oldReading.projectKeys = [legacyId];
+			const corrected = await stageSync({
+				...input,
+				fetchManifestImpl: async () => ({
+					retentionDays: 400,
+					aggregateVersion: "measured-days/v1",
+					days: held.map((day) => ({
+						date: day.date,
+						fingerprint: dayFingerprint(day),
+					})),
+				}),
+			});
+			expect(corrected.body.measuredDays?.days).toEqual(
+				full.body.measuredDays?.days.slice(0, 1),
+			);
+			expect(corrected.body.measuredDays?.partialHarnesses).toBeUndefined();
+			expect(corrected.days?.unchanged).toBe(1);
+			expect(await readFile(projectFile, "utf8")).toBe(storedProjects);
+		} finally {
+			vi.unstubAllEnvs();
+			await rm(home, { recursive: true, force: true });
+		}
+	});
+
 	test("resolves local project directories to persistent opaque ids", async () => {
 		const seen: string[] = [];
 		const staged = await stageSync(

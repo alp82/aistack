@@ -37,7 +37,7 @@ export function createAggregate(): Aggregate {
 
 export type UsageContribution = {
 	sessionId: string;
-	projectDir: string;
+	projectDir?: string;
 	tsMs: number;
 	durationMs?: number;
 	models: Array<{ model: string; counts: TokenCounts }>;
@@ -71,7 +71,7 @@ export function ingestUpdate(
 	agg: Aggregate,
 	state: GrokEventState,
 	value: unknown,
-	projectDir: string,
+	projectDir: string | undefined,
 	sinceMs?: number,
 ): void {
 	const root = asObj(value);
@@ -140,7 +140,7 @@ function completeTool(
 	state: GrokEventState,
 	id: string,
 	session: string,
-	projectDir: string,
+	projectDir: string | undefined,
 	tsMs: number,
 ): void {
 	if (state.completedTools.has(id)) return;
@@ -181,7 +181,7 @@ export function ingestEvent(
 	state: GrokEventState,
 	value: unknown,
 	sessionFallback: string,
-	projectDir: string,
+	projectDir: string | undefined,
 	sinceMs?: number,
 ): void {
 	const row = asObj(value);
@@ -238,7 +238,7 @@ function counts(value: unknown): TokenCounts | null {
 
 export function sidecarContributions(
 	value: unknown,
-	projectDir: string,
+	projectDir: string | undefined,
 ): UsageContribution[] {
 	const root = asObj(value);
 	const sessionId = root && asStr(root.sessionId);
@@ -276,7 +276,7 @@ export function sidecarContributions(
 
 export function terminalContribution(
 	value: unknown,
-	projectDir: string,
+	projectDir: string | undefined,
 ): UsageContribution | null {
 	const root = asObj(value);
 	const params = root && asObj(root.params);
@@ -314,12 +314,14 @@ export function ingestContribution(
 	agg.distinctResponses++;
 	agg.sessions.add(row.sessionId);
 	agg.activeDays.add(new Date(row.tsMs).toISOString().slice(0, 10));
-	agg.projectDirs.add(row.projectDir);
 	agg.firstTs =
 		agg.firstTs === null ? row.tsMs : Math.min(agg.firstTs, row.tsMs);
 	agg.lastTs = agg.lastTs === null ? row.tsMs : Math.max(agg.lastTs, row.tsMs);
 	noteSessionStart(agg, row.sessionId, row.tsMs);
-	noteProjectDay(agg, row.projectDir, row.tsMs);
+	if (row.projectDir !== undefined) {
+		agg.projectDirs.add(row.projectDir);
+		noteProjectDay(agg, row.projectDir, row.tsMs);
+	}
 	for (const { model, counts: tokenCounts } of row.models) {
 		const key = normalizeModel(model);
 		addModelUsage(

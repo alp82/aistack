@@ -75,21 +75,53 @@ async function stableRead(file: string, jsonl: boolean): Promise<FileRead> {
 	return { complete: false };
 }
 
-async function directories(root: string): Promise<string[] | null> {
+function absoluteCwd(value: unknown): string | undefined {
+	const cwd = asStr(value);
+	return cwd && path.isAbsolute(cwd) && !cwd.includes("\0") ? cwd : undefined;
+}
+
+async function workspaceCwd(
+	workspacePath: string,
+	entries: Dirent[],
+): Promise<string | undefined> {
+	// Grok groups sessions by URL-encoded cwd. Long names use a slug and hash
+	// with the original path in a .cwd file at the workspace level.
+	try {
+		const cwd = absoluteCwd(decodeURIComponent(path.basename(workspacePath)));
+		if (cwd !== undefined) return cwd;
+	} catch {
+		// A malformed directory name may still have a usable .cwd file.
+	}
+	if (entries.some((entry) => entry.name === ".cwd" && entry.isFile())) {
+		const raw = await readFile(path.join(workspacePath, ".cwd"), "utf8").catch(
+			() => undefined,
+		);
+		return absoluteCwd(raw);
+	}
+}
+
+type SessionDirectory = { dir: string; cwd?: string };
+
+async function directories(root: string): Promise<SessionDirectory[] | null> {
 	try {
 		const workspaces = await readdir(root, { withFileTypes: true });
-		const out: string[] = [];
+		const out: SessionDirectory[] = [];
 		for (const workspace of workspaces) {
 			if (!workspace.isDirectory() || workspace.isSymbolicLink()) continue;
 			const workspacePath = path.join(root, workspace.name);
-			for (const session of await readdir(workspacePath, {
+			const entries = await readdir(workspacePath, {
 				withFileTypes: true,
-			})) {
+			});
+			const cwd = await workspaceCwd(workspacePath, entries);
+			for (const session of entries) {
 				if (session.isDirectory() && !session.isSymbolicLink())
-					out.push(path.join(workspacePath, session.name));
+					out.push({ dir: path.join(workspacePath, session.name), cwd });
 			}
 		}
-		return out.sort();
+		return out.sort((a, b) => {
+			if (a.dir === b.dir) return 0;
+			return a.dir < b.dir ? -1 : 1;
+		});
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code !== "ENOENT")
 			traceError("grok session discovery", error);
@@ -172,14 +204,14 @@ export async function scanWindows(
 		const aliases = await modelAliasesForRoot(root);
 		const contextSessions = new Map<
 			string,
-			{ projectDir: string; parentSession?: string }
+			{ projectDir?: string; parentSession?: string }
 		>();
 		const dirs = await directories(root);
 		if (dirs === null) {
 			complete = false;
 			continue;
 		}
-		for (const dir of dirs) {
+		for (const { dir, cwd } of dirs) {
 			let entries: Dirent[];
 			try {
 				entries = await readdir(dir, { withFileTypes: true });
@@ -197,7 +229,7 @@ export async function scanWindows(
 					)
 					.map((e) => [e.name, path.join(dir, e.name)]),
 			);
-			let projectDir = dir;
+			let projectDir = cwd;
 			let sessionFallback = path.basename(dir);
 			let child = false;
 			let parentSession: string | undefined;
@@ -211,7 +243,7 @@ export async function scanWindows(
 				}
 				const value = asObj(read.json);
 				const info = value && asObj(value.info);
-				projectDir = asStr(info?.cwd) ?? asStr(value?.cwd) ?? dir;
+				projectDir = absoluteCwd(info?.cwd) ?? absoluteCwd(value?.cwd) ?? cwd;
 				sessionFallback = asStr(value?.sessionId) ?? sessionFallback;
 				parentSession =
 					asStr(value?.parentSessionId) ??

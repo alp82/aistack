@@ -88,7 +88,49 @@ describe("Grok Build scanner", () => {
 		expect(result.complete).toBe(true);
 		expect(aggregate.byModel.get("unpriced-grok")?.input).toBe(4);
 		expect(aggregate.distinctResponses).toBe(1);
+		expect(aggregate.projectDirs.size).toBe(0);
 		expect(result.sessionDates.get("s")).toEqual(new Set(["2026-09-08"]));
+	});
+
+	test("recovers hashed workspaces from .cwd and keeps valid session cwd overrides", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "grok-workspace-"));
+		const workspace = path.join(root, "repo-0123456789abcdef");
+		const cwd = path.resolve("/synthetic", "répertoire".repeat(34), "repo ");
+		const override = path.resolve("/synthetic/worktree");
+		try {
+			await mkdir(workspace);
+			await writeFile(path.join(workspace, ".cwd"), cwd);
+			for (const [sessionId, summary] of [
+				["legacy", { info: { cwd: "relative" } }],
+				["override", { info: { cwd: override } }],
+			] as const) {
+				const session = path.join(workspace, sessionId);
+				await mkdir(session);
+				await writeFile(
+					path.join(session, "summary.json"),
+					JSON.stringify(summary),
+				);
+				await writeFile(
+					path.join(session, "usage.json"),
+					JSON.stringify({
+						sessionId,
+						turns: [
+							{
+								endedAt: "2026-09-08T00:00:00Z",
+								primaryModelId: "grok",
+								inputTokens: 4,
+								outputTokens: 1,
+							},
+						],
+					}),
+				);
+			}
+			const aggregate = createAggregate();
+			expect((await scan(aggregate, { roots: [root] })).complete).toBe(true);
+			expect(aggregate.projectDirs).toEqual(new Set([cwd, override]));
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 
 	test("stable malformed lines are skipped without making the scan incomplete", async () => {

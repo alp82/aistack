@@ -423,10 +423,12 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 			[...agg.projectDirs].map((directory) => projectWorkspaceId(directory)),
 		),
 	].sort();
-	if (
-		projectKeys.length > 1_000 ||
-		projectKeys.some((key) => !/^[A-Za-z0-9_-]{22}$/.test(key))
-	) {
+	if (projectKeys.length > 1_000) {
+		throw new Error(
+			"A harness snapshot can contain at most 1,000 project workspace identifiers",
+		);
+	}
+	if (projectKeys.some((key) => !/^[A-Za-z0-9_-]{22}$/.test(key))) {
 		throw new Error(
 			"Project workspace identifiers must be 22-character base64url strings",
 		);
