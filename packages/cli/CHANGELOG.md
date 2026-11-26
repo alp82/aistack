@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.4](https://github.com/alp82/aistack/compare/cli-v0.20.3...cli-v0.20.4) (2026-11-26)
+
+
+### Bug Fixes
+
+* **cli:** sync large workspace histories reliably ([90b64cc](https://github.com/alp82/aistack/commit/90b64cc471b0a9e8e05ff8c872d1f1bc3c54ad13))
+
 ## [0.20.3](https://github.com/alp82/aistack/compare/cli-v0.20.2...cli-v0.20.3) (2026-11-25)
 
 
