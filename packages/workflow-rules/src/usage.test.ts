@@ -202,6 +202,9 @@ describe("foldUsageDays", () => {
 const round = (n: number) => Math.round(n * 10_000) / 10_000;
 
 describe("dayFingerprint", () => {
+	test("preserves the deployed FNV-1a fingerprint", () => {
+		expect(dayFingerprint({ date: "2026-07-20" })).toBe("b841a22461d88832");
+	});
 	const day: MeasuredDay = { date: "2026-08-20", usage: usageDay() };
 
 	test("is a hex string stable across key order", () => {

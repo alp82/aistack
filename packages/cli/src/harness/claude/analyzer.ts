@@ -183,7 +183,7 @@ export function noteRecordBeforeWindow(agg: Aggregate, raw: unknown): void {
 // Ingest
 // ---------------------------------------------------------------------------
 
-export type IngestContext = { projectDir: string };
+export type IngestContext = { projectDir?: string };
 
 /** Read the local project workspace directory from one untrusted record. */
 export function projectWorkspaceDirectory(raw: unknown): string | null {
@@ -210,7 +210,6 @@ export function ingestRecord(
 
 	agg.records++;
 	const projectDir = projectWorkspaceDirectory(rec) ?? ctx.projectDir;
-	agg.projectDirs.add(projectDir);
 
 	const version = asStr(rec.version);
 	if (version) agg.ccVersions.add(cleanName(version));
@@ -229,6 +228,9 @@ export function ingestRecord(
 		}
 	}
 	if (sessionId) noteSessionStart(agg, sessionId, tsMs);
+	if (projectDir !== undefined) {
+		agg.projectDirs.add(projectDir);
+	}
 	noteProjectDay(agg, projectDir, tsMs);
 
 	const type = asStr(rec.type);

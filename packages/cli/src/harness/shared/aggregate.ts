@@ -267,11 +267,12 @@ export function noteSessionStart(
 /** A project belongs to every day it was touched. */
 export function noteProjectDay(
 	agg: Aggregate<never> | Aggregate<unknown>,
-	directory: string,
+	directory: string | undefined,
 	tsMs: number | null,
 ): void {
 	if (tsMs === null) return;
-	usageDayAcc(agg, tsMs).projectDirs.add(directory);
+	const day = usageDayAcc(agg, tsMs);
+	if (directory !== undefined) day.projectDirs.add(directory);
 }
 
 export function createAggregate<Seen = unknown>(): Aggregate<Seen> {

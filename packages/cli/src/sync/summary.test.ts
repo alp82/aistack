@@ -40,7 +40,9 @@ const NO_KEPT_PRIVATE: Record<NameCategory, KeptPrivateAtom[]> = {
 	slashCommands: [],
 };
 
-function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
+type SetPayload = Extract<MeasuredPayload, { schemaVersion: 2 }>;
+
+function payload(over: Partial<SetPayload> = {}): SetPayload {
 	return {
 		schemaVersion: 2,
 		capturedAt: 1_753_800_000_000,
@@ -180,7 +182,7 @@ function measuredDays(
 }
 
 function ctx(over: {
-	payload?: Partial<MeasuredPayload>;
+	payload?: Partial<SetPayload>;
 	withKeptPrivateHalf?: boolean;
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
 	config?: Partial<SyncConfig>;

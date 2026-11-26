@@ -12,6 +12,9 @@ import {
 import {
   inventoryForStack,
   measuredDaysForStackInRange,
+  readMeasuredWorkspaceEvidence,
+  workspaceCountLowerBound,
+  workspaceReadBudgetAllows,
   newestInventoryPerSource,
 } from './lib/measuredDays'
 import { ActivityEvent } from './schema'
@@ -117,6 +120,7 @@ const Band = v.object({
   usage: v.object({
     sessions: v.number(),
     projects: v.number(),
+    projectsPrecision: v.optional(v.literal('lower-bound')),
     models: v.number(),
     tools: v.number(),
     /**
@@ -380,6 +384,7 @@ async function usageFor(
 ): Promise<{
   sessions: number
   projects: number
+  projectsPrecision?: 'lower-bound'
   models: number
   tools: number
   tokens: number
@@ -399,18 +404,28 @@ async function usageFor(
   const models = new Set<string>()
   const tools = new Set<string>()
 
+  const daysByStack = new Map<string, Awaited<ReturnType<typeof measuredDaysForStackInRange>>>()
+  for (const row of latest.values()) {
+    daysByStack.set(row.stackId, await measuredDaysForStackInRange(ctx, row.stackId, rangeDates('30d', row.at)))
+  }
+  const readExactWorkspaces = workspaceReadBudgetAllows([...daysByStack.values()].flat())
+  let workspaceEvidenceIncomplete = !readExactWorkspaces
   for (const row of latest.values()) {
     if (row.event.type !== 'sync.landed') continue
     tokens += syncTokens(row.event) ?? 0
     for (const harness of row.event.harnesses) {
       sessions += harness.sessions
     }
-    const window = rangeDates('30d', row.at)
-    const days = (await measuredDaysForStackInRange(ctx, row.stackId, window))
+    const stackDays = daysByStack.get(row.stackId) ?? []
+    const days = await Promise.all(stackDays
       .filter((day) => day.usage !== undefined)
-      .map((day) => ({ date: day.date, usage: day.usage as UsageDay }))
+      .map(async (day) => ({
+        date: day.date,
+        usage: (readExactWorkspaces ? await readMeasuredWorkspaceEvidence(ctx, day) : day.usage) as UsageDay,
+      })))
     const fold = foldUsageDays(days)
-    projects += fold.projectKeys.length
+    workspaceEvidenceIncomplete ||= fold.workspaceEvidenceIncomplete === true
+    projects += Math.max(fold.projectKeys.length, readExactWorkspaces ? 0 : workspaceCountLowerBound(stackDays))
     for (const model of fold.models) {
       // `unknown` is the CLI's spelling for tokens it could not attribute. It
       // is not a model, so it never swells the count of them.
@@ -426,6 +441,7 @@ async function usageFor(
   return {
     sessions,
     projects,
+    ...(workspaceEvidenceIncomplete ? { projectsPrecision: 'lower-bound' as const } : {}),
     models: models.size,
     tools: tools.size,
     tokens,

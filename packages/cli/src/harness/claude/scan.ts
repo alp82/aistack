@@ -15,6 +15,12 @@ import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 
+const WORKSPACE_FALLBACK_PREFIX = "claude-project:";
+
+export function isClaudeWorkspaceFallback(directory: string): boolean {
+	return directory.startsWith(WORKSPACE_FALLBACK_PREFIX);
+}
+
 import {
 	emptyScanStats,
 	type ScanStats,
@@ -135,10 +141,13 @@ export async function scan(
 				}
 			}
 
-			// Project dir = first path segment under projects/ (privacy-sensitive:
-			// it is a munged absolute path, so it is only ever counted, never shown).
-			const rel = path.relative(root, file);
-			const projectDir = rel.split(path.sep)[0] ?? "(root)";
+			// A workspace folder is the first segment under projects/. A
+			// transcript directly under that root has no folder evidence.
+			const parts = path.relative(root, file).split(path.sep);
+			const projectDir =
+				parts.length > 1
+					? `${WORKSPACE_FALLBACK_PREFIX}${path.resolve(root, parts[0])}`
+					: undefined;
 			agg.files++;
 			stats.filesRead++;
 			if (opts.onProgress && agg.files % 20 === 0) opts.onProgress(agg.files);
@@ -175,11 +184,14 @@ async function exists(p: string): Promise<boolean> {
 async function ingestFile(
 	agg: Aggregate,
 	file: string,
-	projectDir: string,
+	projectDir: string | undefined,
 	projectWorkspaces: Map<string, string>,
 	sinceMs?: number,
 ): Promise<void> {
-	let projectWorkspace = projectWorkspaces.get(projectDir) ?? projectDir;
+	let projectWorkspace =
+		projectDir === undefined
+			? undefined
+			: (projectWorkspaces.get(projectDir) ?? projectDir);
 	const rl = readline.createInterface({
 		input: createReadStream(file, { encoding: "utf8" }),
 		crlfDelay: Number.POSITIVE_INFINITY,
@@ -198,9 +210,16 @@ async function ingestFile(
 		}
 		const cwd = projectWorkspaceDirectory(rec);
 		if (cwd) {
-			agg.projectDirs.delete(projectDir);
+			if (projectDir !== undefined) {
+				if (cwd !== projectDir && agg.projectDirs.delete(projectDir)) {
+					agg.projectDirs.add(cwd);
+					for (const day of agg.usageDays.values()) {
+						if (day.projectDirs.delete(projectDir)) day.projectDirs.add(cwd);
+					}
+				}
+				projectWorkspaces.set(projectDir, cwd);
+			}
 			projectWorkspace = cwd;
-			projectWorkspaces.set(projectDir, cwd);
 		}
 		if (sinceMs !== undefined) {
 			const ts =

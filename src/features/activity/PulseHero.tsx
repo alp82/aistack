@@ -9,7 +9,14 @@ import { formatDay, Sparkline } from "@/features/charts";
 import { SYNC_LABEL_TOKENS, SYNC_PRIVACY } from "@/features/measured/copy";
 import { SyncCommand, SyncHowLink } from "@/features/measured/SyncCommand";
 import type { Band, DayPoint } from "./feed";
-import { fmtCount, fmtTokens, liveDays, MONO_LABEL, rowSummary } from "./feed";
+import {
+	fmtCount,
+	fmtProjects,
+	fmtTokens,
+	liveDays,
+	MONO_LABEL,
+	rowSummary,
+} from "./feed";
 import { fmtSeconds, PaceCounter, usePace } from "./PaceCounter";
 
 /**
@@ -255,7 +262,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 	const levels: [string, string, boolean][] = [
 		["tokens · 24h", fmtTokens(usage.tokens), true],
 		["sessions", fmtCount(usage.sessions), false],
-		["projects", fmtCount(usage.projects), false],
+		["projects", fmtProjects(usage), false],
 		["tools", fmtCount(usage.tools), false],
 		[
 			totals.stacksSeen === 1 ? "stack" : "stacks",
@@ -287,6 +294,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 						<p className="sr-only">
 							{fmtTokens(usage.tokens)} tokens measured in the last 24 hours,
 							across {fmtCount(usage.sessions)} sessions,{" "}
+							{usage.projectsPrecision === "lower-bound" ? "at least " : ""}
 							{fmtCount(usage.projects)} projects and {fmtCount(usage.tools)}{" "}
 							tools, from {totals.stacksSeen}{" "}
 							{totals.stacksSeen === 1 ? "stack" : "stacks"}.

@@ -543,8 +543,11 @@ export const UsageHarnessDay = v.object({
   harness: v.string(),
   /** Sessions that STARTED this day. */
   sessions: v.number(),
-  /** Hashed project keys touched this day, sorted unique. */
+  /** Opaque workspace IDs touched this day, sorted unique. */
   projectKeys: v.array(v.string()),
+  /** Dense days concatenate the sorted IDs at their fixed 22-character width. */
+  projectKeysPacked: v.optional(v.string()),
+  workspaceEvidenceIncomplete: v.optional(v.literal(true)),
   models: v.array(UsageModelDay),
   /** Tokens spent inside subagent turns, all models. */
   subagentTokens: v.number(),
@@ -1394,12 +1397,44 @@ export default defineSchema({
     utcOffsetMinutes: v.optional(v.number()),
     /** `dayFingerprint` over both blocks: the manifest's identity for a diff-only sync. */
     fingerprint: v.string(),
+    workspaceEvidence: v.optional(v.id('measuredWorkspaceEvidence')),
+    workspaceEvidenceBytes: v.optional(v.number()),
+    usageFingerprint: v.optional(v.string()),
+    largestWorkspaceSet: v.optional(v.number()),
     usage: v.optional(UsageDay),
     workflow: v.optional(WorkflowDay),
   })
     .index('by_stack', ['stackId'])
     .index('by_stack_machine_date', ['stackId', 'machine', 'date'])
     .index('by_stack_date', ['stackId', 'date']),
+
+  // Both legacy and multipart CLI sends fence writes to the same machine.
+  measuredSyncState: defineTable({
+    stackId: v.id('stacks'),
+    machine: v.optional(v.string()),
+    tokenId: v.id('cliTokens'),
+    uploadId: v.string(),
+    retiredUploadIds: v.array(v.string()),
+    capturedAt: v.number(),
+    parts: v.number(),
+    next: v.number(),
+    nextBatch: v.number(),
+    batchCount: v.number(),
+    metadataDigest: v.string(),
+    dayCount: v.number(),
+    lastDate: v.optional(v.string()),
+    digest: v.optional(v.string()),
+    receivedAt: v.optional(v.number()),
+    keptPrivate: v.optional(v.object({
+      stored: v.number(), machineStored: v.number(), refused: v.boolean(),
+    })),
+  }).index('by_stack_machine', ['stackId', 'machine']),
+
+  // Dense IDs have no role in manifest, inventory, token or workflow reads.
+  // The day owns this document and replaces/deletes it in the same mutation.
+  measuredWorkspaceEvidence: defineTable({
+    harnesses: v.array(v.object({ harness: v.string(), packed: v.string() })),
+  }),
 
   // The live inventory (ADR-0011): one row per (stack, machine, harness),
   // REPLACED on every sync. What the day wire does not carry: the installed

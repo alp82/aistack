@@ -1,6 +1,75 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { authPoll, authStart, setAutoSync, stackGet, syncPublish } from "./api";
 
+test("uploads 400 days of 8,000 IDs in bounded parts without reordering or dropping dates", async () => {
+	const packed = Array.from({ length: 8_000 }, (_, i) =>
+		i.toString(36).padStart(22, "0"),
+	).join("");
+	const days = Array.from({ length: 400 }, (_, i) => ({
+		date: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10),
+		usage: { harnesses: [{ projectKeys: [], projectKeysPacked: packed }] },
+	}));
+	const body = JSON.stringify({ trigger: "auto", measuredDays: { days } });
+	expect(Buffer.byteLength(body)).toBeGreaterThan(64 * 1024 * 1024);
+	const delivered: string[] = [];
+	let expectedParts = 0;
+	let id: string | undefined;
+	let next = 0;
+	let lostResponse: string | undefined;
+	let replays = 0;
+	vi.stubGlobal("fetch", async (url: string, options: RequestInit) => {
+		if (url.endsWith("/sync-manifest")) {
+			return Response.json({ multipartUpload: true });
+		}
+		const part = options.body as string;
+		expect(Buffer.byteLength(part)).toBeLessThanOrEqual(8 * 1024 * 1024);
+		if (lostResponse !== undefined) {
+			expect(part).toBe(lostResponse);
+			replays++;
+			if (replays === 1) return new Response("{", { status: 200 });
+			if (replays === 2)
+				return new Response("Synthetic proxy failure", { status: 502 });
+			return Response.json({ receivedAt: next });
+		}
+		const request = JSON.parse(part);
+		const upload = request.upload;
+		expectedParts ||= upload.parts;
+		id ??= upload.id;
+		expect(upload).toEqual({ id, part: next++, parts: expectedParts });
+		expect(request.trigger).toBe("auto");
+		for (const day of request.measuredDays.days as typeof days) {
+			expect(day.usage.harnesses[0].projectKeysPacked).toBe(packed);
+			delivered.push(day.date);
+		}
+		if (next === expectedParts) {
+			lostResponse = part;
+			throw new Error("Synthetic connection loss after final part committed");
+		}
+		return Response.json({ receivedAt: next });
+	});
+	expect((await syncPublish("synthetic-token", body)).receivedAt).toBe(
+		expectedParts,
+	);
+	expect(expectedParts).toBeGreaterThan(1);
+	expect(replays).toBe(3);
+	expect(delivered).toEqual(days.map((day) => day.date));
+}, 20_000);
+
+test("replays an ordinary sync after a broken receipt only on a server that advertises replay", async () => {
+	const body = '{"payloads":[]}';
+	let posts = 0;
+	vi.stubGlobal("fetch", async (url: string, options: RequestInit) => {
+		if (url.endsWith("/sync-manifest"))
+			return Response.json({ syncReplay: true });
+		expect(options.body).toBe(body);
+		return ++posts === 1
+			? new Response("{", { status: 200 })
+			: Response.json({ receivedAt: 1 });
+	});
+	expect((await syncPublish("synthetic-token", body)).receivedAt).toBe(1);
+	expect(posts).toBe(2);
+});
+
 /**
  * The two statuses #52 introduced, as the user reads them.
  *

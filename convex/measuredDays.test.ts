@@ -8,6 +8,7 @@ import type { Infer } from 'convex/values'
 import schema, { MeasuredPayload } from './schema'
 import { publishMeasuredSync, sha256Hex } from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES } from './lib/cliScopes'
+import { readMeasuredWorkspaceEvidence } from './lib/measuredDays'
 
 /**
  * The measured day store, the manifest and the range-folded usage read
@@ -29,7 +30,7 @@ type WorkflowDay = NonNullable<Doc<'measuredDays'>['workflow']>
 type UsageDay = NonNullable<Doc<'measuredDays'>['usage']>
 
 beforeEach(() => {
-  vi.useFakeTimers()
+  vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
 })
 afterEach(() => vi.useRealTimers())
@@ -418,6 +419,341 @@ describe('the legacy figure on the inventory row', () => {
 })
 
 describe('bounded HTTP sync publication', () => {
+  test('a newer ordinary sync fences an older automatic multipart sync across tokens for the same machine', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await seedToken(t, 'paced-auto', stackId, 'shared')
+    await seedToken(t, 'paced-manual', stackId, 'shared')
+    const send = (token: string, body: unknown) => t.fetch('/api/cli/sync', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+    })
+    const part = (index: number) => ({
+      trigger: 'auto',
+      payloads: [payload({ capturedAt: NOW - 1_000 })],
+      measuredDays: dayWire([{ date: index ? '2026-08-28' : '2026-08-27', usage: usageDay() }]),
+      upload: { id: 'a'.repeat(64), part: index, parts: 2 },
+    })
+    const ordinary = {
+      payloads: [payload({ capturedAt: NOW })],
+      measuredDays: dayWire([{ date: '2026-08-28', usage: usageDay({ sessions: 42 }) }]),
+    }
+    expect((await send('paced-auto', part(0))).status).toBe(200)
+    expect((await send('paced-manual', ordinary)).status).toBe(200)
+    const stale = await send('paced-auto', part(1))
+    expect(stale.status).toBe(400)
+    expect(await stale.text()).toContain('out of date')
+    expect((await send('paced-manual', ordinary)).status).toBe(200)
+    expect((await storedDays(t)).find((row) => row.date === '2026-08-28')?.usage?.harnesses[0].sessions).toBe(42)
+    const inventory = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
+    expect(inventory[0].capturedAt).toBe(NOW)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(1)
+  })
+
+  test('replaying one part skips its already committed batches and emits one receipt', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, 'batch-checkpoint', stackId, 'laptop')
+    const days = Array.from({ length: 21 }, (_, i) => ({
+      date: new Date(NOW - (20 - i) * 86_400_000).toISOString().slice(0, 10), usage: usageDay(),
+    }))
+    const args = {
+      tokenId, payloads: [payload()], measuredDays: dayWire(days),
+      upload: { id: 'fixture', digest: 'fixture', metadataDigest: 'fixture', part: 0, parts: 1,
+        dayCount: 0, from: '', to: '' },
+    }
+    let lost = false
+    let throttled: unknown
+    await expect(publishMeasuredSync({ runMutation: async (fn, input) => {
+      if (input.phase === 'days' && !throttled) {
+        throttled = input
+        throw new Error('Too many writes per second')
+      }
+      if (input.phase === 'days' && !lost) expect(input).toEqual(throttled)
+      const result = await t.mutation(fn, input)
+      if (input.phase === 'days' && !lost) {
+        lost = true
+        throw new Error('synthetic lost batch acknowledgment')
+      }
+      return result
+    } }, args)).rejects.toThrow('synthetic lost batch acknowledgment')
+    expect(await storedDays(t)).toHaveLength(20)
+    vi.setSystemTime(NOW + 2_000)
+    const go = () => publishMeasuredSync({ runMutation: (fn, input) => t.mutation(fn, input) }, args)
+    const receipt = await go()
+    expect(await go()).toEqual(receipt)
+    const rows = await storedDays(t)
+    expect(rows).toHaveLength(21)
+    expect(rows.filter((row) => row.receivedAt === NOW)).toHaveLength(20)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(1)
+  })
+
+  test('legacy workflow-only sync preserves a dense sidecar without reading it', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const tokenId = await seedToken(t, 'legacy-workspace', stackId, 'laptop')
+    const date = '2026-08-28'
+    const keys = Array.from({ length: 2_000 }, (_, i) => i.toString(36).padStart(22, '0')).join('')
+    const dense = { harnesses: [{ ...usageDay().harnesses[0], projectKeys: [], projectKeysPacked: keys }] }
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId, payloads: [payload()], measuredDays: dayWire([{ date, usage: dense }]),
+    })
+    const [first] = await storedDays(t)
+    const workflow = workflowDay(date)
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId, payloads: [payload()], workflow: { aggregateVersion: 'workflow-aggregates/v5', days: [workflow] },
+    })
+    const [updated] = await storedDays(t)
+    expect(updated.workspaceEvidence).toBe(first.workspaceEvidence)
+    expect(updated.workspaceEvidenceBytes).toBe(first.workspaceEvidenceBytes)
+    expect(updated.workflow).toEqual(workflow)
+    expect(updated.fingerprint).not.toBe(first.fingerprint)
+    expect((await t.query(api.measured.getUsageByStackSlug, { slug }))?.current?.projects).toBe(2_000)
+  })
+
+  test('partial Claude alias deferral retains held and unrelated IDs with a lower-bound count until a complete scan', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const tokenId = await seedToken(t, 'alias-retry', stackId, 'laptop')
+    const date = '2026-08-28'
+    const old = usageDay()
+    old.harnesses[0].projectKeys = ['A'.repeat(22), 'B'.repeat(22)]
+    const incoming = usageDay()
+    incoming.harnesses[0].projectKeys = ['C'.repeat(22)]
+    incoming.harnesses[0].workspaceEvidenceIncomplete = true
+    const send = (usage: UsageDay, partial = false) => t.mutation(internal.measured.publishForToken, {
+      tokenId, payloads: [payload()], measuredDays: dayWire([{ date, usage }], 120, partial, partial ? ['claude-code'] : undefined),
+    })
+    await send(old)
+    await send(incoming, true)
+    await send(incoming, true)
+    expect((await storedDays(t))[0]?.usage?.harnesses[0].projectKeys).toEqual(['A'.repeat(22), 'B'.repeat(22), 'C'.repeat(22)])
+    expect((await t.query(api.measured.getUsageByStackSlug, { slug }))?.current).toMatchObject({
+      projects: 3, projectsPrecision: 'lower-bound',
+    })
+    const complete = usageDay()
+    complete.harnesses[0].projectKeys = ['B'.repeat(22), 'C'.repeat(22), 'D'.repeat(22)]
+    await send(complete)
+    const reading = (await t.query(api.measured.getUsageByStackSlug, { slug }))?.current
+    expect(reading?.projects).toBe(3)
+    expect(reading?.projectsPrecision).toBeUndefined()
+  })
+  test('400 dense days keep manifest, usage and Stats reads below the transaction read limit', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await seedToken(t, 'tok_dense_history', stackId, 'laptop')
+    const packed = Array.from({ length: 2_000 }, (_, i) => i.toString(36).padStart(22, '0')).join('')
+    const usage = { harnesses: [{ ...usageDay().harnesses[0], projectKeys: [], projectKeysPacked: packed }] }
+    const days = Array.from({ length: 400 }, (_, i) => {
+      const date = new Date(NOW - (399 - i) * 86_400_000).toISOString().slice(0, 10)
+      return { date, usage, ...(i === 399 ? { workflow: workflowDay(date) } : {}) }
+    })
+    const headers = { Authorization: 'Bearer tok_dense_history' }
+    expect(packed.length * days.length).toBeGreaterThan(16 * 1024 * 1024)
+    const requests = Array.from({ length: 3 }, (_, part) => JSON.stringify({
+      payloads: [payload()],
+      measuredDays: dayWire(days.slice(part * 140, (part + 1) * 140)),
+      upload: { id: 'a'.repeat(64), part, parts: 3 },
+    }))
+    const upload = (body: string) => t.fetch('/api/cli/sync', { method: 'POST', headers, body })
+    const premature = await upload(requests[2])
+    expect(premature.status).toBe(400)
+    for (const [part, request] of requests.entries()) {
+      const response = await upload(request)
+      expect(response.status, await response.text()).toBe(200)
+      if (part < 2) {
+        expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(0)
+      }
+    }
+    const duplicate = await upload(requests[2])
+    expect(duplicate.status).toBe(200)
+    expect(await t.run((ctx) => ctx.db.query('activityEvents').collect())).toHaveLength(1)
+
+    const core = await storedDays(t)
+    expect(core).toHaveLength(400)
+    expect(JSON.stringify(core).length).toBeLessThan(2 * 1024 * 1024)
+    const manifest = await t.fetch('/api/cli/sync-manifest', { headers })
+    expect(manifest.status).toBe(200)
+    expect(await manifest.json()).toMatchObject({
+      multipartUpload: true,
+      days: days.map((day) => ({ date: day.date, fingerprint: dayFingerprint(day) })),
+    })
+    const reading = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(reading?.current?.projects).toBe(2_000)
+    expect(reading?.previous?.projects).toBe(2_000)
+    expect(await t.query(api.workflow.getStatsByStackSlug, { slug })).not.toBeNull()
+  }, 30_000)
+
+  test('retries a partial union exceeding the upload batch size without losing held identifiers', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await seedToken(t, 'tok_partial_dense', stackId, 'laptop')
+    const date = '2026-08-28'
+    const headers = { Authorization: 'Bearer tok_partial_dense' }
+    const upload = async (start: number, partial: boolean) => {
+      const packed = Array.from({ length: 6_000 }, (_, i) => (start + i).toString(36).padStart(22, '0')).join('')
+      const usage = { harnesses: [{ ...usageDay().harnesses[0], projectKeys: [], projectKeysPacked: packed }] }
+      const response = await t.fetch('/api/cli/sync', {
+        method: 'POST', headers,
+        body: JSON.stringify({ payloads: [payload()], measuredDays: dayWire([{ date, usage }], 120, partial) }),
+      })
+      expect(response.status, await response.text()).toBe(200)
+    }
+    await upload(0, false)
+    await upload(6_000, true)
+    const [first] = await storedDays(t)
+    await upload(6_000, true)
+    const [retry] = await storedDays(t)
+    expect(retry.fingerprint).toBe(first.fingerprint)
+    expect(retry.workspaceEvidenceBytes).toBe(12_000 * 22)
+    expect((await t.query(api.measured.getUsageByStackSlug, { slug }))?.current?.projects).toBe(12_000)
+    await upload(6_000, false)
+    expect((await t.query(api.measured.getUsageByStackSlug, { slug }))?.current?.projects).toBe(6_000)
+  })
+
+  test('preflights a partial union above the storage bound and a complete reading can recover', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await seedToken(t, 'tok_partial_bound', stackId, 'laptop')
+    const date = '2026-08-28'
+    const headers = { Authorization: 'Bearer tok_partial_bound' }
+    function dense(start: number): UsageDay {
+      const keys = Array.from({ length: 18_000 }, (_, i) => (start + i).toString(36).padStart(22, '0'))
+      return { harnesses: [{ ...usageDay().harnesses[0], projectKeys: [], projectKeysPacked: keys.join('') }] }
+    }
+    const upload = (days: DayIn[], partial = false) => t.fetch('/api/cli/sync', {
+      method: 'POST', headers,
+      body: JSON.stringify({ payloads: [payload()], measuredDays: dayWire(days, 120, partial) }),
+    })
+    const earlier = { date: '2026-08-27', usage: usageDay() }
+    expect((await upload([{ date, usage: dense(0) }])).status).toBe(200)
+    const before = (await storedDays(t))[0]
+    const failed = await upload([earlier, { date, usage: dense(18_000) }], true)
+    expect(failed.status).toBe(400)
+    expect(await failed.text()).toContain('2026-08-28 exceeds the 768 KiB stored workspace evidence limit')
+    expect(await storedDays(t)).toEqual([before])
+    expect((await upload([earlier, { date, usage: dense(18_000) }])).status).toBe(200)
+    expect((await t.query(api.measured.getUsageByStackSlug, { slug }))?.current?.projects).toBe(18_001)
+  })
+
+  test('an oversized exact read marks a lower bound and a shorter range still deduplicates', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok_workspace_read_bound', stackId, 'laptop')
+    const keys = Array.from({ length: 10_000 }, (_, i) => i.toString(36).padStart(22, '0'))
+    const days = Array.from({ length: 60 }, (_, i) => ({
+      date: new Date(NOW - i * 86_400_000).toISOString().slice(0, 10),
+      usage: { harnesses: [{
+        ...usageDay().harnesses[0],
+        projectKeys: [],
+        projectKeysPacked: [...keys.slice(0, -1), (10_000 + i).toString(36).padStart(22, '0')].join(''),
+      }] },
+    }))
+    await publishMeasuredSync({
+      runMutation: (fn, args) => t.mutation(fn, args),
+    }, { tokenId, payloads: [payload()], measuredDays: dayWire(days) })
+
+    const wide = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(wide?.current).toMatchObject({
+      projects: 10_000, projectsPrecision: 'lower-bound', sessions: 30, totalTokens: 30_000,
+    })
+    const narrow = await t.query(api.measured.getUsageByStackSlug, { slug, range: '7d' })
+    expect(narrow?.current).toMatchObject({ projects: 10_006, sessions: 7, totalTokens: 7_000 })
+    expect(narrow?.current?.projectsPrecision).toBeUndefined()
+  }, 20_000)
+
+  test('a truncated base range does not return partial totals or project counts as exact', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await t.run(async (ctx) => {
+      for (let i = 0; i <= 2_000; i++) {
+        await ctx.db.insert('measuredDays', {
+          stackId, machine: `source-${i}`, date: '2026-08-28',
+          capturedAt: NOW, receivedAt: NOW, aggregateVersion: 'measured-days/v1',
+          fingerprint: 'synthetic', usage: usageDay(),
+        })
+      }
+    })
+    const usage = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(usage).toMatchObject({ hasDays: true, dayReadIncomplete: true, current: null, previous: null, series: [] })
+    expect(await t.query(api.workflow.getStatsByStackSlug, { slug })).toBeNull()
+  }, 20_000)
+
+  test('publishes all workspace identifiers from a dense day and reports the exact count', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const tokenId = await seedToken(t, 'tok_dense_workspace', stackId, 'laptop')
+    const date = '2026-08-28'
+    const keys = Array.from({ length: 1_001 }, (_, i) => i.toString(36).padStart(22, '0'))
+    const snapshot = payload()
+    if (snapshot.schemaVersion !== 1) throw new Error('Expected a count snapshot')
+    snapshot.activity.projects = keys.length
+    const usage = { harnesses: [{
+      ...usageDay().harnesses[0],
+      projectKeys: [],
+      projectKeysPacked: keys.join(''),
+    }] }
+    const day = { date, usage }
+    const headers = { Authorization: 'Bearer tok_dense_workspace' }
+    const response = await t.fetch('/api/cli/sync', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ trigger: 'auto', payloads: [snapshot], measuredDays: dayWire([day]) }),
+    })
+    expect(response.status, await response.text()).toBe(200)
+    const manifest = await t.query(internal.measured.getDayManifestForToken, { tokenId })
+    expect(manifest.days).toEqual([{ date, fingerprint: dayFingerprint(day) }])
+    const events = await t.run((ctx) => ctx.db.query('activityEvents').collect())
+    expect(events[0]?.event).toMatchObject({
+      type: 'sync.landed', harnesses: [{ projects: 1_001 }],
+    })
+    const [stored] = await storedDays(t)
+    expect(stored.usage?.harnesses[0].projectKeysPacked).toBeUndefined()
+    expect(await t.run((ctx) => readMeasuredWorkspaceEvidence(ctx, stored))).toEqual(usage)
+    // A deployed client's inline reading can overlap the packed evidence.
+    const older = usageDay()
+    older.harnesses[0].projectKeys = [keys[0], 'ZZZZZZZZZZZZZZZZZZZZZZ']
+    const olderResponse = await t.fetch('/api/cli/sync', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        payloads: [payload()],
+        measuredDays: dayWire([{ date, usage: older }], 120, true),
+      }),
+    })
+    expect(olderResponse.status, await olderResponse.text()).toBe(200)
+    const [merged] = await storedDays(t)
+    const hydrated = await t.run((ctx) => readMeasuredWorkspaceEvidence(ctx, merged))
+    expect(hydrated?.harnesses[0]).toMatchObject({
+      projectKeys: [],
+      projectKeysPacked: [...keys, 'ZZZZZZZZZZZZZZZZZZZZZZ'].join(''),
+    })
+    const read = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(read?.current?.projects).toBe(1_002)
+  })
+
+  test.each([
+    { length: 1_001, first: '/'.padEnd(22, 'x'), error: '22-character base64url' },
+    { length: 1_001, first: '1'.padStart(22, '0'), error: 'sorted with no duplicates' },
+    { length: 36_000, first: '0'.repeat(22), error: '768 KiB limit' },
+  ])('refuses a packed day that violates $error before writing', async ({ length, first, error }) => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await seedToken(t, 'tok_invalid_workspace', stackId, 'laptop')
+    const keys = Array.from({ length }, (_, i) => i.toString(36).padStart(22, '0'))
+    keys[0] = first
+    const response = await t.fetch('/api/cli/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok_invalid_workspace' },
+      body: JSON.stringify({ payloads: [payload()], measuredDays: dayWire([{
+        date: '2026-08-28',
+        usage: { harnesses: [{ ...usageDay().harnesses[0], projectKeys: [], projectKeysPacked: keys.join('') }] },
+      }]) }),
+    })
+    expect(response.status).toBe(400)
+    expect(await response.text()).toContain(error)
+    expect(await storedDays(t)).toEqual([])
+  })
+
   test('saves a full 400-day reading within the per-mutation day budget', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -466,8 +802,8 @@ describe('bounded HTTP sync publication', () => {
     }))
     let batches = 0
     await publishMeasuredSync({ runMutation: async (fn, args) => {
-      if (args.phase === 'days') {
-        batches++
+      if (args.phase === 'days' || args.phase === 'validate') {
+        if (args.phase === 'days') batches++
         expect(new TextEncoder().encode(JSON.stringify(args.measuredDays.days)).length)
           .toBeLessThan(256 * 1024)
       }

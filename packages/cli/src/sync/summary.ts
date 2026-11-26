@@ -408,7 +408,10 @@ function payloadBlock(
 	// held a line of their own until #217 - three lines saying one harness's
 	// totals, repeated per harness, was most of a preview nobody read.
 	const label = `${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`;
-	const days = payload.activity.activeDayDates.length;
+	const days =
+		payload.schemaVersion === 1
+			? payload.activity.activeDays
+			: payload.activity.activeDayDates.length;
 	const usd = totalUSD(payload);
 	const breakdown = tokenBreakdown(payload);
 	const totals = [

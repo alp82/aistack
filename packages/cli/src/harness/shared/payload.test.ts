@@ -1110,7 +1110,7 @@ describe("window and activity", () => {
 			{ windowDays: 30 },
 		);
 		expect(payload.schemaVersion).toBe(2);
-		expect(payload.activity.activeDayDates).toEqual([
+		expect(payload.activity).toHaveProperty("activeDayDates", [
 			"2026-07-24",
 			"2026-07-25",
 		]);
@@ -1129,7 +1129,7 @@ describe("window and activity", () => {
 			windowDays: 30,
 			...HARNESS_PARAMS,
 		});
-		expect(payload.activity.projectKeys).toEqual([
+		expect(payload.activity).toHaveProperty("projectKeys", [
 			"AAAAAAAAAAAAAAAAAAAAAA",
 			"BBBBBBBBBBBBBBBBBBBBBB",
 		]);

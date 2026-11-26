@@ -23,6 +23,7 @@ import {
 	setActivePricer,
 } from "@aistack/pricing";
 import {
+	checkDenseMeasuredDaySize,
 	MEASURED_DAYS_V1,
 	type MeasuredDay,
 	type UsageHarnessDay,
@@ -34,6 +35,7 @@ import {
 	getToken,
 	type Settings,
 } from "../config.js";
+import { isClaudeWorkspaceFallback } from "../harness/claude/scan.js";
 import { setCursorReadWindow } from "../harness/cursor/local.js";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import {
@@ -213,8 +215,16 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const loadConfig = deps.loadConfigImpl ?? loadSyncConfig;
 	const adapters = deps.adaptersImpl ?? (() => HARNESS_ADAPTERS);
 	const windowDays = deps.windowDays ?? DEFAULT_WINDOW_DAYS;
-	const projectWorkspaceId =
+	const resolveProjectWorkspaceId =
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
+	const workspaceIds = new Map<string, string>();
+	const projectWorkspaceId = (directory: string) => {
+		const held = workspaceIds.get(directory);
+		if (held !== undefined) return held;
+		const id = resolveProjectWorkspaceId(directory);
+		workspaceIds.set(directory, id);
+		return id;
+	};
 	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
 	const fetchPrices = deps.fetchPricesImpl ?? fetchPriceTable;
 	const emit = (event: StageEvent) => deps.onEvent?.(event);
@@ -528,6 +538,12 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				aggregate,
 				publishCost: config.publishCost,
 				projectWorkspaceId,
+				// Old readings can hold a bare folder ID without root provenance.
+				// A complete scan can replace it, while a partial union cannot tell
+				// whether the new root-scoped ID denotes that same workspace.
+				...(adapter.name === "claude-code" && partialHarnesses.has(adapter.name)
+					? { deferWorkspace: isClaudeWorkspaceFallback }
+					: {}),
 			}),
 		);
 	}
@@ -615,6 +631,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		manifest,
 		todayUtc: utcDate(now),
 	});
+	for (const day of days.send) checkDenseMeasuredDaySize(day);
 
 	const body = buildSyncBody(
 		built,

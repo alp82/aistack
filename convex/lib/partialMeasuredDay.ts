@@ -1,3 +1,4 @@
+import { packProjectWorkspaceIds, projectWorkspaceIds } from '@aistack/workflow-rules'
 import type { Infer } from 'convex/values'
 import type { MeasuredDayWire } from '../schema'
 
@@ -56,7 +57,11 @@ export function retainPartialDay(
     harnesses.set(candidate.harness, {
       ...previous,
       sessions: Math.max(previous.sessions, candidate.sessions),
-      projectKeys: [...new Set([...previous.projectKeys, ...candidate.projectKeys])].sort(),
+      ...packProjectWorkspaceIds([
+        ...projectWorkspaceIds(previous),
+        ...projectWorkspaceIds(candidate),
+      ]),
+      ...(candidate.workspaceEvidenceIncomplete ? { workspaceEvidenceIncomplete: true } : {}),
       models: [...models.values()].sort((a, b) => a.model.localeCompare(b.model)),
       subagentTokens: Math.max(previous.subagentTokens, candidate.subagentTokens),
       excludedTokens: {

@@ -113,7 +113,7 @@ it("publishes useful local-only counts then replaces them with matched API usage
 		aggregate: reading.aggregate,
 		harness: "cursor",
 		publishCost: false,
-		projectWorkspaceId: () => "opaque-workspace",
+		projectWorkspaceId: () => "AAAAAAAAAAAAAAAAAAAAAA",
 	});
 	expect(days.size).toBe(1);
 	const wire = JSON.stringify([...days.values()]);
@@ -433,9 +433,10 @@ it("reuses configured Cursor resources without claiming use and publishes only c
 		projectWorkspaceId: projectId,
 	});
 	expect(projectId).toHaveBeenCalledWith(project);
-	expect(built.payload.activity.projectKeys).toEqual([
-		"AAAAAAAAAAAAAAAAAAAAAA",
-	]);
+	expect(built.payload).toMatchObject({
+		schemaVersion: 2,
+		activity: { projectKeys: ["AAAAAAAAAAAAAAAAAAAAAA"] },
+	});
 	expect(
 		built.payload.inventory.builtinTools.map((tool) => tool.name),
 	).toContain("read_file");
@@ -520,7 +521,7 @@ it("values Cursor tokens at dated shared rates, never dashboard charges, and lea
 				aggregate: reading.aggregate,
 				harness: "cursor",
 				publishCost,
-				projectWorkspaceId: () => "opaque-workspace",
+				projectWorkspaceId: () => "AAAAAAAAAAAAAAAAAAAAAA",
 			}).values(),
 		][0];
 	const day = build(true);

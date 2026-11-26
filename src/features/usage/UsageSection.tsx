@@ -71,11 +71,20 @@ export function UsageSection({
 							<LegacyStats legacy={usage.legacy} />
 						</div>
 					)}
-					{usage?.hasDays && !usage.current && !stats && (
+					{usage?.dayReadIncomplete && (
 						<p className="font-mono text-sm text-fg-muted">
-							{NO_DAYS_IN_RANGE("30d")}
+							Some usage totals are unavailable because the selected history
+							exceeds the read limit.
 						</p>
 					)}
+					{usage?.hasDays &&
+						!usage.current &&
+						!stats &&
+						!usage.dayReadIncomplete && (
+							<p className="font-mono text-sm text-fg-muted">
+								{NO_DAYS_IN_RANGE("30d")}
+							</p>
+						)}
 					<StatsBlocks key={slug} usage={usage ?? null} stats={stats ?? null} />
 					{!isOwner && <StatsSyncInvite />}
 				</>

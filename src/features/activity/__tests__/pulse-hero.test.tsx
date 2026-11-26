@@ -24,6 +24,22 @@ describe("the hero", () => {
 		expect(reading?.textContent).toContain("41 projects");
 	});
 
+	it("marks a lower-bound workspace count in the grid and the accessible summary", () => {
+		const reading = band();
+		const { container } = render(
+			<PulseHero
+				band={{
+					...reading,
+					usage: { ...reading.usage, projectsPrecision: "lower-bound" },
+				}}
+			/>,
+		);
+		expect(screen.getByText("41+")).toBeInTheDocument();
+		expect(container.querySelector(".sr-only")?.textContent).toContain(
+			"at least 41 projects",
+		);
+	});
+
 	it("keeps the canonical reading current when the live band moves", () => {
 		// The band is a live subscription; a landing sync re-renders the hero
 		// with a new level and the sr-only record follows it.

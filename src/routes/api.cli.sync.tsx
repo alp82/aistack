@@ -38,11 +38,13 @@ export const Route = createFileRoute("/api/cli/sync")({
 						body,
 					});
 					const respBody = await resp.text();
+					const retryAfter = resp.headers.get("Retry-After");
 					return new Response(respBody, {
 						status: resp.status,
 						headers: {
 							"Content-Type":
 								resp.headers.get("Content-Type") ?? "application/json",
+							...(retryAfter ? { "Retry-After": retryAfter } : {}),
 						},
 					});
 				} catch (err) {

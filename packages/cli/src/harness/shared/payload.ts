@@ -14,8 +14,13 @@
 //      "reveal" server-side, because nothing was transmitted.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
-import type { MeasuredDay, WorkflowDay } from "@aistack/workflow-rules";
-import { MEASURED_DAYS_V1 } from "@aistack/workflow-rules";
+import {
+	INLINE_PROJECT_WORKSPACE_LIMIT,
+	MEASURED_DAYS_V1,
+	type MeasuredDay,
+	PROJECT_WORKSPACE_ID_RE,
+	type WorkflowDay,
+} from "@aistack/workflow-rules";
 import type { WorkflowExtraction } from "../../workflow/index.js";
 import {
 	type Aggregate,
@@ -117,8 +122,29 @@ export type PayloadInventory = {
 	};
 };
 
-export type MeasuredPayload = {
-	schemaVersion: 2;
+type ActivityTotals = {
+	sessions: number;
+	totalTokens: number;
+	cacheHitShare: number;
+	subagentShare: number;
+};
+
+type ActivityReading =
+	| {
+			schemaVersion: 1;
+			activity: ActivityTotals & { activeDays: number; projects: number };
+	  }
+	| {
+			schemaVersion: 2;
+			activity: ActivityTotals & {
+				/** Sorted UTC dates inside the declared window. */
+				activeDayDates: string[];
+				/** Sorted opaque identifiers. Project paths never travel. */
+				projectKeys: string[];
+			};
+	  };
+
+export type MeasuredPayload = ActivityReading & {
 	/** Client clock. The server stamps its own `receivedAt` (#33 decision 6). */
 	capturedAt: number;
 	window: { days: number; from: string; to: string };
@@ -130,16 +156,6 @@ export type MeasuredPayload = {
 	 * and joining them here would blow the server's 64-character name bound).
 	 */
 	pricingTable: string | null;
-	activity: {
-		sessions: number;
-		/** Sorted UTC dates inside the declared window. */
-		activeDayDates: string[];
-		/** Sorted project workspace identifiers. Project paths never travel. */
-		projectKeys: string[];
-		totalTokens: number;
-		cacheHitShare: number;
-		subagentShare: number;
-	};
 	models: PayloadModel[];
 	inventory: PayloadInventory;
 	coverage: {
@@ -423,12 +439,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 			[...agg.projectDirs].map((directory) => projectWorkspaceId(directory)),
 		),
 	].sort();
-	if (projectKeys.length > 1_000) {
-		throw new Error(
-			"A harness snapshot can contain at most 1,000 project workspace identifiers",
-		);
-	}
-	if (projectKeys.some((key) => !/^[A-Za-z0-9_-]{22}$/.test(key))) {
+	if (projectKeys.some((key) => !PROJECT_WORKSPACE_ID_RE.test(key))) {
 		throw new Error(
 			"Project workspace identifiers must be 22-character base64url strings",
 		);
@@ -491,8 +502,31 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		...new Set(models.flatMap((m) => (m.pricingTable ? [m.pricingTable] : []))),
 	];
 
+	const totals: ActivityTotals = {
+		sessions: finalized.sessions,
+		totalTokens: finalized.totalTokens,
+		cacheHitShare: round4(finalized.cacheHitShare),
+		subagentShare: round4(finalized.sidechainShare),
+	};
+	// The server takes the activity count from the snapshot and folds exact
+	// workspace unions from measured days. Use its existing count shape when
+	// the window-wide set would exceed the snapshot's contract.
+	const activity: ActivityReading =
+		projectKeys.length > INLINE_PROJECT_WORKSPACE_LIMIT
+			? {
+					schemaVersion: 1,
+					activity: {
+						...totals,
+						activeDays: activeDayDates.length,
+						projects: projectKeys.length,
+					},
+				}
+			: {
+					schemaVersion: SCHEMA_VERSION,
+					activity: { ...totals, activeDayDates, projectKeys },
+				};
 	const payload: MeasuredPayload = {
-		schemaVersion: SCHEMA_VERSION,
+		...activity,
 		capturedAt: now,
 		window: { days: windowDays, from, to },
 		harness: {
@@ -503,14 +537,6 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 					: sanitizeModelId(finalized.harnessVersion),
 		},
 		pricingTable: citedTables.length === 1 ? citedTables[0] : null,
-		activity: {
-			sessions: finalized.sessions,
-			activeDayDates,
-			projectKeys,
-			totalTokens: finalized.totalTokens,
-			cacheHitShare: round4(finalized.cacheHitShare),
-			subagentShare: round4(finalized.sidechainShare),
-		},
 		models,
 		inventory: {
 			builtinTools: builtins.atoms,

@@ -11,7 +11,7 @@ import {
 	BUNDLED_PRICE_TABLE_ID,
 	setActivePricer,
 } from "@aistack/pricing";
-import { dayFingerprint } from "@aistack/workflow-rules";
+import { dayFingerprint, foldUsageDays } from "@aistack/workflow-rules";
 import { describe, expect, test, vi } from "vitest";
 import { getProjectWorkspaceId } from "../config.js";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
@@ -125,6 +125,192 @@ const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 };
 
 describe("stageSync", () => {
+	test("defers unresolved Claude workspace aliases during a partial read, keeping resolved IDs", async () => {
+		const aggregate = createAggregate();
+		const date = "2026-07-20";
+		ingestRecord(aggregate, assistant({ timestamp: `${date}T12:00:00Z` }), {
+			projectDir: "claude-project:/synthetic/first/project",
+		});
+		ingestRecord(aggregate, assistant({ timestamp: `${date}T12:00:00Z` }), {
+			projectDir: "/synthetic/resolved",
+		});
+		const resolve = (directory: string) =>
+			directory.startsWith("claude-project:") ? "A".repeat(22) : "B".repeat(22);
+		const staged = await stageSync(
+			deps({
+				adaptersImpl: () => [
+					{
+						...FAKE_CLAUDE_ADAPTER,
+						scan: async () => ({
+							aggregate,
+							stats: STATS,
+							scanComplete: false,
+							workflow: aggregate.workflow.finish(),
+							workflowLocal: aggregate.workflowLocal,
+						}),
+					},
+				],
+				config: {
+					config: { ...FETCHED, publishWorkflow: false },
+					source: "fetched",
+				},
+				getSettingsImpl: () => ({}),
+				getProjectWorkspaceIdImpl: resolve,
+			}),
+		);
+		expect(staged.body.measuredDays?.partialHarnesses).toEqual(["claude-code"]);
+		expect(
+			staged.body.measuredDays?.days[0]?.usage?.harnesses[0],
+		).toMatchObject({
+			projectKeys: ["B".repeat(22)],
+			workspaceEvidenceIncomplete: true,
+		});
+		expect(staged.bodyJson).not.toContain("/synthetic/");
+	});
+	test("corrects a previously synced flat Claude day with observed records and no workspace or usage", async () => {
+		const date = "2026-07-20";
+		const aggregate = createAggregate();
+		ingestRecord(
+			aggregate,
+			{ type: "progress", timestamp: `${date}T12:00:00Z` },
+			{},
+		);
+		const heldDay = {
+			date,
+			usage: {
+				harnesses: [
+					{
+						harness: "claude-code",
+						sessions: 0,
+						projectKeys: ["A".repeat(22)],
+						models: [],
+						subagentTokens: 0,
+						excludedTokens: { unpriced: 0, synthetic: 0 },
+					},
+				],
+			},
+		};
+		const staged = await stageSync(
+			deps({
+				adaptersImpl: () => [
+					{
+						...FAKE_CLAUDE_ADAPTER,
+						scan: async () => ({
+							aggregate,
+							stats: STATS,
+							workflow: aggregate.workflow.finish(),
+							workflowLocal: aggregate.workflowLocal,
+						}),
+					},
+				],
+				config: {
+					config: { ...FETCHED, publishWorkflow: false },
+					source: "fetched",
+				},
+				getSettingsImpl: () => ({}),
+				fetchManifestImpl: async () => ({
+					retentionDays: 400,
+					aggregateVersion: "measured-days/v1",
+					days: [{ date, fingerprint: dayFingerprint(heldDay) }],
+				}),
+			}),
+		);
+		expect(staged.body.measuredDays?.days).toEqual([
+			{
+				date,
+				usage: {
+					harnesses: [{ ...heldDay.usage.harnesses[0], projectKeys: [] }],
+				},
+			},
+		]);
+	});
+	test.each([
+		{ trigger: "manual", dense: false },
+		{ trigger: "manual", dense: true },
+		{ trigger: "auto", dense: true },
+	] as const)(
+		"stages 1,001 distinct workspaces in $trigger sync (dense day: $dense)",
+		async ({ trigger, dense }) => {
+			const aggregate = createAggregate();
+			for (let i = 0; i < 1_001; i++) {
+				const day = dense || i < 1_000 ? "20" : "21";
+				ingestRecord(
+					aggregate,
+					assistant({
+						timestamp: `2026-07-${day}T12:00:00.000Z`,
+						sessionId: `synthetic-session-${i}`,
+					}),
+					{ projectDir: `/synthetic/workspace-${i}` },
+				);
+			}
+			const projectWorkspaceId = (directory: string) =>
+				createHash("sha256").update(directory).digest("base64url").slice(0, 22);
+			const adapter = {
+				...FAKE_CLAUDE_ADAPTER,
+				scan: async () => ({
+					aggregate,
+					stats: STATS,
+					workflow: aggregate.workflow.finish(),
+					workflowLocal: aggregate.workflowLocal,
+				}),
+			};
+			const input = deps({
+				trigger,
+				adaptersImpl: () => [adapter],
+				getProjectWorkspaceIdImpl: projectWorkspaceId,
+				getSettingsImpl: () => ({}),
+				config: {
+					config: { ...FETCHED, publishWorkflow: false },
+					source: "fetched",
+				},
+			});
+			const staged = await stageSync(input);
+			expect(staged.blockedReason).toBeNull();
+			expect(staged.body.trigger).toBe(trigger);
+			expect(staged.body.payloads[0]).toMatchObject({
+				schemaVersion: 1,
+				activity: {
+					projects: 1_001,
+					activeDays: dense ? 1 : 2,
+					sessions: 1_001,
+				},
+			});
+			expect(staged.bodyJson).not.toContain("/synthetic/");
+			expect(staged.bodyJson).not.toContain("synthetic-session-");
+			const days = staged.body.measuredDays?.days ?? [];
+			const keys = [...aggregate.projectDirs].map(projectWorkspaceId).sort();
+			expect(
+				foldUsageDays(
+					days.flatMap(({ date, usage }) => (usage ? [{ date, usage }] : [])),
+				).projectKeys,
+			).toEqual(keys);
+			if (dense) {
+				expect(days[0]?.usage?.harnesses[0]).toMatchObject({
+					projectKeys: [],
+					projectKeysPacked: keys.join(""),
+				});
+			} else {
+				expect(
+					days.map((day) => day.usage?.harnesses[0].projectKeys.length),
+				).toEqual([1_000, 1]);
+				expect(staged.bodyJson).not.toContain("projectKeysPacked");
+			}
+			const repeat = await stageSync({
+				...input,
+				fetchManifestImpl: async () => ({
+					retentionDays: 400,
+					aggregateVersion: "measured-days/v1",
+					days: days.map((day) => ({
+						date: day.date,
+						fingerprint: dayFingerprint(day),
+					})),
+				}),
+			});
+			expect(repeat.body.measuredDays?.days).toEqual([]);
+			expect(repeat.days?.unchanged).toBe(days.length);
+		},
+	);
+
 	test("stages Grok history without turning each session into a project workspace", async () => {
 		const home = await mkdtemp(join(tmpdir(), "grok-stage-"));
 		const root = join(home, "sessions");
@@ -168,9 +354,10 @@ describe("stageSync", () => {
 					},
 				}),
 			);
-			expect(staged.body.payloads[0].activity.projectKeys).toEqual([
-				projectId(cwd),
-			]);
+			expect(staged.body.payloads[0]).toMatchObject({
+				schemaVersion: 2,
+				activity: { projectKeys: [projectId(cwd)] },
+			});
 			const usage = staged.body.measuredDays?.days[0]?.usage?.harnesses[0];
 			expect(usage?.projectKeys).toEqual([projectId(cwd)]);
 			expect(usage?.sessions).toBe(1_001);
@@ -263,11 +450,12 @@ describe("stageSync", () => {
 				},
 			}),
 		);
-		// Once for the snapshot, once for the day rows (#307); the same id both times.
-		expect(new Set(seen)).toEqual(new Set(["-home-u-p"]));
-		expect(staged.body.payloads[0].activity.projectKeys).toEqual([
-			"BBBBBBBBBBBBBBBBBBBBBB",
-		]);
+		// The stage reuses the resolved ID in the snapshot and the day rows.
+		expect(seen).toEqual(["-home-u-p"]);
+		expect(staged.body.payloads[0]).toMatchObject({
+			schemaVersion: 2,
+			activity: { projectKeys: ["BBBBBBBBBBBBBBBBBBBBBB"] },
+		});
 		expect(
 			staged.body.measuredDays?.days[0]?.usage?.harnesses[0]?.projectKeys,
 		).toEqual(["BBBBBBBBBBBBBBBBBBBBBB"]);

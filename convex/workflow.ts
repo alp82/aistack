@@ -455,14 +455,23 @@ export const getStatsByStackSlug = query({
   handler: async (ctx, { slug }) => {
     const stack = await publicStackBySlug(ctx, slug)
     if (!stack || stack.publishWorkflow === false) return null
-    const [rows, inventory, catalog] = await Promise.all([
-      workflowDaysForStack(ctx, stack._id),
+    const now = Date.now()
+    const from = new Date(now - 59 * 86_400_000).toISOString().slice(0, 10)
+    const to = new Date(now).toISOString().slice(0, 10)
+    const [base, inventory, catalog] = await Promise.all([
+      ctx.db.query('measuredDays')
+        .withIndex('by_stack_date', (q) => q.eq('stackId', stack._id).gte('date', from).lte('date', to))
+        .paginate({ cursor: null, numItems: 2_000, maximumBytesRead: 4 * 1024 * 1024 }),
       inventoryForStack(ctx, stack._id),
       loadModelCatalog(ctx),
     ])
+    if (!base.isDone || base.pageStatus === 'SplitRequired') return null
+    const rows = base.page
+      .filter((row): row is WorkflowDayRow => row.workflow !== undefined)
+      .sort((a, b) => a._creationTime - b._creationTime || (a._id < b._id ? -1 : 1))
     if (rows.length === 0 && inventory.length === 0) return null
     // Shared atom types use readonly arrays; Convex validators use mutable arrays.
-    return readStats(rows, inventory, Date.now(), catalog) as Infer<typeof StatsView>
+    return readStats(rows, inventory, now, catalog) as Infer<typeof StatsView>
   },
 })
 

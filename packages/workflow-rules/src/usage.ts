@@ -19,6 +19,47 @@
 import type { WorkflowDay } from "./daily.js";
 
 export const MEASURED_DAYS_V1 = "measured-days/v1";
+export const MEASURED_DAY_BATCH_BYTES = 256 * 1024;
+export const DENSE_MEASURED_DAY_BYTES = 768 * 1024;
+export const SYNC_UPLOAD_PART_BYTES = 8 * 1024 * 1024;
+
+export const INLINE_PROJECT_WORKSPACE_LIMIT = 1_000;
+export const PROJECT_WORKSPACE_ID_LENGTH = 22;
+export const PROJECT_WORKSPACE_ID_RE = /^[A-Za-z0-9_-]{22}$/;
+
+type ProjectWorkspaceEvidence = {
+	/** Sorted, unique opaque identifiers. Empty when the packed field is used. */
+	projectKeys: readonly string[];
+	/** The same identifiers concatenated in fixed-width order for dense days. */
+	projectKeysPacked?: string;
+};
+
+export function* projectWorkspaceIds(
+	evidence: ProjectWorkspaceEvidence,
+): IterableIterator<string> {
+	const packed = evidence.projectKeysPacked;
+	if (packed === undefined) {
+		yield* evidence.projectKeys;
+		return;
+	}
+	for (let i = 0; i < packed.length; i += PROJECT_WORKSPACE_ID_LENGTH)
+		yield packed.slice(i, i + PROJECT_WORKSPACE_ID_LENGTH);
+}
+
+export function packProjectWorkspaceIds(ids: Iterable<string>): {
+	projectKeys: string[];
+	projectKeysPacked?: string;
+} {
+	const keys = [...new Set(ids)].sort();
+	if (keys.some((key) => !PROJECT_WORKSPACE_ID_RE.test(key))) {
+		throw new Error(
+			"Project workspace identifiers must be 22-character base64url strings",
+		);
+	}
+	return keys.length <= INLINE_PROJECT_WORKSPACE_LIMIT
+		? { projectKeys: keys }
+		: { projectKeys: [], projectKeysPacked: keys.join("") };
+}
 
 export type UsageTokens = {
 	input: number;
@@ -40,12 +81,11 @@ export type UsageModelDay = {
 	pricingTable?: string;
 };
 
-export type UsageHarnessDay = {
+export type UsageHarnessDay = ProjectWorkspaceEvidence & {
 	harness: string;
+	workspaceEvidenceIncomplete?: true;
 	/** Sessions that STARTED this day. */
 	sessions: number;
-	/** Hashed project keys touched this day, sorted unique. */
-	projectKeys: readonly string[];
 	models: readonly UsageModelDay[];
 	/** Tokens spent inside subagent turns, all models. */
 	subagentTokens: number;
@@ -60,6 +100,21 @@ export type MeasuredDay = {
 	usage?: UsageDay;
 	workflow?: WorkflowDay;
 };
+
+/** Leave room under Convex's document limit for metadata and storage overhead. */
+export function checkDenseMeasuredDaySize(day: MeasuredDay): void {
+	if (
+		day.usage?.harnesses.some(
+			(harness) => harness.projectKeysPacked !== undefined,
+		) &&
+		new TextEncoder().encode(JSON.stringify(day)).length >
+			DENSE_MEASURED_DAY_BYTES
+	) {
+		throw new Error(
+			`Measured day ${day.date} exceeds the ${DENSE_MEASURED_DAY_BYTES / 1024} KiB limit for a day with packed project workspace identifiers`,
+		);
+	}
+}
 
 export type UsageWindowModel = {
 	model: string;
@@ -90,6 +145,7 @@ export type UsageWindow = {
 	activeDays: number;
 	sessions: number;
 	projectKeys: readonly string[];
+	workspaceEvidenceIncomplete?: true;
 	tokens: UsageTokens;
 	totalTokens: number;
 	/**
@@ -179,6 +235,7 @@ export function foldUsageDays(
 		{ harness: string; sessions: number; tokens: UsageTokens }
 	>();
 	let sessions = 0;
+	let workspaceEvidenceIncomplete = false;
 	let subagentTokens = 0;
 	const excludedTokens = { unpriced: 0, synthetic: 0 };
 
@@ -189,7 +246,8 @@ export function foldUsageDays(
 			subagentTokens += h.subagentTokens;
 			excludedTokens.unpriced += h.excludedTokens.unpriced;
 			excludedTokens.synthetic += h.excludedTokens.synthetic;
-			for (const key of h.projectKeys) projectKeys.add(key);
+			for (const key of projectWorkspaceIds(h)) projectKeys.add(key);
+			workspaceEvidenceIncomplete ||= h.workspaceEvidenceIncomplete === true;
 			const held = harnesses.get(h.harness) ?? {
 				harness: h.harness,
 				sessions: 0,
@@ -231,6 +289,9 @@ export function foldUsageDays(
 		activeDays: activeDates.size,
 		sessions,
 		projectKeys: [...projectKeys].sort(),
+		...(workspaceEvidenceIncomplete
+			? { workspaceEvidenceIncomplete: true as const }
+			: {}),
 		tokens,
 		totalTokens,
 		cacheHitShare: inputSide ? round4(tokens.cacheRead / inputSide) : 0,
@@ -284,15 +345,25 @@ function canonicalJson(value: unknown): string {
  * it runs in the Convex runtime and in Node alike. Returns 16 hex characters.
  */
 function fnv1a64(text: string): string {
-	const prime = 0x100000001b3n;
-	const mask = 0xffffffffffffffffn;
-	let hash = 0xcbf29ce484222325n;
+	// Multiply by the same FNV prime in 32-bit halves. The low product is
+	// below 2^53, so it preserves the carry without a BigInt per byte.
+	const word = 0x100000000;
+	const primeLow = 0x1b3;
+	const primeHigh = 0x100;
+	let high = 0xcbf29ce4;
+	let low = 0x84222325;
 	const bytes = new TextEncoder().encode(text);
 	for (const byte of bytes) {
-		hash ^= BigInt(byte);
-		hash = (hash * prime) & mask;
+		const mixed = (low ^ byte) >>> 0;
+		const product = mixed * primeLow;
+		high =
+			(Math.imul(high, primeLow) +
+				Math.imul(mixed, primeHigh) +
+				Math.floor(product / word)) >>>
+			0;
+		low = product >>> 0;
 	}
-	return hash.toString(16).padStart(16, "0");
+	return high.toString(16).padStart(8, "0") + low.toString(16).padStart(8, "0");
 }
 
 /**

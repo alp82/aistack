@@ -1,3 +1,4 @@
+import { MEASURED_DAY_BATCH_BYTES, SYNC_UPLOAD_PART_BYTES } from '@aistack/workflow-rules'
 import type { Infer } from 'convex/values'
 import type { PublishForTokenArgs } from './measured'
 import { httpAction } from './_generated/server'
@@ -5,6 +6,7 @@ import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import { isDisplaySafeName } from './lib/names'
 import type { CliTokenScope } from './lib/cliScopes'
+import { checkMeasuredDayDates, MEASURED_DAYS_RETENTION } from './lib/measuredDays'
 import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 
 const USER_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -531,6 +533,21 @@ function parseCliVersion(raw: unknown): string | undefined {
   return trimmed.length > 0 && trimmed.length <= 32 ? trimmed : undefined
 }
 
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+const writeRateLimited = (error: unknown) => /too many writes per second/i.test(String(error))
+
+async function withWriteBackoff<T>(run: () => Promise<T>): Promise<T> {
+  for (const delay of [1_100, 2_200, 4_400]) {
+    try {
+      return await run()
+    } catch (error) {
+      if (!writeRateLimited(error)) throw error
+      await pause(delay)
+    }
+  }
+  return await run()
+}
+
 /**
  * Keep historical backfills inside each mutation's one-second CPU budget.
  * Validate all input first, then persist independently replaceable days, then
@@ -542,15 +559,14 @@ export async function publishMeasuredSync(
   args: Infer<typeof PublishForTokenArgs>,
 ) {
   const wire = args.measuredDays
-  if (!wire) return await ctx.runMutation(internal.measured.publishForToken, args)
-
-  const batches: typeof wire.days[] = []
-  let batch: typeof wire.days = []
+  if (wire) checkMeasuredDayDates(wire.days)
+  const batches: NonNullable<typeof wire>['days'][] = []
+  let batch: NonNullable<typeof wire>['days'] = []
   let bytes = 0
   const encoder = new TextEncoder()
-  for (const day of wire.days) {
+  for (const day of wire?.days ?? []) {
     const size = encoder.encode(JSON.stringify(day)).length
-    if (batch.length && (batch.length >= 20 || bytes + size > 256 * 1024)) {
+    if (batch.length && (batch.length >= (wire?.partial ? 4 : 20) || bytes + size > MEASURED_DAY_BATCH_BYTES)) {
       batches.push(batch)
       batch = []
       bytes = 0
@@ -559,24 +575,41 @@ export async function publishMeasuredSync(
     bytes += size
   }
   if (batch.length) batches.push(batch)
-  if (batches.length <= 1) {
+  if (batches.length <= 1 && !args.upload) {
     return await ctx.runMutation(internal.measured.publishForToken, args)
   }
 
-  await ctx.runMutation(internal.measured.publishForToken, { ...args, phase: 'validate' })
-  for (const days of batches) {
-    await ctx.runMutation(internal.measured.publishForToken, {
-      ...args,
-      phase: 'days',
-      measuredDays: { ...wire, days },
-      workflow: undefined,
-    })
+  const batchCount = batches.length
+  const mutate = (input: Infer<typeof PublishForTokenArgs>) =>
+    ctx.runMutation(internal.measured.publishForToken, input)
+  // Validate every batch before writing any in this request.
+  for (const [index, days] of (batches.length ? batches : [[]]).entries()) {
+    await withWriteBackoff(() => mutate({
+      ...args, phase: 'validate', batchCount, batch: index,
+      measuredDays: wire ? { ...wire, days } : undefined,
+      workflow: index === 0 ? args.workflow : undefined,
+    }))
   }
-  return await ctx.runMutation(internal.measured.publishForToken, {
+  for (const [index, days] of batches.entries()) {
+    const result = await withWriteBackoff(() => mutate({
+      ...args, phase: 'days', batch: index, batchCount,
+      measuredDays: wire ? { ...wire, days } : undefined,
+      workflow: undefined,
+    }))
+    // Leave room under the 4 MiB/s deployment limit for document overhead,
+    // concurrent activity, and sidecars enlarged by a partial merge.
+    const writeBytes = result.writeBytes ?? 0
+    if (writeBytes > 0 && (batchCount > 1 || args.upload?.parts !== 1)) {
+      await pause(Math.ceil(writeBytes * 1000 / (2 * 1024 * 1024)))
+    }
+  }
+  return await withWriteBackoff(() => mutate({
     ...args,
-    measuredDays: { ...wire, days: [] },
-    workflow: undefined,
-  })
+    batchCount,
+    phase: args.upload && args.upload.part < args.upload.parts - 1 ? 'checkpoint' : undefined,
+    measuredDays: wire ? { ...wire, days: [] } : undefined,
+    workflow: wire ? undefined : args.workflow,
+  }))
 }
 
 /**
@@ -605,9 +638,29 @@ export const syncPublish = httpAction(async (ctx, request) => {
     workflow?: unknown
     measuredDays?: unknown
     cliVersion?: unknown
+    upload?: unknown
   }
+  let raw: string
+  let bytes = 0
   try {
-    body = await request.json()
+    const reader = request.body?.getReader()
+    const decoder = new TextDecoder()
+    raw = ''
+    if (reader) {
+      for (;;) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        bytes += chunk.value.byteLength
+        if (bytes > 16 * 1024 * 1024) {
+          void reader.cancel().catch(() => undefined)
+          return jsonResponse({ error: 'Sync request exceeds 16 MiB. Update the CLI and run sync again to upload it in parts.' }, 413)
+        }
+        raw += decoder.decode(chunk.value, { stream: true })
+      }
+      raw += decoder.decode()
+    }
+    body = JSON.parse(raw)
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error()
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
@@ -627,9 +680,47 @@ export const syncPublish = httpAction(async (ctx, request) => {
     keptPrivate: { stored: number; machineStored: number; refused: boolean }
   }
   try {
+    let upload: Infer<typeof PublishForTokenArgs>['upload']
+    if (body.upload !== undefined) {
+      const part = body.upload as { id?: unknown; part?: unknown; parts?: unknown } | null
+      if (
+        typeof part?.id !== 'string' || !/^[a-f0-9]{64}$/.test(part.id) ||
+        typeof part.part !== 'number' || !Number.isInteger(part.part) ||
+        typeof part.parts !== 'number' || !Number.isInteger(part.parts) ||
+        part.parts < 2 || part.parts > 400 || part.part < 0 || part.part >= part.parts
+      ) {
+        throw new Error('Invalid sync upload part')
+      }
+      if (bytes > SYNC_UPLOAD_PART_BYTES) {
+        throw new Error('Sync upload part exceeds 8 MiB')
+      }
+      const wire = measuredDays.value as Infer<typeof PublishForTokenArgs>['measuredDays']
+      if (!wire?.days.length) throw new Error('Sync upload part must carry measured days')
+      checkMeasuredDayDates(wire.days)
+      if (wire.days.some((day, index) => index > 0 && wire.days[index - 1].date >= day.date)) {
+        throw new Error('Sync upload part must list dates in order')
+      }
+      const { upload: _upload, measuredDays: _measuredDays, ...metadata } = body
+      upload = {
+        id: part.id, part: part.part, parts: part.parts,
+        digest: await sha256Hex(raw),
+        metadataDigest: await sha256Hex(JSON.stringify({ ...metadata, measuredDays: { ...wire, days: [] } })),
+        dayCount: wire.days.length,
+        from: wire.days[0].date,
+        to: wire.days[wire.days.length - 1].date,
+      }
+    }
+    if (!upload) {
+      const digest = await sha256Hex(raw)
+      upload = {
+        id: digest, part: 0, parts: 1, digest, metadataDigest: digest,
+        dayCount: 0, from: '', to: '',
+      }
+    }
     result = await publishMeasuredSync(ctx, {
       tokenId: tokenId as Id<'cliTokens'>,
       expectedStackId: authResult.stackId,
+      upload,
       payload: body.payload as any,
       payloads: body.payloads as any,
       keptPrivate: body.keptPrivate as any,
@@ -657,6 +748,11 @@ export const syncPublish = httpAction(async (ctx, request) => {
     // Not-linked, no-longer-authorized and auto-sync-off are all actionable by
     // the user, and all mean "do not retry this payload as-is". The third is
     // the server-side half of the web revoke (#102).
+    if (writeRateLimited(err)) {
+      return Response.json({ error: 'The write rate is temporarily saturated. Retry this upload part.' }, {
+        status: 503, headers: { 'Retry-After': '2' },
+      })
+    }
     const status = /not linked|no longer|auto-sync is off/i.test(message) ? 409 : 400
     return jsonResponse({ error: message }, status)
   }
@@ -689,12 +785,38 @@ export const syncPublish = httpAction(async (ctx, request) => {
 export const syncManifest = httpAction(async (ctx, request) => {
   const authResult = await validateBearerToken(ctx as any, request, 'sync')
   if (authResult instanceof Response) return authResult
-  const { tokenId } = authResult
+  const { tokenId, stackId } = authResult
   try {
-    const manifest = await ctx.runQuery(internal.measured.getDayManifestForToken, {
-      tokenId: tokenId as Id<'cliTokens'>,
-    })
-    return jsonResponse(manifest)
+    let cursor: string | null = null
+    const now = Date.now()
+    const from = new Date(now - (MEASURED_DAYS_RETENTION - 1) * 86_400_000).toISOString().slice(0, 10)
+    const to = new Date(now).toISOString().slice(0, 10)
+    const days: { date: string; fingerprint: string }[] = []
+    for (;;) {
+      const manifest: {
+        days: { date: string; fingerprint: string }[]
+        nextCursor?: string
+        retentionDays: number
+        aggregateVersion: string
+      } = await ctx.runQuery(internal.measured.getDayManifestForToken, {
+        tokenId: tokenId as Id<'cliTokens'>,
+        expectedStackId: stackId,
+        cursor,
+        from,
+        to,
+      })
+      days.push(...manifest.days)
+      if (!manifest.nextCursor) {
+        return jsonResponse({
+          retentionDays: manifest.retentionDays,
+          aggregateVersion: manifest.aggregateVersion,
+          multipartUpload: true,
+          syncReplay: true,
+          days,
+        })
+      }
+      cursor = manifest.nextCursor
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const status = /not linked|no longer/i.test(message) ? 409 : 400

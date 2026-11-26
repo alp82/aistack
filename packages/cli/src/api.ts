@@ -1,4 +1,8 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { type PriceTable, parsePriceTable } from "@aistack/pricing";
+import { SYNC_UPLOAD_PART_BYTES } from "@aistack/workflow-rules";
+import type { SyncBody } from "./harness/shared/payload.js";
 import { CLI_VERSION } from "./version.js";
 
 export const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
@@ -175,31 +179,127 @@ export type SyncPublishResult = {
 /**
  * Publish one approved snapshot.
  *
- * Takes the staged body as an ALREADY-SERIALIZED string: the bytes the user
- * approved at the gate are the bytes on the wire, with no re-serialization
- * step between them (#35's binding constraint, #41).
+ * The staged string is the approved body. Small sends use it as-is. Large
+ * sends partition the approved day list and repeat the same metadata in
+ * each envelope, without adding or recomputing any readings.
  */
 export async function syncPublish(
 	token: string,
 	bodyJson: string,
 ): Promise<SyncPublishResult> {
-	const res = await request("/api/cli/sync", {
-		method: "POST",
-		headers: authHeaders(token),
-		body: bodyJson,
-	});
-	if (res.status === 401)
-		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
-		);
-	if (res.status === 403 || res.status === 429)
-		throw failure("Sync failed", res);
-	if (!res.ok) {
-		throw Object.assign(new Error(await formatHttpError(res, "Sync failed")), {
-			status: res.status,
-		});
+	const maxBytes = SYNC_UPLOAD_PART_BYTES;
+	if (Buffer.byteLength(bodyJson) <= maxBytes) return postSync(token, bodyJson);
+
+	const body: SyncBody = JSON.parse(bodyJson);
+	const wire = body.measuredDays;
+	if (!wire) throw new Error("Sync metadata exceeds the 8 MiB upload limit.");
+	const base = { ...body, measuredDays: { ...wire, days: [] } };
+	const uploadId = createHash("sha256").update(bodyJson).digest("hex");
+	// Reserve the exact envelope plus room for the decimal part numbers.
+	const envelopeBytes = Buffer.byteLength(
+		JSON.stringify({
+			...base,
+			upload: { id: uploadId, part: 400, parts: 400 },
+		}),
+	);
+	const endIndexes: number[] = [];
+	let bytes = envelopeBytes;
+	for (const [index, day] of wire.days.entries()) {
+		const dayBytes = Buffer.byteLength(JSON.stringify(day)) + 1;
+		if (envelopeBytes + dayBytes > maxBytes) {
+			throw new Error(
+				`Measured day ${day.date} exceeds the 8 MiB upload limit with sync metadata.`,
+			);
+		}
+		if (bytes + dayBytes > maxBytes) {
+			endIndexes.push(index);
+			bytes = envelopeBytes;
+		}
+		bytes += dayBytes;
 	}
-	return res.json();
+	endIndexes.push(wire.days.length);
+	if (endIndexes.length < 2) return postSync(token, bodyJson);
+	const manifest = await fetchDayManifest(BASE_URL, token);
+	if (manifest?.multipartUpload !== true) {
+		throw new Error(
+			"This server does not support multipart sync. Update the backend and run sync again.",
+		);
+	}
+	let result: SyncPublishResult | undefined;
+	let start = 0;
+	for (const [part, end] of endIndexes.entries()) {
+		result = await postSync(
+			token,
+			JSON.stringify({
+				...base,
+				measuredDays: { ...wire, days: wire.days.slice(start, end) },
+				upload: { id: uploadId, part, parts: endIndexes.length },
+			}),
+			true,
+		);
+		start = end;
+	}
+	if (!result) throw new Error("Sync upload had no parts.");
+	return result;
+}
+
+async function postSync(
+	token: string,
+	bodyJson: string,
+	retryTransport = false,
+): Promise<SyncPublishResult> {
+	const send = () =>
+		request("/api/cli/sync", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: bodyJson,
+		});
+	let replaySupported = retryTransport;
+	for (let attempt = 0; ; attempt++) {
+		let delay = 250 * 2 ** attempt;
+		let ambiguous: unknown;
+		const res = await send().catch((error: unknown) => {
+			ambiguous = error;
+			return undefined;
+		});
+		if (res?.ok) {
+			try {
+				const receipt: SyncPublishResult = await res.json();
+				if (!receipt || !Number.isFinite(receipt.receivedAt)) {
+					throw new Error("Sync response was missing its completion receipt.");
+				}
+				return receipt;
+			} catch (error) {
+				ambiguous = error;
+			}
+		} else if (res?.status === 401) {
+			throw new Error(
+				"Authentication expired. Run `npx @use-aistack/cli login` again.",
+			);
+		} else if (res?.status === 403 || res?.status === 429) {
+			throw failure("Sync failed", res);
+		} else if (res) {
+			const error = Object.assign(
+				new Error(await formatHttpError(res, "Sync failed")),
+				{
+					status: res.status,
+				},
+			);
+			if (![500, 502, 503, 504].includes(res.status)) throw error;
+			ambiguous = error;
+			const seconds = Number(res.headers.get("Retry-After"));
+			if (seconds > 0) delay = Math.max(delay, Math.min(seconds * 1000, 5000));
+		}
+		if (attempt >= 3) throw ambiguous;
+		if (!replaySupported) {
+			const manifest = await fetchDayManifest(BASE_URL, token).catch(
+				() => null,
+			);
+			if (manifest?.syncReplay !== true) throw ambiguous;
+			replaySupported = true;
+		}
+		await new Promise((resolve) => setTimeout(resolve, delay));
+	}
 }
 
 /**
@@ -216,6 +316,8 @@ export async function fetchDayManifest(
 ): Promise<{
 	retentionDays: number;
 	aggregateVersion: string;
+	multipartUpload?: boolean;
+	syncReplay?: boolean;
 	days: { date: string; fingerprint: string }[];
 } | null> {
 	const res = await fetch(`${baseUrl}/api/cli/sync-manifest`, {
@@ -238,6 +340,8 @@ export async function fetchDayManifest(
 	const body = (await res.json()) as {
 		retentionDays?: unknown;
 		aggregateVersion?: unknown;
+		multipartUpload?: unknown;
+		syncReplay?: unknown;
 		days?: unknown;
 	};
 	const retentionDays =
@@ -255,7 +359,13 @@ export async function fetchDayManifest(
 					: [];
 			})
 		: [];
-	return { retentionDays, aggregateVersion, days };
+	return {
+		retentionDays,
+		aggregateVersion,
+		days,
+		...(body.multipartUpload === true ? { multipartUpload: true } : {}),
+		...(body.syncReplay === true ? { syncReplay: true } : {}),
+	};
 }
 
 /**

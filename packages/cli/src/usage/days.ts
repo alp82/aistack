@@ -10,13 +10,14 @@
 // figures up to rounding. Everything here is pure.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
-import type {
-	MeasuredDay,
-	UsageDay,
-	UsageHarnessDay,
-	UsageModelDay,
-	UsageTokens,
-	WorkflowDay,
+import {
+	type MeasuredDay,
+	packProjectWorkspaceIds,
+	type UsageDay,
+	type UsageHarnessDay,
+	type UsageModelDay,
+	type UsageTokens,
+	type WorkflowDay,
 } from "@aistack/workflow-rules";
 import {
 	type Aggregate,
@@ -36,6 +37,7 @@ export type BuildUsageDaysInput = {
 	publishCost: boolean;
 	/** Resolve one local project directory to its persistent opaque id. */
 	projectWorkspaceId: (directory: string) => string;
+	deferWorkspace?: (directory: string) => boolean;
 };
 
 type ModelAcc = {
@@ -137,12 +139,17 @@ export function buildUsageDays(
 					a.model.localeCompare(b.model),
 			);
 
+		const directories = [...(acc?.projectDirs ?? [])];
+		const included = input.deferWorkspace
+			? directories.filter((directory) => !input.deferWorkspace?.(directory))
+			: directories;
 		out.set(date, {
 			harness,
 			sessions: sessionsByDay.get(date) ?? 0,
-			projectKeys: [
-				...new Set([...(acc?.projectDirs ?? [])].map(projectWorkspaceId)),
-			].sort(),
+			...packProjectWorkspaceIds(included.map(projectWorkspaceId)),
+			...(included.length < directories.length
+				? { workspaceEvidenceIncomplete: true as const }
+				: {}),
 			models,
 			subagentTokens: acc?.subagentTokens ?? 0,
 			excludedTokens: { unpriced, synthetic: acc?.syntheticTokens ?? 0 },

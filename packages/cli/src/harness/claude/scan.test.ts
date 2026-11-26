@@ -73,14 +73,27 @@ describe("scan", () => {
 		expect(finalize(agg).projects).toBe(2);
 	});
 
+	it("keeps usage from flat history without counting transcript filenames as workspaces", async () => {
+		writeTranscript("sess-a.jsonl", [assistant({})]);
+		writeTranscript("sess-b.jsonl", [assistant({})]);
+		const agg = createAggregate();
+		await scan(agg, { roots: [root] });
+		expect(agg.assistantRecords).toBe(2);
+		expect(agg.projectDirs.size).toBe(0);
+		expect(agg.usageDays.get("2026-07-20")?.projectDirs.size).toBe(0);
+	});
+
 	it("replaces the munged fallback when a transcript provides raw cwd", async () => {
 		writeTranscript("-work-acme/s.jsonl", [
-			assistant({}),
+			assistant({ timestamp: "2026-07-19T12:00:00.000Z" }),
 			assistant({ cwd: "/work/acme" }),
 		]);
 		const agg = createAggregate();
 		await scan(agg, { roots: [root] });
 		expect([...agg.projectDirs]).toEqual(["/work/acme"]);
+		expect(agg.usageDays.get("2026-07-19")?.projectDirs).toEqual(
+			new Set(["/work/acme"]),
+		);
 	});
 
 	it("keeps each raw project workspace when cwd changes", async () => {
@@ -94,6 +107,30 @@ describe("scan", () => {
 			"/work/acme-one",
 			"/work/acme-two",
 		]);
+	});
+
+	it("keeps fallback workspaces scoped to each source root across scan windows", async () => {
+		const alpha = join(root, "alpha");
+		const beta = join(root, "beta");
+		writeTranscript("alpha/project/s.jsonl", [assistant({})]);
+		writeTranscript(
+			"beta/project/s.jsonl",
+			[assistant({ cwd: "/work/other", timestamp: "2026-06-01T12:00:00Z" })],
+			Date.parse("2026-06-01T12:00:00Z"),
+		);
+		const recent = createAggregate();
+		const historical = createAggregate();
+		await scan(recent, {
+			roots: [alpha, beta],
+			sinceMs: Date.parse("2026-07-01"),
+		});
+		await scan(historical, {
+			roots: [alpha, beta],
+			sinceMs: Date.parse("2026-05-01"),
+		});
+		expect(historical.usageDays.get("2026-07-20")?.projectDirs).toEqual(
+			recent.usageDays.get("2026-07-20")?.projectDirs,
+		);
 	});
 
 	it("skips a file whose mtime predates the window, without reading it", async () => {

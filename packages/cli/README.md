@@ -46,6 +46,16 @@ The lines go to stderr and hold counts, durations, and safe error codes: no path
 
 Partial history still contributes dated usage. The review marks it as partial, and the backend retains previously recorded evidence. Missing models, harnesses, dates, and workflow readings are not cleared by a partial sync. Repeated readings are not added together. An existing model is updated only when the incoming reading covers all its stored token buckets and recorded cost; otherwise the stored model reading stays. A complete scan can still apply corrections through the normal daily replacement path.
 
+#### Large measured histories
+
+Sync can send up to 400 UTC days. The CLI splits uploads above 8 MiB into ordered requests of at most 8 MiB each. The server paces backfill writes at approximately 2 MiB per second and retries temporary write-rate failures. If a proxy or response body fails after a write may have committed, the CLI retries the same part up to three times. A retried part skips saved batches and cannot create a duplicate completion event. If retries are exhausted, a fresh sync uses the manifest to skip dates already stored.
+
+A day using packed workspace identifiers may be up to 768 KiB as JSON. The server can retain up to 768 KiB of packed identifiers for one machine and day after a partial merge. The CLI reports the affected date if either bound is exceeded. A complete reading within the limit can replace an oversized partial union. The server preserves the previously stored day when the union cannot fit.
+
+Usage reads at most 4 MiB or 2,000 base rows for its requested dates. If the comparison or the current range is incomplete, the response marks the read incomplete and withholds the affected totals. Exact project counts use a shared 12 MiB budget for base rows and packed workspace evidence. Above that budget, Usage and Activity report a marked project-count lower bound and keep every stored identifier. A shorter usage range or a single machine can restore an exact count. The manifest and Stats do not load packed workspace evidence.
+
+A partial Claude Code scan defers workspace aliases for legacy folders that lack a working directory. Their existing IDs stay stored, and the project count carries a lower-bound marker until a complete scan can replace the aliases.
+
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
 Optional: keep your stack fresh without manual syncs. `on` asks your stack for permission, then writes hooks for the harnesses you actually use. The `SessionStart` paths are: `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex, and `$GROK_HOME/hooks/aistack.json` (default `~/.grok/hooks/aistack.json`) for Grok Build. Cursor uses a user-level `stop` hook in `~/.cursor/hooks.json` and reloads that configuration automatically. Its trigger runs when the agent finishes a turn. The other hooks run when a session starts. All triggers share one silent sync throttle, at most once every 6 hours. Existing user hooks are preserved. Grok Build needs a new session or hook reload after installation. `off` disables local publication first, removes the owned hooks, then takes the remote permission back. If removal fails, the disabled local gate still prevents publication and the next interactive sync can retry reconciliation.

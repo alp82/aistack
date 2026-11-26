@@ -770,14 +770,17 @@ describe('the sync manifest route (#307)', () => {
     expect(await empty.json()).toEqual({
       retentionDays: 400,
       aggregateVersion: 'measured-days/v1',
+      multipartUpload: true,
+      syncReplay: true,
       days: [],
     })
 
+    const date = new Date().toISOString().slice(0, 10)
     await t.run(async (ctx) =>
       ctx.db.insert('measuredDays', {
         stackId,
         machine: 'laptop',
-        date: '2026-08-28',
+        date,
         capturedAt: 1,
         receivedAt: 1,
         aggregateVersion: 'measured-days/v1',
@@ -789,7 +792,7 @@ describe('the sync manifest route (#307)', () => {
       method: 'GET',
       headers: { Authorization: 'Bearer tok_manifest' },
     })
-    expect((await held.json()).days).toEqual([{ date: '2026-08-28', fingerprint: 'abc' }])
+    expect((await held.json()).days).toEqual([{ date, fingerprint: 'abc' }])
 
     await seedToken(t, 'tok_unlinked')
     const unlinked = await t.fetch('/api/cli/sync-manifest', {

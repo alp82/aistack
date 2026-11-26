@@ -40,9 +40,12 @@ import { extractShortId } from './lib/ids'
 import {
   dayWireFromWorkflow,
   MEASURED_DAYS_RETENTION,
-  measuredDaysForMachine,
-  measuredDaysForStack,
+  MEASURED_DAYS_PER_PUBLISH,
+  workspaceCountLowerBound,
+  workspaceReadBudgetAllows,
+  readMeasuredWorkspaceEvidence,
   checkMeasuredDays,
+  checkRetainedMeasuredDays,
   inventoryForStack,
   newestInventoryPerSource,
   storeMeasuredDays,
@@ -587,16 +590,17 @@ async function storeDayArgs(
     receivedAt: number
     cliVersion: string | undefined
   }
-): Promise<void> {
+): Promise<number> {
   if (args.measuredDays) {
-    await storeMeasuredDays(ctx, { ...common, wire: args.measuredDays })
+    return (await storeMeasuredDays(ctx, { ...common, wire: args.measuredDays })).writeBytes
   } else if (args.workflow) {
-    await storeMeasuredDays(ctx, {
+    return (await storeMeasuredDays(ctx, {
       ...common,
       wire: dayWireFromWorkflow(args.workflow),
       keepUsage: true,
-    })
+    })).writeBytes
   }
+  return 0
 }
 
 // ---------------------------------------------------------------------------
@@ -1852,7 +1856,19 @@ export const PublishForTokenArgs = v.object({
    */
   cliVersion: v.optional(v.string()),
   // Internal orchestration only. The HTTP body cannot select a phase.
-  phase: v.optional(v.union(v.literal('validate'), v.literal('days'))),
+  phase: v.optional(v.union(v.literal('validate'), v.literal('days'), v.literal('checkpoint'))),
+  upload: v.optional(v.object({
+    id: v.string(),
+    part: v.number(),
+    parts: v.number(),
+    digest: v.string(),
+    metadataDigest: v.string(),
+    dayCount: v.number(),
+    from: v.string(),
+    to: v.string(),
+  })),
+  batch: v.optional(v.number()),
+  batchCount: v.optional(v.number()),
   expectedStackId: v.optional(v.id('stacks')),
 })
 
@@ -1861,6 +1877,7 @@ export const publishForToken = internalMutation({
   args: PublishForTokenArgs,
   returns: v.object({
     receivedAt: v.number(),
+    writeBytes: v.optional(v.number()),
     stackSlug: v.string(),
     /** Client-discovered names and the server-derived machine label stay distinct. */
     keptPrivate: v.object({
@@ -1941,22 +1958,86 @@ export const publishForToken = internalMutation({
     if (args.keptPrivate && stack.reviewKeptPrivate !== false) {
       checkStagedNames(flattenStaged(args.keptPrivate))
     }
+    let uploadState = args.upload
+      ? await ctx.db.query('measuredSyncState').withIndex('by_stack_machine', (q) =>
+          q.eq('stackId', stack._id).eq('machine', token.name)).unique()
+      : null
+    const reply = (receivedAt: number, keptPrivate = { stored: 0, machineStored: 0, refused: false }) => ({
+      receivedAt, stackSlug: `${stack.slug}-${stack.shortId}`, keptPrivate,
+    })
+    if (args.upload) {
+      const upload = args.upload
+      const batchCount = args.batchCount ?? 0
+      const capturedAt = Math.max(...payloads.map((payload) => payload.capturedAt))
+      if (uploadState?.uploadId !== upload.id) {
+        // A new single-request sync and a multipart start use the same fence.
+        if (upload.part !== 0 || args.phase !== 'validate' ||
+          (uploadState && (uploadState.capturedAt > capturedAt || uploadState.retiredUploadIds.includes(upload.id)))) {
+          throw new Error('This sync upload is out of date. Run sync again to resume from the day manifest.')
+        }
+        const state = {
+          uploadId: upload.id, stackId: stack._id, machine: token.name,
+          tokenId: token._id, capturedAt, parts: upload.parts,
+          retiredUploadIds: uploadState
+            ? [uploadState.uploadId, ...uploadState.retiredUploadIds].slice(0, 16)
+            : [],
+          next: 0, nextBatch: 0, batchCount,
+          metadataDigest: upload.metadataDigest, dayCount: 0,
+        }
+        const id = uploadState?._id
+        if (id) await ctx.db.replace(id, state)
+        uploadState = await ctx.db.get(id ?? await ctx.db.insert('measuredSyncState', state))
+      }
+      if (!uploadState || uploadState.tokenId !== token._id || uploadState.parts !== upload.parts ||
+        uploadState.capturedAt !== capturedAt || uploadState.metadataDigest !== upload.metadataDigest) {
+        throw new Error('Sync upload no longer matches its original destination or snapshot')
+      }
+      if (upload.part < uploadState.next) {
+        return reply(uploadState.receivedAt ?? Date.now(), uploadState.keptPrivate)
+      }
+      if (upload.part !== uploadState.next ||
+        (uploadState.digest !== undefined && (uploadState.digest !== upload.digest || uploadState.batchCount !== batchCount))) {
+        throw new Error('Sync upload is out of order or this part changed. Run sync again to resume from the day manifest.')
+      }
+      if ((uploadState.lastDate && upload.from <= uploadState.lastDate) ||
+        uploadState.dayCount + upload.dayCount > MEASURED_DAYS_PER_PUBLISH) {
+        throw new Error('Sync upload must have distinct ordered dates and no more than 400 days')
+      }
+      if (args.phase === 'validate' && uploadState.digest === undefined) {
+        await ctx.db.patch(uploadState._id, { digest: upload.digest, batchCount })
+        uploadState = { ...uploadState, digest: upload.digest, batchCount }
+      }
+      if (uploadState.digest !== upload.digest) throw new Error('Sync upload part was not validated')
+      if (args.phase === 'days') {
+        if (args.batch !== undefined && args.batch < uploadState.nextBatch) return reply(Date.now())
+        if (args.batch !== uploadState.nextBatch || args.batch >= batchCount) {
+          throw new Error('Sync day batch is out of order')
+        }
+      } else if (args.phase !== 'validate') {
+        if (uploadState.nextBatch !== batchCount) throw new Error('Sync upload part is incomplete')
+        if (args.phase === 'checkpoint') {
+          await ctx.db.patch(uploadState._id, {
+            next: upload.part + 1, digest: undefined, nextBatch: 0,
+            dayCount: uploadState.dayCount + upload.dayCount, lastDate: upload.to,
+          })
+        }
+      }
+    }
     if (args.phase) {
       const receivedAt = Date.now()
+      if (args.phase === 'validate' && args.measuredDays) {
+        await checkRetainedMeasuredDays(ctx, stack._id, token.name, args.measuredDays)
+      }
       if (args.phase === 'days') {
-        await storeDayArgs(ctx, args, {
-          stackId: stack._id,
-          machine: token.name,
+        const writeBytes = await storeDayArgs(ctx, args, {
+          stackId: stack._id, machine: token.name,
           capturedAt: Math.max(...payloads.map((payload) => payload.capturedAt)),
-          receivedAt,
-          cliVersion,
+          receivedAt, cliVersion,
         })
+        if (uploadState) await ctx.db.patch(uploadState._id, { nextBatch: uploadState.nextBatch + 1 })
+        return { ...reply(receivedAt), writeBytes }
       }
-      return {
-        receivedAt,
-        stackSlug: `${stack.slug}-${stack.shortId}`,
-        keptPrivate: { stored: 0, machineStored: 0, refused: false },
-      }
+      return reply(receivedAt)
     }
 
     // Inventory, staged names, analytics and the activity event commit once,
@@ -2102,11 +2183,18 @@ export const publishForToken = internalMutation({
       stack.reviewKeptPrivate === false
         ? 0
         : await replaceKeptPrivateMachines(ctx, stack._id, receivedAt)
+    const keptPrivate = { stored: inventoryStored, machineStored, refused }
+    if (args.upload && uploadState) {
+      await ctx.db.patch(uploadState._id, {
+        next: args.upload.part + 1, digest: undefined, receivedAt, keptPrivate,
+        dayCount: uploadState.dayCount + args.upload.dayCount, lastDate: args.upload.to,
+      })
+    }
 
     return {
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
-      keptPrivate: { stored: inventoryStored, machineStored, refused },
+      keptPrivate,
     }
   },
 })
@@ -2147,19 +2235,34 @@ async function stackAndMachineForToken(
  * here or hashing differently. `retentionDays` names the send window.
  */
 export const getDayManifestForToken = internalQuery({
-  args: { tokenId: v.id('cliTokens') },
+  args: {
+    tokenId: v.id('cliTokens'),
+    expectedStackId: v.optional(v.id('stacks')),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+  },
   returns: v.object({
     retentionDays: v.number(),
     aggregateVersion: v.string(),
+    nextCursor: v.optional(v.string()),
     days: v.array(v.object({ date: v.string(), fingerprint: v.string() })),
   }),
   handler: async (ctx, args) => {
     const { stack, machine } = await stackAndMachineForToken(ctx, args.tokenId)
-    const rows = await measuredDaysForMachine(ctx, stack._id, machine)
+    if (args.expectedStackId && args.expectedStackId !== stack._id) {
+      throw new Error('Token is no longer linked to the original sync stack')
+    }
+    const page = await ctx.db.query('measuredDays')
+      .withIndex('by_stack_machine_date', (q) =>
+        q.eq('stackId', stack._id).eq('machine', machine).gte('date', args.from ?? '').lte('date', args.to ?? '9999-12-31')
+      )
+      .paginate({ cursor: args.cursor ?? null, numItems: 400, maximumBytesRead: 4 * 1024 * 1024 })
     return {
       retentionDays: MEASURED_DAYS_RETENTION,
       aggregateVersion: MEASURED_DAYS_V1,
-      days: rows
+      ...(!page.isDone ? { nextCursor: page.continueCursor } : {}),
+      days: page.page
         .map((row) => ({ date: row.date, fingerprint: row.fingerprint }))
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
     }
@@ -2189,6 +2292,7 @@ export const UsageReading = v.object({
   activeDays: v.number(),
   sessions: v.number(),
   projects: v.number(),
+  projectsPrecision: v.optional(v.literal('lower-bound')),
   totalTokens: v.number(),
   cacheHitShare: v.number(),
   subagentShare: v.number(),
@@ -2244,6 +2348,7 @@ const MeasuredUsage = v.object({
   ),
   /** False for a stack that has published no days for the selected machines. */
   hasDays: v.boolean(),
+  dayReadIncomplete: v.optional(v.literal(true)),
   /**
    * The retirement migration's fallback (ADR-0011): the last whole-window
    * snapshot's totals, summed over the selected sources. Non-null only while
@@ -2315,7 +2420,8 @@ export type UsageRow = { date: string; usage: UsageDay }
 export function readUsageWindow(
   rows: readonly UsageRow[],
   catalog: ModelCatalog,
-  publishCost: boolean
+  publishCost: boolean,
+  workspaceLowerBound?: number,
 ): Infer<typeof UsageReading> | null {
   if (rows.length === 0) return null
   const fold = foldUsageDays(rows)
@@ -2384,7 +2490,9 @@ export function readUsageWindow(
     dates: [...fold.dates],
     activeDays: fold.activeDays,
     sessions: fold.sessions,
-    projects: fold.projectKeys.length,
+    projects: Math.max(fold.projectKeys.length, workspaceLowerBound ?? 0),
+    ...(workspaceLowerBound !== undefined || fold.workspaceEvidenceIncomplete
+      ? { projectsPrecision: 'lower-bound' as const } : {}),
     totalTokens: fold.totalTokens,
     cacheHitShare: fold.cacheHitShare,
     subagentShare: fold.subagentShare,
@@ -2450,7 +2558,19 @@ export const getUsageByStackSlug = query({
     const current = rangeDates(range, now)
     const previous = previousRangeDates(range, now)
 
-    const allRows = await measuredDaysForStack(ctx, stack._id)
+    const baseQuery = selectedMachine === undefined
+      ? ctx.db.query('measuredDays').withIndex('by_stack_date', (q) =>
+          q.eq('stackId', stack._id).gte('date', previous.from).lte('date', current.to))
+      : ctx.db.query('measuredDays').withIndex('by_stack_machine_date', (q) =>
+          q.eq('stackId', stack._id).eq('machine', selectedMachine)
+            .gte('date', previous.from).lte('date', current.to))
+    const base = await baseQuery.order('desc').paginate({
+      cursor: null, numItems: 2_000, maximumBytesRead: 4 * 1024 * 1024,
+    })
+    // Preserve creation order for the existing floating-point usage fold.
+    const allRows = base.page.sort((a, b) => a._creationTime - b._creationTime || (a._id < b._id ? -1 : 1))
+    const baseComplete = base.isDone && base.pageStatus !== 'SplitRequired'
+    const currentComplete = baseComplete || allRows.some((row) => row.date < current.from)
     const allInventory = newestInventoryPerSource(
       await inventoryForStack(ctx, stack._id)
     )
@@ -2470,18 +2590,20 @@ export const getUsageByStackSlug = query({
         row.usage !== undefined &&
         (selectedMachine === undefined || row.machine === selectedMachine)
     )
-    const usageRows: (UsageRow & { receivedAt: number })[] = rows.map((row) => ({
+    const inRange = rows.filter((row) => inDateRange(row.date, current) ? currentComplete : baseComplete)
+    const readExactWorkspaces = workspaceReadBudgetAllows(inRange, allRows)
+    const usageRows: (UsageRow & { receivedAt: number })[] = await Promise.all(inRange.map(async (row) => ({
       date: row.date,
-      usage: row.usage as UsageDay,
+      usage: (readExactWorkspaces ? await readMeasuredWorkspaceEvidence(ctx, row) : row.usage) as UsageDay,
       receivedAt: row.receivedAt,
-    }))
+    })))
     const inCurrent = usageRows.filter((row) => inDateRange(row.date, current))
     const inPrevious = usageRows.filter((row) => inDateRange(row.date, previous))
 
     const publishCost = stack.publishCost !== false
     const catalog = await loadModelCatalog(ctx)
 
-    const hasDays = rows.length > 0
+    const hasDays = rows.length > 0 || inventory.some((row) => row.legacy === undefined)
     const legacyRows = hasDays
       ? []
       : inventory.filter((row) => row.legacy !== undefined)
@@ -2518,12 +2640,13 @@ export const getUsageByStackSlug = query({
       range,
       from: current.from,
       to: current.to,
-      receivedAt: [...usageRows, ...inventory].reduce<number | null>(
+      receivedAt: [...rows, ...inventory].reduce<number | null>(
         (max, row) => (max === null || row.receivedAt > max ? row.receivedAt : max),
         null
       ),
       machines,
       hasDays,
+      ...(baseComplete ? {} : { dayReadIncomplete: true as const }),
       legacy,
       inventory: inventory.map((row) => ({
         harness: row.harness,
@@ -2542,8 +2665,10 @@ export const getUsageByStackSlug = query({
         ...(row.inventory.calls === undefined ? {} : { calls: row.inventory.calls }),
         modelsSeen: row.modelsSeen,
       })),
-      current: readUsageWindow(inCurrent, catalog, publishCost),
-      previous: readUsageWindow(inPrevious, catalog, publishCost),
+      current: readUsageWindow(inCurrent, catalog, publishCost, readExactWorkspaces
+        ? undefined : workspaceCountLowerBound(inRange.filter((row) => inDateRange(row.date, current)))),
+      previous: readUsageWindow(inPrevious, catalog, publishCost, readExactWorkspaces
+        ? undefined : workspaceCountLowerBound(inRange.filter((row) => inDateRange(row.date, previous)))),
       series: [...byDate.entries()]
         .map(([date, point]) => ({ date, ...point }))
         .sort((a, b) => (a.date < b.date ? -1 : 1)),

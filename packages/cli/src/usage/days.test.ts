@@ -194,6 +194,8 @@ describe("a fold over the days equals the snapshot (#307)", () => {
 		// Both projections count every normalized bucket exactly once.
 		expect(folded.totalTokens).toBe(payload.activity.totalTokens);
 		expect(folded.sessions).toBe(payload.activity.sessions);
+		if (payload.schemaVersion !== 2)
+			throw new Error("Expected an inline workspace set");
 		expect(folded.activeDays).toBe(payload.activity.activeDayDates.length);
 		expect(folded.projectKeys).toEqual(payload.activity.projectKeys);
 		expect(folded.cacheHitShare).toBe(payload.activity.cacheHitShare);

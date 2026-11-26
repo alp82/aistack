@@ -41,6 +41,10 @@ export function fmtCount(n: number): string {
 	return n.toLocaleString("en-US");
 }
 
+export function fmtProjects(usage: Band["usage"]): string {
+	return `${fmtCount(usage.projects)}${usage.projectsPrecision === "lower-bound" ? "+" : ""}`;
+}
+
 /** The calendar kicker over a group of rows: TODAY, YESTERDAY, WED 05 AUG. */
 export function dayBucket(at: number, now: number): string {
 	const startOf = (ms: number) => {

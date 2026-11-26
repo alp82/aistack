@@ -1,6 +1,6 @@
 import { Sparkline } from "@/features/charts";
 import type { Band } from "./feed";
-import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
+import { fmtCount, fmtProjects, fmtTokens, liveDays, MONO_LABEL } from "./feed";
 
 /**
  * The measured header of `/activity` - variant E1, locked in #84 over four
@@ -138,10 +138,7 @@ export function PulseBand({ band }: { readonly band: Band }) {
 						value={quiet ? "-" : fmtCount(usage.sessions)}
 						label="sessions"
 					/>
-					<Stat
-						value={quiet ? "-" : fmtCount(usage.projects)}
-						label="projects"
-					/>
+					<Stat value={quiet ? "-" : fmtProjects(usage)} label="projects" />
 					<Stat value={quiet ? "-" : fmtCount(usage.tools)} label="tools" />
 				</div>
 			</div>
