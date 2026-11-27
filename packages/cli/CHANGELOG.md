@@ -5,7 +5,7 @@
 
 ### Bug Fixes
 
-* **cli:** print every npx command with [@latest](https://github.com/latest) ([2156c14](https://github.com/alp82/aistack/commit/2156c14d131202086483e13bddda99075262be0a))
+* **cli:** print every npx command with `@latest` ([2156c14](https://github.com/alp82/aistack/commit/2156c14d131202086483e13bddda99075262be0a))
 
 ## [0.20.4](https://github.com/alp82/aistack/compare/cli-v0.20.3...cli-v0.20.4) (2026-11-26)
 
