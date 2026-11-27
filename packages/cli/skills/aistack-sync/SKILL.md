@@ -35,14 +35,14 @@ user can answer. You trigger and display. You never decide.
 ## Setup (one time, done by the user)
 
 ```sh
-npx @use-aistack/cli connect claude
+npx @use-aistack/cli@latest connect claude
 ```
 
 That installs both halves: the `aistack` MCP server (user scope) and this
 Skill. Manual alternative:
 
 ```sh
-claude mcp add --scope user aistack -- npx -y @use-aistack/cli mcp
+claude mcp add --scope user aistack -- npx -y @use-aistack/cli@latest mcp
 ```
 
-The machine must be linked once with `npx @use-aistack/cli login`.
+The machine must be linked once with `npx @use-aistack/cli@latest login`.

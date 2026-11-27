@@ -144,7 +144,7 @@ describe("the three states", () => {
 			lastAutoSyncAt: null,
 		});
 		expect(
-			screen.getByText("npx @use-aistack/cli sync --auto on"),
+			screen.getByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeTruthy();
 	});
 
@@ -154,7 +154,7 @@ describe("the three states", () => {
 			lastAutoSyncAt: Date.now() - 1000,
 		});
 		expect(
-			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+			screen.queryByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeNull();
 	});
 });
@@ -173,7 +173,7 @@ describe("the switch", () => {
 	it("shows the CLI enable command while automation is off", () => {
 		setup({ autoSync: null, lastAutoSyncAt: null });
 		expect(
-			screen.getByText("npx @use-aistack/cli sync --auto on"),
+			screen.getByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeTruthy();
 	});
 
@@ -228,7 +228,7 @@ describe("leading, past 48 hours", () => {
 			},
 		);
 		expect(
-			screen.getByText("npx @use-aistack/cli sync --auto on"),
+			screen.getByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeTruthy();
 	});
 
@@ -245,7 +245,7 @@ describe("leading, past 48 hours", () => {
 			),
 		).toBeTruthy();
 		expect(
-			screen.getByText(/npx @use-aistack\/cli sync --auto off/),
+			screen.getByText(/npx @use-aistack\/cli@latest sync --auto off/),
 		).toBeTruthy();
 	});
 
@@ -269,7 +269,7 @@ describe("leading, past 48 hours", () => {
 		);
 		expect(screen.getByText(/last automatic sync/i)).toBeTruthy();
 		expect(
-			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+			screen.queryByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeNull();
 		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
 	});
@@ -278,7 +278,7 @@ describe("leading, past 48 hours", () => {
 		setup({ autoSync: null, lastAutoSyncAt: null });
 		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
 		expect(
-			screen.getByText("npx @use-aistack/cli sync --auto on"),
+			screen.getByText("npx @use-aistack/cli@latest sync --auto on"),
 		).toBeTruthy();
 		expect(
 			screen.getByText(/only a sync you run yourself publishes/i),

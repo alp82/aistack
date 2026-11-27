@@ -171,7 +171,7 @@ export function SyncBroadcastEmail(props: {
 								margin: "0 0 12px",
 							}}
 						>
-							<Text style={termLime}>$ npx @use-aistack/cli sync</Text>
+							<Text style={termLime}>$ npx @use-aistack/cli@latest sync</Text>
 							<Text style={termLine}>&nbsp;</Text>
 							<Text style={termDim}>from your machine · sync preview</Text>
 							<Text style={termLine}>&nbsp;</Text>

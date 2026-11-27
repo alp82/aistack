@@ -202,5 +202,7 @@ it("says so when there is nothing to read yet", () => {
 	answer(null);
 	render(<TokenEfficiencyPage />);
 	expect(screen.getByText("No findings yet.")).toBeTruthy();
-	expect(document.body.textContent).toContain("npx @use-aistack/cli sync");
+	expect(document.body.textContent).toContain(
+		"npx @use-aistack/cli@latest sync",
+	);
 });

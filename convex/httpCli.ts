@@ -412,7 +412,7 @@ export const stackCollect = httpAction(async (ctx, request) => {
     return jsonResponse(
       {
         error:
-          'This machine is not linked to a stack. Run `npx @use-aistack/cli login` again to pick one.',
+          'This machine is not linked to a stack. Run `npx @use-aistack/cli@latest login` again to pick one.',
       },
       409,
     )

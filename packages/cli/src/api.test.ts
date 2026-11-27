@@ -117,7 +117,7 @@ describe("HTTP failures the user can act on", () => {
 			vi.fn(() => respond(403)),
 		);
 		await expect(stackGet("tok")).rejects.toThrow(
-			/not allowed to do that. Run `aistack login` again/,
+			/not allowed to do that. Run `npx @use-aistack\/cli@latest login` again/,
 		);
 	});
 

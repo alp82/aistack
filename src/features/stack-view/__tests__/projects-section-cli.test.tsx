@@ -21,7 +21,7 @@ const STACK_ID = "stack_test" as never;
 
 describe("ProjectsSection – no CLI copy command", () => {
 	// TC-G-01
-	it("does not render 'npx @use-aistack/cli collect' when isOwner=true and list is empty", async () => {
+	it("does not render 'npx @use-aistack/cli@latest collect' when isOwner=true and list is empty", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		// Empty list - owner sees the empty-state UI
 		useQuery.mockReturnValue([]);
@@ -29,7 +29,7 @@ describe("ProjectsSection – no CLI copy command", () => {
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
 		expect(
-			screen.queryByText(/npx @use-aistack\/cli collect/i),
+			screen.queryByText(/npx @use-aistack\/cli(@latest)? collect/i),
 		).not.toBeInTheDocument();
 	});
 
@@ -50,7 +50,7 @@ describe("ProjectsSection – no CLI copy command", () => {
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
 		expect(
-			screen.queryByText(/npx @use-aistack\/cli collect/i),
+			screen.queryByText(/npx @use-aistack\/cli(@latest)? collect/i),
 		).not.toBeInTheDocument();
 	});
 });

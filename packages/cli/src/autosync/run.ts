@@ -48,7 +48,7 @@ export const SYNC_LOG_FILE = join(homedir(), ".config", "aistack", "sync.log");
 export const SYNC_LOG_MAX_LINES = 200;
 
 /** The one-line fix, named in the escalation message and nowhere vaguer. */
-const FIX_COMMAND = "npx @use-aistack/cli sync";
+const FIX_COMMAND = "npx @use-aistack/cli@latest sync";
 
 export type AutoSyncDeps = {
 	baseUrl: string;

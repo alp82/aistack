@@ -24,7 +24,7 @@ import {
 
 /** The documented manual install line, printed when we cannot run it. */
 export const MANUAL_MCP_ADD =
-	"claude mcp add --scope user aistack -- npx -y @use-aistack/cli mcp";
+	"claude mcp add --scope user aistack -- npx -y @use-aistack/cli@latest mcp";
 
 const MCP_ADD_ARGS = [
 	"mcp",
@@ -35,7 +35,7 @@ const MCP_ADD_ARGS = [
 	"--",
 	"npx",
 	"-y",
-	"@use-aistack/cli",
+	"@use-aistack/cli@latest",
 	"mcp",
 ];
 
@@ -236,6 +236,6 @@ export async function offerConnectUpsell(deps: UpsellDeps = {}): Promise<void> {
 	}
 
 	p.log.message(
-		`If you change your mind: ${limeBold("npx @use-aistack/cli connect claude")}`,
+		`If you change your mind: ${limeBold("npx @use-aistack/cli@latest connect claude")}`,
 	);
 }

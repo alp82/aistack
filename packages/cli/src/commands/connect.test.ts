@@ -140,7 +140,7 @@ describe("installClaudeConnect", () => {
 			"--",
 			"npx",
 			"-y",
-			"@use-aistack/cli",
+			"@use-aistack/cli@latest",
 			"mcp",
 		]);
 		expect(copies).toHaveLength(1);
@@ -160,7 +160,7 @@ describe("installClaudeConnect", () => {
 		expect(copies).toHaveLength(0);
 		expect(result.message).toContain("nothing was installed");
 		expect(result.message).toContain(
-			"claude mcp add --scope user aistack -- npx -y @use-aistack/cli mcp",
+			"claude mcp add --scope user aistack -- npx -y @use-aistack/cli@latest mcp",
 		);
 	});
 

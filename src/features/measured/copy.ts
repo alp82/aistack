@@ -44,7 +44,7 @@ export const HARNESS = "Claude Code";
  * documented default). Since #74 the CLI starts the login flow inline when the
  * machine is unlinked, so honest teaching is this single command.
  */
-export const SYNC_CMD = "npx @use-aistack/cli sync";
+export const SYNC_CMD = "npx @use-aistack/cli@latest sync";
 export const SYNC_CMD_COMMENT = "link, scan, review, approve";
 
 /**
@@ -194,7 +194,7 @@ export const PRIVACY_FOOTNOTE =
  * A stack that never synced is NOT a quiet stack - it may be hand-curated and
  * complete - so this box carries no age and no warning. And it cannot offer the
  * switch as a fix: `enableAutoSync` refuses a machine that is not linked, and
- * the CLI's own answer there is "Run `npx @use-aistack/cli sync` first". So the
+ * the CLI's own answer there is "Run `npx @use-aistack/cli@latest sync` first". So the
  * box teaches the one command, and this line says what becomes possible after
  * it.
  */

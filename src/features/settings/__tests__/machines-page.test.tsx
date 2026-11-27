@@ -112,7 +112,7 @@ describe("MachinesPage", () => {
 	it("tells a user with no machines how to link one", () => {
 		setup([]);
 		expect(screen.getByText(/No machines linked/)).toBeTruthy();
-		expect(screen.getByText(/cli login/)).toBeTruthy();
+		expect(screen.getByText(/cli@latest login/)).toBeTruthy();
 	});
 
 	it("shows a loading state rather than an empty one while the query answers", () => {

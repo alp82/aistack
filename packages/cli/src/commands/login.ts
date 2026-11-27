@@ -131,7 +131,7 @@ export async function loginCommand(options: LoginOptions = {}) {
 	}
 
 	p.log.success(
-		`Token saved. Run ${limeBold("npx @use-aistack/cli sync")} to publish your usage.`,
+		`Token saved. Run ${limeBold("npx @use-aistack/cli@latest sync")} to publish your usage.`,
 	);
 	outro(lime("done"));
 }

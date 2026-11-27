@@ -123,7 +123,7 @@ describe("the hero", () => {
 	it("hands the visitor the sync command and the sync story", () => {
 		render(<PulseHero band={band()} />);
 		const command = screen.getByText(/add your tokens/i).closest("button");
-		expect(command?.textContent).toContain("npx @use-aistack/cli sync");
+		expect(command?.textContent).toContain("npx @use-aistack/cli@latest sync");
 		expect(screen.getByText(/how it works/i).closest("a")).toHaveAttribute(
 			"href",
 			"/sync",

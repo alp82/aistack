@@ -210,7 +210,7 @@ function CliAuthPage() {
 						{nameTaken && (
 							<p className="mt-2 font-mono text-[0.7rem] leading-relaxed text-warning">
 								{machineNameReadOnly
-									? "A machine with this name already publishes to this stack. If this is a different computer, cancel and run aistack login with another --label, or each sync overwrites the other's days."
+									? "A machine with this name already publishes to this stack. If this is a different computer, cancel and run npx @use-aistack/cli@latest login with another --label, or each sync overwrites the other's days."
 									: "A machine with this name already publishes to this stack. If this is a different computer, give it another name, or each sync overwrites the other's days."}
 							</p>
 						)}

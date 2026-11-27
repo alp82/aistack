@@ -77,7 +77,7 @@ export const setForToken = internalMutation({
     if (!token) throw new Error('Token not found')
     if (!token.stackId) {
       throw new Error(
-        'This machine is not linked to a stack. Run `aistack login` again to pick one.'
+        'This machine is not linked to a stack. Run `npx @use-aistack/cli@latest login` again to pick one.'
       )
     }
     const stack = await ctx.db.get(token.stackId)

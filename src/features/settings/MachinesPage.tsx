@@ -83,7 +83,7 @@ export function publishLine(
 ): { text: string; warn: boolean } {
 	if (machine.lastPublishedAt === null) {
 		return {
-			text: "Nothing published in the last 30 days. Run npx @use-aistack/cli sync on it.",
+			text: "Nothing published in the last 30 days. Run npx @use-aistack/cli@latest sync on it.",
 			warn: true,
 		};
 	}
@@ -93,7 +93,7 @@ export function publishLine(
 		return { text: `${figure} · published ${last}`, warn: false };
 	}
 	return {
-		text: `${figure} · last published ${last}. Run npx @use-aistack/cli sync on it.`,
+		text: `${figure} · last published ${last}. Run npx @use-aistack/cli@latest sync on it.`,
 		warn: true,
 	};
 }
@@ -161,10 +161,11 @@ export function MachinesPage() {
 						No machines linked.
 					</p>
 					<p className="mt-2 text-sm text-fg-secondary">
-						Run <code className="font-mono">npx @use-aistack/cli login</code> on
-						a machine to link it, then{" "}
-						<code className="font-mono">npx @use-aistack/cli sync</code> to
-						publish what ran there.
+						Run{" "}
+						<code className="font-mono">npx @use-aistack/cli@latest login</code>{" "}
+						on a machine to link it, then{" "}
+						<code className="font-mono">npx @use-aistack/cli@latest sync</code>{" "}
+						to publish what ran there.
 					</p>
 				</div>
 			)}
@@ -205,7 +206,8 @@ export function MachinesPage() {
 										<p className="mt-1 font-mono text-xs text-warning">
 											Another machine on this stack has this name, so each sync
 											overwrites the other's days. Revoke the one you no longer
-											use, or run aistack login --label on one of them.
+											use, or run npx @use-aistack/cli@latest login --label on
+											one of them.
 										</p>
 									)}
 									<p className="mt-1 font-mono text-xs text-fg-muted">
@@ -239,7 +241,7 @@ export function MachinesPage() {
 				confirmLabel="Revoke"
 				title={`Revoke ${pending?.name ?? "this machine"}?`}
 				description={
-					"That machine stops working immediately. Nothing it already published is removed. To link it again, run `aistack login` on it."
+					"That machine stops working immediately. Nothing it already published is removed. To link it again, run `npx @use-aistack/cli@latest login` on it."
 				}
 			/>
 		</div>

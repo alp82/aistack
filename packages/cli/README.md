@@ -5,12 +5,12 @@ Measure and share your AI stack. The CLI scans local history from Claude Code, C
 Run on-demand with `npx` - no install required:
 
 ```sh
-npx @use-aistack/cli sync
+npx @use-aistack/cli@latest sync
 ```
 
 ## Commands
 
-### `npx @use-aistack/cli sync`
+### `npx @use-aistack/cli@latest sync`
 
 The default command. Scan your local transcripts (rolling 30 days), review a short summary, and publish the measured layer to your stack. To read every name that would publish, choose **Show details** at the prompt. Nothing is sent until you choose **Publish**.
 
@@ -20,7 +20,7 @@ Your prompts, responses, code, and file paths never leave your machine. aistack 
 - **Never sent:** your prompts, responses, code, file paths, and repo names.
 
 ```sh
-npx @use-aistack/cli sync
+npx @use-aistack/cli@latest sync
 ```
 
 On an unlinked machine, `sync` starts the login flow inline - your browser opens to approve the machine, then the sync continues. One command is the whole onboarding.
@@ -38,8 +38,8 @@ Sync combines the local histories of your Claude Code profiles into one Claude C
 The scan runs on this machine and can take a few minutes when a harness keeps a large history. Cursor is the usual case: its global `state.vscdb` grows past a gigabyte, and the session listing walks all of it before the first result. Every harness is checked at the same time and gets its own row with a progress bar, so one slow harness shows as one slow row while the others finish. To see each step as it starts, with its duration, run with `--verbose`:
 
 ```sh
-npx @use-aistack/cli sync --verbose
-AISTACK_DEBUG=1 npx @use-aistack/cli sync   # the same, for a hook or a script
+npx @use-aistack/cli@latest sync --verbose
+AISTACK_DEBUG=1 npx @use-aistack/cli@latest sync   # the same, for a hook or a script
 ```
 
 The lines go to stderr and hold counts, durations, and safe error codes: no paths, prompts, or database values. Paste them into a bug report. Expected Git discovery misses are summarized as informational messages; incomplete Cursor sessions are grouped into one warning.
@@ -56,70 +56,64 @@ Usage reads at most 4 MiB or 2,000 base rows for its requested dates. If the com
 
 A partial Claude Code scan defers workspace aliases for legacy folders that lack a working directory. Their existing IDs stay stored, and the project count carries a lower-bound marker until a complete scan can replace the aliases.
 
-### `npx @use-aistack/cli sync --auto on` / `off`
+### `npx @use-aistack/cli@latest sync --auto on` / `off`
 
 Optional: keep your stack fresh without manual syncs. `on` asks your stack for permission, then writes hooks for the harnesses you actually use. The `SessionStart` paths are: `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex, and `$GROK_HOME/hooks/aistack.json` (default `~/.grok/hooks/aistack.json`) for Grok Build. Cursor uses a user-level `stop` hook in `~/.cursor/hooks.json` and reloads that configuration automatically. Its trigger runs when the agent finishes a turn. The other hooks run when a session starts. All triggers share one silent sync throttle, at most once every 6 hours. Existing user hooks are preserved. Grok Build needs a new session or hook reload after installation. `off` disables local publication first, removes the owned hooks, then takes the remote permission back. If removal fails, the disabled local gate still prevents publication and the next interactive sync can retry reconciliation.
 
 ```sh
-npx @use-aistack/cli sync --auto on            # enable, default every 6h
-npx @use-aistack/cli sync --auto on --every 12 # custom frequency in hours
-npx @use-aistack/cli sync --auto off           # revoke
+npx @use-aistack/cli@latest sync --auto on            # enable, default every 6h
+npx @use-aistack/cli@latest sync --auto on --every 12 # custom frequency in hours
+npx @use-aistack/cli@latest sync --auto off           # revoke
 ```
 
 **Your stack owns the permission, not this machine.** The silent run asks aistack.to before it publishes anything, so the switch above the first section on your stack page is a complete revoke: it stops every machine, even one whose hooks are still installed. The switch defaults to every 6 hours. Run the enable command shown beside it on each machine that should install triggers. A harness you adopt months later gets its trigger the same way.
 
 The silent run (`sync --auto`) never prompts and never installs a hook. Each run appends one line to `~/.config/aistack/sync.log` (capped at 200 lines). The next interactive `sync` reports the last result. After 3 failures in a row, one visible message appears in Claude Code and names the fix. No email, no dialogs.
 
-### `npx @use-aistack/cli login`
+### `npx @use-aistack/cli@latest login`
 
 Link this machine to your AI Stack account via browser. Optional - `sync` runs this inline when the machine is not linked yet.
 
 ```sh
-npx @use-aistack/cli login
-npx @use-aistack/cli login --label "build server" # preset and lock the label
+npx @use-aistack/cli@latest login
+npx @use-aistack/cli@latest login --label "build server" # preset and lock the label
 ```
 
-### `npx @use-aistack/cli connect claude`
+### `npx @use-aistack/cli@latest connect claude`
 
 Optional: install the in-session sync surface for Claude Code - the `aistack` MCP server (user scope) plus the `aistack-sync` Skill. After that, say "sync my stack" in any Claude Code session. Both halves install together or not at all.
 
 ```sh
-npx @use-aistack/cli connect claude
+npx @use-aistack/cli@latest connect claude
 ```
 
-### `npx @use-aistack/cli collect`
+### `npx @use-aistack/cli@latest collect`
 
 Scan your project for AI config files (prompts, rules, skills, MCP setups) and upload them to your stack.
 
 ```sh
 cd your-project
-npx @use-aistack/cli collect
+npx @use-aistack/cli@latest collect
 ```
 
 Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-### `npx @use-aistack/cli create`
+### `npx @use-aistack/cli@latest create`
 
 Write your stack's AI config files into the current directory.
 
 ```sh
-npx @use-aistack/cli create
+npx @use-aistack/cli@latest create
 ```
 
-## Install globally (optional)
+## Always run the latest release
 
-If you'd rather type `aistack` instead of `npx @use-aistack/cli` every time, install it globally:
+Run every command as `npx @use-aistack/cli@latest <command>`. The `@latest` tag makes npx look up the newest release each time, so you never run an outdated copy and never need to update anything.
 
-```sh
-npm i -g @use-aistack/cli
-```
-
-Then the same commands become:
+A global install (`npm i -g @use-aistack/cli`) pins the version you installed. While it is present, `aistack` and `npx @use-aistack/cli` without `@latest` keep running that old copy. If you have one, remove it:
 
 ```sh
-aistack login
-aistack sync
-aistack collect
+npm rm -g @use-aistack/cli
 ```
 
 ## Development

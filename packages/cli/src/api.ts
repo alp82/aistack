@@ -46,7 +46,7 @@ function failure(what: string, res: Response): Error {
 	}
 	if (res.status === 403) {
 		return new Error(
-			`${what}: this machine is not allowed to do that. Run \`aistack login\` again to re-link it.`,
+			`${what}: this machine is not allowed to do that. Run \`npx @use-aistack/cli@latest login\` again to re-link it.`,
 		);
 	}
 	return new Error(`${what}: ${res.status}`);
@@ -108,7 +108,7 @@ export async function stackCollect(
 	});
 	if (res.status === 401)
 		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+			"Authentication expired. Run `npx @use-aistack/cli@latest login` again.",
 		);
 	if (!res.ok) {
 		throw Object.assign(
@@ -274,7 +274,7 @@ async function postSync(
 			}
 		} else if (res?.status === 401) {
 			throw new Error(
-				"Authentication expired. Run `npx @use-aistack/cli login` again.",
+				"Authentication expired. Run `npx @use-aistack/cli@latest login` again.",
 			);
 		} else if (res?.status === 403 || res?.status === 429) {
 			throw failure("Sync failed", res);
@@ -327,7 +327,7 @@ export async function fetchDayManifest(
 	if (res.status === 404) return null;
 	if (res.status === 401)
 		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+			"Authentication expired. Run `npx @use-aistack/cli@latest login` again.",
 		);
 	if (res.status === 403 || res.status === 429)
 		throw failure("Manifest fetch failed", res);
@@ -416,7 +416,7 @@ export async function setAutoSync(
 	});
 	if (res.status === 401)
 		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+			"Authentication expired. Run `npx @use-aistack/cli@latest login` again.",
 		);
 	if (res.status === 403 || res.status === 429)
 		throw failure("Auto-sync update failed", res);
@@ -435,7 +435,7 @@ export async function stackGet(token: string): Promise<StackData | null> {
 	});
 	if (res.status === 401)
 		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+			"Authentication expired. Run `npx @use-aistack/cli@latest login` again.",
 		);
 	if (res.status === 404) return null;
 	if (!res.ok) throw failure("Stack fetch failed", res);

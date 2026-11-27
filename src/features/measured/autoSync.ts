@@ -103,8 +103,8 @@ export const ON_NOTE =
  * The two CLI forms of this switch. #102 moved the permission onto the stack,
  * so these and the toggle above write the same flag.
  */
-export const AUTO_ON_CMD = "npx @use-aistack/cli sync --auto on";
-export const AUTO_OFF_CMD = "npx @use-aistack/cli sync --auto off";
+export const AUTO_ON_CMD = "npx @use-aistack/cli@latest sync --auto on";
+export const AUTO_OFF_CMD = "npx @use-aistack/cli@latest sync --auto off";
 
 /**
  * WHAT THE OWNER READS WHEN THE PAGE IS PAST 48 HOURS AND AUTOMATION IS OFF.

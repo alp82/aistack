@@ -687,12 +687,12 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		blockedReason = `No supported harness transcript from the last ${retentionDays} days to read.`;
 	} else if (token === null) {
 		blockedReason =
-			"This machine is not linked. Run `npx @use-aistack/cli login` first.";
+			"This machine is not linked. Run `npx @use-aistack/cli@latest login` first.";
 	} else if (config.stack === null) {
 		blockedReason =
 			source === "bundled"
 				? "Could not fetch your settings from aistack, so the destination stack is unknown. Publish needs it. Check the network and preview again."
-				: "This machine has no destination stack. Run `npx @use-aistack/cli sync` in an interactive terminal to choose one.";
+				: "This machine has no destination stack. Run `npx @use-aistack/cli@latest sync` in an interactive terminal to choose one.";
 	}
 
 	return {

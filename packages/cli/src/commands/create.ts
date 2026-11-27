@@ -25,7 +25,7 @@ export async function createCommand() {
 	const token = getToken();
 	if (!token) {
 		p.log.error(
-			`Not authenticated. Run ${limeBold("npx @use-aistack/cli login")} first.`,
+			`Not authenticated. Run ${limeBold("npx @use-aistack/cli@latest login")} first.`,
 		);
 		outroError("not authenticated");
 		process.exit(1);

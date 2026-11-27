@@ -57,10 +57,10 @@ flowchart LR
 **Typical flow:**
 
 - Sign up on the web app and create a stack.
-- Run `npx @use-aistack/cli sync` to review and publish measured usage. Afterward, choose Enable, Maybe later, or Never ask again for auto-sync. Maybe later asks again after your next manual sync.
-- To enable directly, run `npx @use-aistack/cli sync --auto on`. Auto-sync defaults to every 6 hours. The same control appears above the first section on your stack page and includes this command for installing machine triggers.
-- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, and MCP configs to your stack.
-- Share the stack link. On another machine, run `npx @use-aistack/cli create` to write that AI setup into the current directory.
+- Run `npx @use-aistack/cli@latest sync` to review and publish measured usage. Afterward, choose Enable, Maybe later, or Never ask again for auto-sync. Maybe later asks again after your next manual sync.
+- To enable directly, run `npx @use-aistack/cli@latest sync --auto on`. Auto-sync defaults to every 6 hours. The same control appears above the first section on your stack page and includes this command for installing machine triggers.
+- Run `npx @use-aistack/cli@latest collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, and MCP configs to your stack.
+- Share the stack link. On another machine, run `npx @use-aistack/cli@latest create` to write that AI setup into the current directory.
 
 **What leaves your machine:**
 
@@ -74,7 +74,7 @@ Your prompts, responses, code, and file paths never leave your machine. aistack 
 The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli). Run it on demand with `npx` - no install required:
 
 ```sh
-npx @use-aistack/cli <command>
+npx @use-aistack/cli@latest <command>
 ```
 
 | Command | What it does |
@@ -88,12 +88,7 @@ npx @use-aistack/cli <command>
 
 `collect` detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-**Install globally (optional)** - if you would rather type `aistack` than `npx @use-aistack/cli` every time:
-
-```sh
-npm i -g @use-aistack/cli
-# then: aistack login · aistack collect · aistack create
-```
+Always include `@latest`. It makes npx fetch the newest release on every run. A global install (`npm i -g @use-aistack/cli`) pins the version you installed, and `npx @use-aistack/cli` without `@latest` keeps running it. Remove one with `npm rm -g @use-aistack/cli`.
 
 ---
 

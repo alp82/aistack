@@ -172,7 +172,7 @@ describe("the never-checked stack", () => {
 		// and both point at the canonical /sync page.
 		expect(screen.getByText("Never checked")).toBeTruthy();
 		expect(
-			screen.getAllByText("npx @use-aistack/cli sync").length,
+			screen.getAllByText("npx @use-aistack/cli@latest sync").length,
 		).toBeGreaterThan(0);
 		const guideLinks = screen
 			.getAllByText("how syncing works")

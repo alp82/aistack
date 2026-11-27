@@ -48,10 +48,10 @@ describe("ProjectsStep – create mode", () => {
 	};
 
 	// TC-E-03
-	it("does NOT contain the text 'npx @use-aistack/cli collect'", () => {
+	it("does NOT contain the text 'npx @use-aistack/cli@latest collect'", () => {
 		render(<ProjectsStep {...baseProps} />);
 		expect(
-			screen.queryByText(/npx @use-aistack\/cli collect/i),
+			screen.queryByText(/npx @use-aistack\/cli(@latest)? collect/i),
 		).not.toBeInTheDocument();
 	});
 

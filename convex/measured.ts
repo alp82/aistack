@@ -1905,7 +1905,7 @@ export const publishForToken = internalMutation({
     if (!token) throw new Error('Token not found')
     if (!token.stackId) {
       throw new Error(
-        'This machine is not linked to a stack. Run `aistack login` again to pick one.'
+        'This machine is not linked to a stack. Run `npx @use-aistack/cli@latest login` again to pick one.'
       )
     }
     const stack = await ctx.db.get(token.stackId)
@@ -1931,7 +1931,7 @@ export const publishForToken = internalMutation({
     // written by a sync that is allowed to land.
     //
     // A manual sync is untouched. The switch revokes automation, not the
-    // owner's own `npx @use-aistack/cli sync`.
+    // owner's own `npx @use-aistack/cli@latest sync`.
     if (args.trigger === 'auto' && stack.autoSync?.enabled === false) {
       throw new Error(
         'Auto-sync is off for this stack. Nothing was published. Turn it back on from the stack page, or run a sync yourself.'
@@ -2217,7 +2217,7 @@ async function stackAndMachineForToken(
   if (!token) throw new Error('Token not found')
   if (!token.stackId) {
     throw new Error(
-      'This machine is not linked to a stack. Run `aistack login` again to pick one.'
+      'This machine is not linked to a stack. Run `npx @use-aistack/cli@latest login` again to pick one.'
     )
   }
   const stack = await ctx.db.get(token.stackId)

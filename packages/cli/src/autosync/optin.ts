@@ -85,7 +85,7 @@ export interface EnableDeps {
 
 /** What an unlinked machine is told when it tries to grant the permission. */
 export const NOT_LINKED =
-	"This machine is not linked to an aistack account, and the auto-sync permission lives on your stack. Run `npx @use-aistack/cli sync` first.";
+	"This machine is not linked to an aistack account, and the auto-sync permission lives on your stack. Run `npx @use-aistack/cli@latest sync` first.";
 
 /** The message when the machine has no active harness to trigger anything. */
 export const NOTHING_TO_TRIGGER = `No supported session on this machine in the last ${DEFAULT_WINDOW_DAYS} days, so nothing would trigger an auto-sync. Nothing was changed.`;
@@ -165,7 +165,7 @@ export async function enableAutoSync(
 	return {
 		ok: true,
 		message: [
-			`Auto-sync is on. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} ${names.has(CURSOR_HARNESS_NAME) ? "session is active" : "session starts"}. Turn it off any time: npx @use-aistack/cli sync --auto off`,
+			`Auto-sync is on. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} ${names.has(CURSOR_HARNESS_NAME) ? "session is active" : "session starts"}. Turn it off any time: npx @use-aistack/cli@latest sync --auto off`,
 			...(trustLine ? [trustLine] : []),
 		].join("\n"),
 	};
@@ -448,7 +448,7 @@ export async function offerAutoSyncOptIn(
 		saveSettings({ autoSyncNeverAskAgain: true }, deps.settingsFile);
 	}
 	p.log.message(
-		`If you change your mind: ${limeBold("npx @use-aistack/cli sync --auto on")} ${dim(
+		`If you change your mind: ${limeBold("npx @use-aistack/cli@latest sync --auto on")} ${dim(
 			"(and --auto off to revoke)",
 		)}`,
 	);

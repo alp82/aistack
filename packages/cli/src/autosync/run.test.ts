@@ -405,7 +405,7 @@ describe("a failing run", () => {
 			(d.emit as ReturnType<typeof vi.fn>).mock.calls[0][0],
 		);
 		expect(payload.systemMessage).toContain("3 times");
-		expect(payload.systemMessage).toContain("npx @use-aistack/cli sync");
+		expect(payload.systemMessage).toContain("npx @use-aistack/cli@latest sync");
 	});
 
 	test("Grok-triggered failures never write hook stdout", async () => {
