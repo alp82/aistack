@@ -390,9 +390,9 @@ describe("GROUP D - GuideSection Guide empty state", () => {
 				slug="my-stack"
 			/>,
 		);
-		expect(screen.getByText(/no guide yet/i)).toBeInTheDocument();
+		expect(screen.getByText(/^no guide$/i)).toBeInTheDocument();
 		expect(
-			screen.getByText(/author has not added setup notes/i),
+			screen.getByText(/stacker did not add a guide yet/i),
 		).toBeInTheDocument();
 		expect(
 			screen.queryByRole("link", { name: /add a writeup/i }),
@@ -408,7 +408,7 @@ describe("GROUP D - GuideSection Guide empty state", () => {
 				slug="my-stack"
 			/>,
 		);
-		expect(screen.getByText(/no guide yet/i)).toBeInTheDocument();
+		expect(screen.getByText(/^no guide$/i)).toBeInTheDocument();
 	});
 
 	// D-3: description present, isOwner=true → neither empty-state element
